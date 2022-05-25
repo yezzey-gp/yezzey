@@ -7,38 +7,39 @@ PG_MODULE_MAGIC;
 
 const int SmgrTrace = LOG;
 
+void
 yezzey_init(void)
 {
-	mdinit();	
 	elog(SmgrTrace, "[YEZZEY_SMGR] init");
+	mdinit();	
 }
 
 void
 yezzey_open(SMgrRelation reln)
 {
-	mdopen(reln);
 	elog(SmgrTrace, "[YEZZEY_SMGR] open");
+	mdopen(reln);
 }
 
 void
 yezzey_close(SMgrRelation reln, ForkNumber forkNum)
 {
-	mdclose(reln, forkNum);
 	elog(SmgrTrace, "[YEZZEY_SMGR] close");
+	mdclose(reln, forkNum);
 }
 
 void
 yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo)
 {
-	mdcreate(reln, forkNum, isRedo);
 	elog(SmgrTrace, "[YEZZEY_SMGR] create");
+	mdcreate(reln, forkNum, isRedo);
 }
 
 bool
 yezzey_exists(SMgrRelation reln, ForkNumber forkNum)
 {
-	mdexists(reln, forkNum);
 	elog(SmgrTrace, "[YEZZEY_SMGR] exists");
+	return mdexists(reln, forkNum);
 }
 
 void
@@ -51,57 +52,57 @@ yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
 void
 yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync)
 {
-	mdextend(reln, forkNum, blockNum, buffer, skipFsync);
 	elog(SmgrTrace, "[YEZZEY_SMGR] extend");
+	mdextend(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
 bool
 yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum)
 {
-	mdprefetch(reln, forkNum, blockNum);
 	elog(SmgrTrace, "[YEZZEY_SMGR] prefetch");
+	return mdprefetch(reln, forkNum, blockNum);
 }
 
 void
 yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer)
 {
-	mdread(reln, forkNum, blockNum, buffer);
 	elog(SmgrTrace, "[YEZZEY_SMGR] read");
+	mdread(reln, forkNum, blockNum, buffer);
 }
 
 void
 yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync)
 {
-	mdwrite(reln, forkNum, blockNum, buffer, skipFsync);
 	elog(SmgrTrace, "[YEZZEY_SMGR] write");
+	mdwrite(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
 void
 yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, BlockNumber nBlocks)
 {
-	mdwriteback(reln, forkNum, blockNum, nBlocks);
 	elog(SmgrTrace, "[YEZZEY_SMGR] writeback");
+	mdwriteback(reln, forkNum, blockNum, nBlocks);
 }
 
 BlockNumber
 yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum)
 {
-	mdnblocks(reln, forkNum);
 	elog(SmgrTrace, "[YEZZEY_SMGR] nblocks");
+	return mdnblocks(reln, forkNum);
 }
 
 void
 yezzey_truncate(SMgrRelation reln, ForkNumber forkNum, BlockNumber nBlocks)
 {
-	mdtruncate(reln, forkNum, nBlocks);
 	elog(SmgrTrace, "[YEZZEY_SMGR] truncate");
+	mdtruncate(reln, forkNum, nBlocks);
 }
 
 void
 yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum)
 {
-	mdimmedsync(reln, forkNum);
 	elog(SmgrTrace, "[YEZZEY_SMGR] immedsync");
+	mdimmedsync(reln, forkNum);
 }
 
 static const struct f_smgr yezzey_smgr =
@@ -129,8 +130,16 @@ smgr_yezzey(BackendId backend, RelFileNode rnode)
 	return &yezzey_smgr;
 }
 
+void smgr_init_yezzey(void)
+{
+	smgr_init_standard();
+	yezzey_init();
+}
+
 void
 _PG_init(void)
 {
+	elog(LOG, "[YEZZEY_SMGR] set hook");
 	smgr_hook = smgr_yezzey;
+	smgr_init_hook = smgr_init_yezzey;
 }
