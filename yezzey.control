@@ -1,0 +1,4 @@
+# yezzey extension
+comment = 'yezzey something ffor gpdb'
+default_version = '1.0'
+module_pathname = '$libdir/yezzey'

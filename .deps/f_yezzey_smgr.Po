@@ -1,0 +1,53 @@
+f_yezzey_smgr.o: f_yezzey_smgr.c ../../src/include/postgres.h \
+ ../../src/include/c.h ../../src/include/postgres_ext.h \
+ ../../src/include/pg_config_ext.h ../../src/include/pg_config.h \
+ ../../src/include/pg_config_manual.h ../../src/include/pg_config_os.h \
+ ../../src/include/port.h ../../src/include/utils/elog.h \
+ ../../src/include/utils/errcodes.h ../../src/include/utils/palloc.h \
+ ../../src/include/storage/smgr.h ../../src/include/lib/ilist.h \
+ ../../src/include/storage/block.h \
+ ../../src/include/storage/relfilenode.h \
+ ../../src/include/common/relpath.h \
+ ../../src/include/catalog/catversion.h \
+ ../../src/include/storage/backendid.h ../../src/include/storage/md.h \
+ ../../src/include/storage/sync.h
+
+../../src/include/postgres.h:
+
+../../src/include/c.h:
+
+../../src/include/postgres_ext.h:
+
+../../src/include/pg_config_ext.h:
+
+../../src/include/pg_config.h:
+
+../../src/include/pg_config_manual.h:
+
+../../src/include/pg_config_os.h:
+
+../../src/include/port.h:
+
+../../src/include/utils/elog.h:
+
+../../src/include/utils/errcodes.h:
+
+../../src/include/utils/palloc.h:
+
+../../src/include/storage/smgr.h:
+
+../../src/include/lib/ilist.h:
+
+../../src/include/storage/block.h:
+
+../../src/include/storage/relfilenode.h:
+
+../../src/include/common/relpath.h:
+
+../../src/include/catalog/catversion.h:
+
+../../src/include/storage/backendid.h:
+
+../../src/include/storage/md.h:
+
+../../src/include/storage/sync.h:
