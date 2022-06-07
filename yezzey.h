@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
  *
- * postgres_fdw.h
- *                Foreign-data wrapper for remote PostgreSQL servers
+ * yezzey.h
+ *        GP/PG Extention to offload cold data segments to external storage
  *
  * PostgreSQL Global Development Group
  *
@@ -15,5 +15,7 @@
 
 extern char *s3_getter;
 extern char *s3_putter;
+
+extern int yezzey_log_level;
 
 #endif /* YEZZEY_H */
