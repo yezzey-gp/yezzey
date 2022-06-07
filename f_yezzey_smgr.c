@@ -8,7 +8,11 @@
 
 #include "utils/snapmgr.h"
 #include "miscadmin.h"
+
+#if PG_VERSION_NUM >= 130000
 #include "postmaster/interrupt.h"
+#endif
+
 #include "storage/ipc.h"
 #include "storage/lwlock.h"
 #include "storage/shmem.h"
@@ -17,7 +21,13 @@
 #include "storage/smgr.h"
 #include "storage/md.h"
 #include "common/relpath.h"
+#if PG_VERSION_NUM >= 100000
 #include "common/file_perm.h"
+#else 
+
+#include "access/xact.h"
+
+#endif
 #include "utils/guc.h"
 #include "lib/stringinfo.h"
 #include "postmaster/bgworker.h"
@@ -39,13 +49,24 @@ void getFileFromS3(SMgrRelation reln, ForkNumber forkNum);
 char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
 
 void yezzey_init(void);
+#ifndef GPBUILD
 void yezzey_open(SMgrRelation reln);
+#endif
 void yezzey_close(SMgrRelation reln, ForkNumber forkNum);
 void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo);
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
+#ifndef GPBUILD
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
+#else
+void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage);
+#endif
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync);
+#if PG_VERSION_NUM >= 130000
 bool yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum);
+#else
+void yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum);
+#endif
+
 void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync);
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, BlockNumber nBlocks);
@@ -58,6 +79,8 @@ void smgr_init_yezzey(void);
 
 #if PG_VERSION_NUM >= 100000
 void yezzey_main(Datum main_arg);
+#else
+static void yezzey_main(Datum arg);
 #endif
 
 void _PG_init(void);
@@ -380,12 +403,14 @@ yezzey_init(void)
 	mdinit();	
 }
 
+#ifndef GPBUILD
 void
 yezzey_open(SMgrRelation reln)
 {
 	elog(SmgrTrace, "[YEZZEY_SMGR] open");
 	mdopen(reln);
 }
+#endif
 
 void
 yezzey_close(SMgrRelation reln, ForkNumber forkNum)
@@ -418,10 +443,18 @@ yezzey_exists(SMgrRelation reln, ForkNumber forkNum)
 }
 
 void
+#ifndef GPBUILD
 yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
+#else
+yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage)
+#endif
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] unlink");	
+	elog(SmgrTrace, "[YEZZEY_SMGR] unlink");
+#ifndef GPBUILD
 	mdunlink(rnode, forkNum, isRedo);
+#else
+	mdunlink(rnode, forkNum, isRedo, relstorage);
+#endif
 }
 
 void
@@ -434,13 +467,16 @@ yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char 
 	mdextend(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
+#if PG_VERSION_NUM >= 130000
 bool
+#else
+void
+#endif
 yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum)
 {
 	elog(SmgrTrace, "[YEZZEY_SMGR] prefetch");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
-	
 	return mdprefetch(reln, forkNum, blockNum);
 }
 
@@ -508,7 +544,9 @@ static const struct f_smgr yezzey_smgr =
 {
 	.smgr_init = yezzey_init,
 	.smgr_shutdown = NULL,
+#ifndef GPBUILD
 	.smgr_open = yezzey_open,
+#endif
 	.smgr_close = yezzey_close,
 	.smgr_create = yezzey_create,
 	.smgr_exists = yezzey_exists,
@@ -638,7 +676,9 @@ _PG_init(void)
 	worker.bgw_main = yezzey_main;
 #endif
 	snprintf(worker.bgw_name, BGW_MAXLEN, "%s", worker_name);
+#if PG_VERSION_NUM >= 110000
 	snprintf(worker.bgw_type, BGW_MAXLEN, "yezzey");
+#endif
 #if PG_VERSION_NUM >= 100000
 	sprintf(worker.bgw_library_name, "yezzey");
 	sprintf(worker.bgw_function_name, "yezzey_main");
