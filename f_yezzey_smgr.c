@@ -35,6 +35,8 @@
 #include "storage/latch.h"
 #include "pgstat.h"
 
+#include "yezzey.h"
+
 #define SmgrTrace DEBUG5
 
 bool ensureFileLocal(SMgrRelation reln, ForkNumber forkNum);
@@ -46,7 +48,7 @@ static void yezzey_prepare(void);
 static void yezzey_finish(void);
 void sendTablesToS3(void);
 void getFileFromS3(SMgrRelation reln, ForkNumber forkNum);
-char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
+static char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
 
 void yezzey_init(void);
 #ifndef GPBUILD
@@ -90,9 +92,6 @@ static volatile sig_atomic_t got_sighup = false;
 
 static int interval = 10000;
 static char *worker_name = "yezzey";
-
-const char *s3_getter = "wal-g st get %f %s --config /home/fstilus/config.yaml";
-const char *s3_putter = "wal-g st put %f %s --config /home/fstilus/config.yaml -f";
 
 bool
 ensureFileLocal(SMgrRelation reln, ForkNumber forkNum)
@@ -300,8 +299,7 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 				break;
 			start = sl + 1;
 		}
-		//elog(LOG, "%s %s", localPath, start);
-		
+
 		for (sp = start; *sp; sp++)
 		{
 			elog(LOG, "%s", sp);
@@ -346,7 +344,7 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 	}
 }
 
-char *
+static char *
 buildS3Command(const char *s3Command, const char *firstPath, const char *secondPath)
 {
 	StringInfoData result;
@@ -655,16 +653,16 @@ _PG_init(void)
 {
 	BackgroundWorker worker;
 	
-//	DefineCustomStringVariable("yezzey.S3_getter",
-//				   "getting file from S3",
-//				   NULL,&s3_getter,
-//				   "",PGC_USERSET,0,
-//				   NULL, NULL, NULL);
-//      DefineCustomStringVariable("yezzey.S3_putter",
-//                                 "putting file to S3",
-//                                 NULL,&s3_putter,
-//                                 "",PGC_USERSET,0,
-//                                 NULL, NULL, NULL);
+	DefineCustomStringVariable("yezzey.S3_getter",
+				   "getting file from S3",
+				   NULL, &s3_getter,
+				   "",PGC_USERSET,0,
+				   NULL, NULL, NULL);
+    DefineCustomStringVariable("yezzey.S3_putter",
+                                "putting file to S3",
+                                NULL, &s3_putter,
+                                "",PGC_USERSET,0,
+                                NULL, NULL, NULL);
 	
 	elog(SmgrTrace, "[YEZZEY_SMGR] setting up bgworker");
 
