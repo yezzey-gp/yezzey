@@ -35,13 +35,10 @@
 #include "storage/latch.h"
 #include "pgstat.h"
 
+#include "utils/elog.h"
+
 #include "yezzey.h"
 
-bool ensureFileLocal(SMgrRelation reln, ForkNumber forkNum);
-void sendFileToS3(const char *localPath);
-void updateMoveTable(const char *oid, const char *forkName, const char *segNum, const bool isLocal);
-void removeLocalFile(const char *localPath);
-void sendOidToS3(const char *oid, const char *forkName, const char *segNum);
 static void yezzey_prepare(void);
 static void yezzey_finish(void);
 void sendTablesToS3(void);
@@ -88,8 +85,12 @@ void _PG_init(void);
 static volatile sig_atomic_t got_sigterm = false;
 static volatile sig_atomic_t got_sighup = false;
 
-static int interval = 10000;
+static int interval = 100000;
 static char *worker_name = "yezzey";
+
+static int yezzey_log_level = LOG;
+static char *s3_getter;
+static char *s3_putter;
 
 // options for yezzey logging
 static const struct config_enum_entry loglevel_options[] = {
@@ -108,7 +109,6 @@ static const struct config_enum_entry loglevel_options[] = {
         {"panic", PANIC, false},
         {NULL, 0, false}
 };
-
 
 bool
 ensureFileLocal(SMgrRelation reln, ForkNumber forkNum)
@@ -631,6 +631,7 @@ yezzey_main(Datum main_arg)
 	while (!got_sigterm)
 	{
 		int rc;
+		
 
 		rc = WaitLatch(&MyProc->procLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
 #if PG_VERSION_NUM < 100000
@@ -683,7 +684,7 @@ _PG_init(void)
 								NULL, 
 								NULL);
 	
-DefineCustomEnumVariable("yezzey.log_level",
+	DefineCustomEnumVariable("yezzey.log_level",
 								"Log level for yezzey functions.",
 								NULL,
 								&yezzey_log_level,
