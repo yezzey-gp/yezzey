@@ -13,9 +13,10 @@
 #ifndef YEZZEY_H
 #define YEZZEY_H
 
-extern char *s3_getter;
-extern char *s3_putter;
-
-extern int yezzey_log_level;
+bool ensureFileLocal(SMgrRelation reln, ForkNumber forkNum);
+void sendFileToS3(const char *localPath);
+void updateMoveTable(const char *oid, const char *forkName, const char *segNum, const bool isLocal);
+void removeLocalFile(const char *localPath);
+void sendOidToS3(const char *oid, const char *forkName, const char *segNum);
 
 #endif /* YEZZEY_H */
