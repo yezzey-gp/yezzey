@@ -8,7 +8,11 @@
 
 #include "utils/snapmgr.h"
 #include "miscadmin.h"
+
+#if PG_VERSION_NUM >= 130000
 #include "postmaster/interrupt.h"
+#endif
+
 #include "storage/ipc.h"
 #include "storage/lwlock.h"
 #include "storage/shmem.h"
@@ -17,7 +21,13 @@
 #include "storage/smgr.h"
 #include "storage/md.h"
 #include "common/relpath.h"
+#if PG_VERSION_NUM >= 100000
 #include "common/file_perm.h"
+#else 
+
+#include "access/xact.h"
+
+#endif
 #include "utils/guc.h"
 #include "lib/stringinfo.h"
 #include "postmaster/bgworker.h"
@@ -25,27 +35,35 @@
 #include "storage/latch.h"
 #include "pgstat.h"
 
-#define SmgrTrace DEBUG5
+#include "utils/elog.h"
 
-bool ensureFileLocal(SMgrRelation reln, ForkNumber forkNum);
-void sendFileToS3(const char *localPath);
-void updateMoveTable(const char *oid, const char *forkName, const char *segNum, const bool isLocal);
-void removeLocalFile(const char *localPath);
-void sendOidToS3(const char *oid, const char *forkName, const char *segNum);
+#include "yezzey.h"
+
 static void yezzey_prepare(void);
 static void yezzey_finish(void);
 void sendTablesToS3(void);
 void getFileFromS3(SMgrRelation reln, ForkNumber forkNum);
-char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
+static char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
 
 void yezzey_init(void);
+#ifndef GPBUILD
 void yezzey_open(SMgrRelation reln);
+#endif
 void yezzey_close(SMgrRelation reln, ForkNumber forkNum);
 void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo);
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
+#ifndef GPBUILD
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
+#else
+void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage);
+#endif
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync);
+#if PG_VERSION_NUM >= 130000
 bool yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum);
+#else
+void yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum);
+#endif
+
 void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync);
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, BlockNumber nBlocks);
@@ -58,6 +76,8 @@ void smgr_init_yezzey(void);
 
 #if PG_VERSION_NUM >= 100000
 void yezzey_main(Datum main_arg);
+#else
+static void yezzey_main(Datum arg);
 #endif
 
 void _PG_init(void);
@@ -68,8 +88,27 @@ static volatile sig_atomic_t got_sighup = false;
 static int interval = 10000;
 static char *worker_name = "yezzey";
 
-const char *s3_getter = "wal-g st get %f %s --config /home/fstilus/config.yaml";
-const char *s3_putter = "wal-g st put %f %s --config /home/fstilus/config.yaml -f";
+static int yezzey_log_level = LOG;
+static char *s3_getter;
+static char *s3_putter;
+
+// options for yezzey logging
+static const struct config_enum_entry loglevel_options[] = {
+        {"debug5", DEBUG5, false},
+        {"debug4", DEBUG4, false},
+        {"debug3", DEBUG3, false},
+        {"debug2", DEBUG2, false},
+        {"debug1", DEBUG1, false},
+        {"debug", DEBUG2, true},
+        {"info", INFO, false},
+        {"notice", NOTICE, false},
+        {"warning", WARNING, false},
+        {"error", ERROR, false},
+        {"log", LOG, false},
+        {"fatal", FATAL, false},
+        {"panic", PANIC, false},
+        {NULL, 0, false}
+};
 
 bool
 ensureFileLocal(SMgrRelation reln, ForkNumber forkNum)
@@ -80,7 +119,7 @@ ensureFileLocal(SMgrRelation reln, ForkNumber forkNum)
 	path = relpath(reln->smgr_rnode, forkNum);
 	fd = open(path, O_RDONLY);
 	
-	elog(SmgrTrace, "[YEZZEY_SMGR] trying to open %s, result - %d", path, fd);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d", path, fd);
 	
 	return fd >= 0;
 }
@@ -97,7 +136,7 @@ sendFileToS3(const char *localPath)
 	cd = buildS3Command(s3_putter, localPath, s3Path);
         rc = system(cd);
 	
-	elog(SmgrTrace, "[YEZZEY_SMGR] tried \"%s\", got %d", cd, rc);
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", cd, rc);
 }
 
 void
@@ -121,10 +160,10 @@ updateMoveTable(const char *oid, const char *forkName, const char *segNum, const
 
 	ret = SPI_execute(buf, false, 1);
 	
-	elog(LOG, "[YEZZEY_SMGR] tried %s, result = %d", buf, ret);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] tried %s, result = %d", buf, ret);
 	
 	if (ret != SPI_OK_UPDATE)
-		elog(LOG, "[YEZZEY_SMGR] failed to update move_table");
+		elog(ERROR, "[YEZZEY_SMGR] failed to update move_table");
 }
 
 void
@@ -138,7 +177,7 @@ removeLocalFile(const char *localPath)
 
 	rc = system(rmd);
 
-	elog(LOG, "[YEZZEY_SMGR] tried \"%s\", got %d", rmd, rc);
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", rmd, rc);
 }
 
 void
@@ -147,7 +186,7 @@ sendOidToS3(const char *oid, const char *forkName, const char *segNum)
 	char *path = (char *)palloc0(100);
 	int fd;
 	
-	strcpy(path, "/home/fstilus/pg_build/dathe/base/5/");
+	strcpy(path, "/home/fstilus/pg_build/e/base/5/");
 	strcat(path, oid);
 
 	if (segNum[0] != '0')
@@ -164,7 +203,7 @@ sendOidToS3(const char *oid, const char *forkName, const char *segNum)
 
 	fd = open(path, O_RDONLY);
 
-	elog(LOG, "[YEZZEY_SMGR] trying to open %s, result - %d", path, fd);
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] trying to open %s, result - %d", path, fd);
 	
 	if (fd >= 0)
 	{
@@ -206,24 +245,24 @@ sendTablesToS3(void)
 	TupleDesc tupdesc;
 	SPITupleTable *tuptable;
 
-	elog(SmgrTrace, "[YEZZEY_SMGR] sending table to S3");
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] sending table to S3");
 	
 	yezzey_prepare();
 
 	strcpy(buf, "SELECT * FROM yezzey.move_table;");
 	
-	elog(SmgrTrace, "[YEZZEY_SMGR] trying '%s'", buf);
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] trying '%s'", buf);
 
 	ret = SPI_execute(buf, true, 0);
 
 	if (ret != SPI_OK_SELECT)
-                elog(FATAL, "[YEZZEY_SMGR] Error while trying to get info about move_table");
+                elog(FATAL, "[YEZZEY_SMGR_BG] Error while trying to get info about move_table");
 
 	tupdesc = SPI_tuptable->tupdesc;
         tuptable = SPI_tuptable;
 	cnt = SPI_processed;
 
-	elog(SmgrTrace, "[YEZZEY_SMGR] tried %s, result = %d, cnt = %lu", buf, ret, cnt);
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried %s, result = %d, cnt = %lu", buf, ret, cnt);
         
 	for (i = 0; i < cnt; i++)
 	{
@@ -234,7 +273,7 @@ sendTablesToS3(void)
 		bool chlen = true;
 		bool isLocal = DatumGetBool(SPI_getbinval(tuple, tupdesc, 4, &chlen));
 
-		elog(LOG, "[YEZZEY_SMGR] got %s oid, %s forkName, %s segNum, local? %s", oid, forkName, segNum, isLocal?"true":"false");
+		elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %s oid, %s forkName, %s segNum, local? %s", oid, forkName, segNum, isLocal?"true":"false");
 		if (isLocal)
 			sendOidToS3(oid, forkName, segNum);
 	}	
@@ -253,12 +292,12 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 	strcpy(s3Path, localPath);
 	strcat(s3Path, ".lz4");
 	
-	elog(SmgrTrace, "[YEZZEY_SMGR] getting %s from ...", s3Path);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] getting %s from ...", s3Path);
 
 	cd = buildS3Command(s3_getter, s3Path, localPath);
 	rc = system(cd);
 
-	elog(LOG, "[YEZZEY_SMGR] tried \"%s\", got %d", cd, rc);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] tried \"%s\", got %d", cd, rc);
 	pfree(cd);
 
 	if (rc == 0)
@@ -277,11 +316,9 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 				break;
 			start = sl + 1;
 		}
-		//elog(LOG, "%s %s", localPath, start);
-		
+
 		for (sp = start; *sp; sp++)
 		{
-			elog(LOG, "%s", sp);
 			switch (sp[0])
 			{
 				case '.':
@@ -311,7 +348,7 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 		if (!fork)
 			strcpy(forkName, "main");
 		
-		elog(LOG, "[YEZZEY_SMGR] got oid = %s, forkName = %s, segNum = %s", oid, forkName, segNum);
+		elog(yezzey_log_level, "[YEZZEY_SMGR] got oid = %s, forkName = %s, segNum = %s", oid, forkName, segNum);
 		
 		SPI_connect();
 		updateMoveTable(oid, forkName, segNum, true);
@@ -323,7 +360,7 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 	}
 }
 
-char *
+static char *
 buildS3Command(const char *s3Command, const char *firstPath, const char *secondPath)
 {
 	StringInfoData result;
@@ -331,7 +368,7 @@ buildS3Command(const char *s3Command, const char *firstPath, const char *secondP
 
 	initStringInfo(&result);
 	
-	elog(SmgrTrace, "[YEZZEY_SMGR] updating \"%s\" with \"%s\" and \"%s\"", s3Command, firstPath, secondPath);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] updating \"%s\" with \"%s\" and \"%s\"", s3Command, firstPath, secondPath);
 
 	for (sp = s3Command; *sp; sp++)
 	{
@@ -376,21 +413,23 @@ buildS3Command(const char *s3Command, const char *firstPath, const char *secondP
 void
 yezzey_init(void)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] init");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] init");
 	mdinit();	
 }
 
+#ifndef GPBUILD
 void
 yezzey_open(SMgrRelation reln)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] open");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] open");
 	mdopen(reln);
 }
+#endif
 
 void
 yezzey_close(SMgrRelation reln, ForkNumber forkNum)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] close");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] close");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
@@ -400,7 +439,7 @@ yezzey_close(SMgrRelation reln, ForkNumber forkNum)
 void
 yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] create");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] create");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
@@ -410,7 +449,7 @@ yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo)
 bool
 yezzey_exists(SMgrRelation reln, ForkNumber forkNum)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] exists");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] exists");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 
@@ -418,36 +457,47 @@ yezzey_exists(SMgrRelation reln, ForkNumber forkNum)
 }
 
 void
+#ifndef GPBUILD
 yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
+#else
+yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage)
+#endif
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] unlink");	
+	elog(yezzey_log_level, "[YEZZEY_SMGR] unlink");
+#ifndef GPBUILD
 	mdunlink(rnode, forkNum, isRedo);
+#else
+	mdunlink(rnode, forkNum, isRedo, relstorage);
+#endif
 }
 
 void
 yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] extend");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] extend");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
 	mdextend(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
+#if PG_VERSION_NUM >= 130000
 bool
+#else
+void
+#endif
 yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] prefetch");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] prefetch");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
-	
 	return mdprefetch(reln, forkNum, blockNum);
 }
 
 void
 yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] read");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] read");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 
@@ -457,7 +507,7 @@ yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *b
 void
 yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] write");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] write");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
@@ -467,7 +517,7 @@ yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *
 void
 yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, BlockNumber nBlocks)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] writeback");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] writeback");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 
@@ -477,7 +527,7 @@ yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, Bl
 BlockNumber
 yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] nblocks");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] nblocks");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
@@ -487,7 +537,7 @@ yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum)
 void
 yezzey_truncate(SMgrRelation reln, ForkNumber forkNum, BlockNumber nBlocks)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] truncate");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] truncate");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
@@ -497,7 +547,7 @@ yezzey_truncate(SMgrRelation reln, ForkNumber forkNum, BlockNumber nBlocks)
 void
 yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum)
 {
-	elog(SmgrTrace, "[YEZZEY_SMGR] immedsync");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] immedsync");
 	if (!ensureFileLocal(reln, forkNum))
 		getFileFromS3(reln, forkNum);
 	
@@ -508,7 +558,9 @@ static const struct f_smgr yezzey_smgr =
 {
 	.smgr_init = yezzey_init,
 	.smgr_shutdown = NULL,
+#ifndef GPBUILD
 	.smgr_open = yezzey_open,
+#endif
 	.smgr_close = yezzey_close,
 	.smgr_create = yezzey_create,
 	.smgr_exists = yezzey_exists,
@@ -578,6 +630,7 @@ yezzey_main(Datum main_arg)
 	while (!got_sigterm)
 	{
 		int rc;
+		
 
 		rc = WaitLatch(&MyProc->procLatch, WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
 #if PG_VERSION_NUM < 100000
@@ -617,18 +670,32 @@ _PG_init(void)
 {
 	BackgroundWorker worker;
 	
-//	DefineCustomStringVariable("yezzey.S3_getter",
-//				   "getting file from S3",
-//				   NULL,&s3_getter,
-//				   "",PGC_USERSET,0,
-//				   NULL, NULL, NULL);
-//      DefineCustomStringVariable("yezzey.S3_putter",
-//                                 "putting file to S3",
-//                                 NULL,&s3_putter,
-//                                 "",PGC_USERSET,0,
-//                                 NULL, NULL, NULL);
+	DefineCustomStringVariable("yezzey.S3_getter",
+				   "getting file from S3",
+				   NULL, &s3_getter,
+				   "",PGC_USERSET,0,
+				   NULL, NULL, NULL);
+    DefineCustomStringVariable("yezzey.S3_putter",
+                                "putting file to S3",
+                                NULL, &s3_putter,
+                                "",PGC_USERSET,0,
+                                NULL, 
+								NULL, 
+								NULL);
 	
-	elog(SmgrTrace, "[YEZZEY_SMGR] setting up bgworker");
+	DefineCustomEnumVariable("yezzey.log_level",
+								"Log level for yezzey functions.",
+								NULL,
+								&yezzey_log_level,
+								yezzey_log_level,
+								loglevel_options,
+								PGC_SUSET,
+								0,
+								NULL,
+								NULL,
+								NULL);
+	
+	elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
 	memset(&worker, 0, sizeof(worker));
 	worker.bgw_flags = BGWORKER_SHMEM_ACCESS | BGWORKER_BACKEND_DATABASE_CONNECTION;
@@ -638,7 +705,9 @@ _PG_init(void)
 	worker.bgw_main = yezzey_main;
 #endif
 	snprintf(worker.bgw_name, BGW_MAXLEN, "%s", worker_name);
+#if PG_VERSION_NUM >= 110000
 	snprintf(worker.bgw_type, BGW_MAXLEN, "yezzey");
+#endif
 #if PG_VERSION_NUM >= 100000
 	sprintf(worker.bgw_library_name, "yezzey");
 	sprintf(worker.bgw_function_name, "yezzey_main");
@@ -650,7 +719,7 @@ _PG_init(void)
 #endif
 	RegisterBackgroundWorker(&worker);
 
-	elog(SmgrTrace, "[YEZZEY_SMGR] set hook");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] set hook");
 	
 	smgr_hook = smgr_yezzey;
 	smgr_init_hook = smgr_init_yezzey;
