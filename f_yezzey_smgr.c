@@ -66,7 +66,9 @@ void yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum
 
 void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *buffer, bool skipFsync);
+#ifndef GPBUILD
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, BlockNumber nBlocks);
+#endif
 BlockNumber yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum);
 void yezzey_truncate(SMgrRelation reln, ForkNumber forkNum, BlockNumber nBlocks);
 void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
@@ -523,7 +525,7 @@ yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, char *
 	
 	mdwrite(reln, forkNum, blockNum, buffer, skipFsync);
 }
-
+#ifndef GPBUILD
 void
 yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, BlockNumber nBlocks)
 {
@@ -533,6 +535,7 @@ yezzey_writeback(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum, Bl
 
 	mdwriteback(reln, forkNum, blockNum, nBlocks);
 }
+#endif
 
 BlockNumber
 yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum)
@@ -579,7 +582,9 @@ static const struct f_smgr yezzey_smgr =
 	.smgr_prefetch = yezzey_prefetch,
 	.smgr_read = yezzey_read,
 	.smgr_write = yezzey_write,
+#ifndef GPBUILD
 	.smgr_writeback = yezzey_writeback,
+#endif
 	.smgr_nblocks = yezzey_nblocks,
 	.smgr_truncate = yezzey_truncate,
 	.smgr_immedsync = yezzey_immedsync,
