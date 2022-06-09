@@ -176,19 +176,13 @@ updateMoveTable(const char *oid, const char *forkName, const char *segNum, const
 	pfree(result.data);
 }
 
-void
+int
 removeLocalFile(const char *localPath)
 {
-	char *rmd = (char *)palloc0(100);
-	int rc;
-	
-	strcpy(rmd, "rm -f ");
-	strcat(rmd, localPath);
-
-	rc = system(rmd);
+	int rc = remove(localPath);
 
 	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", rmd, rc);
-	pfree(rmd);
+	return rc;
 }
 
 void
