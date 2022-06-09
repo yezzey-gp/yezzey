@@ -127,14 +127,14 @@ ensureFileLocal(SMgrRelation reln, ForkNumber forkNum)
 void
 sendFileToS3(const char *localPath)
 {
-	char *s3Path = strstr(localPath, "/base/");
+	// char *s3Path = strstr(localPath, "/base/");
 	char *cd;
 	int rc;
 	
-	s3Path++;
-
+	// s3Path++;
+	const char *s3Path = localPath;
 	cd = buildS3Command(s3_putter, localPath, s3Path);
-        rc = system(cd);
+    rc = system(cd);
 	
 	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", cd, rc);
 }
@@ -142,28 +142,36 @@ sendFileToS3(const char *localPath)
 void
 updateMoveTable(const char *oid, const char *forkName, const char *segNum, const bool isLocal)
 {
-	char *buf = (char *)palloc0(100);
-	int ret;
-	
-	strcpy(buf, "UPDATE yezzey.move_table SET isLocal = ");
-	if (isLocal)
-		strcat(buf, "true");
-	else
-		strcat(buf, "false");
-	strcat(buf, " WHERE oid = '");
-	strcat(buf, oid);
-	strcat(buf, "' AND forkName = '");
-	strcat(buf, forkName);
-	strcat(buf, "' AND segNum = '");
-	strcat(buf, segNum);
-	strcat(buf, "';");
 
-	ret = SPI_execute(buf, false, 1);
+	StringInfoData result;
+	int ret;
+
+	initStringInfo(&result);
+
+	appendStringInfoString(&result, "UPDATE yezzey.move_table SET isLocal = ");
+	if (isLocal) {
+		appendStringInfoString(&result, "true");
+	} else {
+		appendStringInfoString(&result, "false");
+	}
+
+	appendStringInfoString(&result, " WHERE oid = '");
+
+	appendStringInfoString(&result, oid);
+	appendStringInfoString(&result, "' AND forkName = '");
+	appendStringInfoString(&result, forkName);
+	appendStringInfoString(&result,  "' AND segNum = '");
+	appendStringInfoString(&result, segNum);
+	appendStringInfoString(&result, "';");
+
+	ret = SPI_execute(result.data, false, 1);
 	
-	elog(yezzey_log_level, "[YEZZEY_SMGR] tried %s, result = %d", buf, ret);
-	
+	elog(yezzey_log_level, "[YEZZEY_SMGR] tried %s, result = %d", result.data, ret);
+
 	if (ret != SPI_OK_UPDATE)
 		elog(ERROR, "[YEZZEY_SMGR] failed to update move_table");
+	
+	pfree(result.data);
 }
 
 void
@@ -178,6 +186,7 @@ removeLocalFile(const char *localPath)
 	rc = system(rmd);
 
 	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", rmd, rc);
+	pfree(rmd);
 }
 
 void
@@ -186,7 +195,7 @@ sendOidToS3(const char *oid, const char *forkName, const char *segNum)
 	char *path = (char *)palloc0(100);
 	int fd;
 	
-	strcpy(path, "/home/fstilus/pg_build/e/base/5/");
+	strcpy(path, "base/5/");
 	strcat(path, oid);
 
 	if (segNum[0] != '0')
@@ -290,8 +299,9 @@ getFileFromS3(SMgrRelation reln, ForkNumber forkNum)
 	int rc;
 	
 	strcpy(s3Path, localPath);
+#if 0
 	strcat(s3Path, ".lz4");
-	
+#endif
 	elog(yezzey_log_level, "[YEZZEY_SMGR] getting %s from ...", s3Path);
 
 	cd = buildS3Command(s3_getter, s3Path, localPath);

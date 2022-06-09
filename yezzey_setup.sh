@@ -1,16 +1,17 @@
 #/bin/bash
 
-rm -fr ./pgdata
+DB_PATH=/home/reshke/pgdata
+pg_ctl -D $DB_PATH -o '--port=5432' stop
+rm -fr $DB_PATH
 
-rm -f logfile
+rm -f $DB_PATH/logfile
 
-initdb -D ./pgdata
-echo yezzey.S3_putter = 'lol' >> ./pgdata/postgresql.conf
-echo yezzey.S3_getter = 'kek' >> ./pgdata/postgresql.conf
-pg_ctl -D ./pgdata -l logfile -o '--port=5433' start
-
+initdb -D $DB_PATH
+echo yezzey.S3_putter = \'cp -f %f /home/reshke/s3/%s \' >> $DB_PATH/postgresql.conf
+echo yezzey.S3_getter = \'cp /home/reshke/s3/%f %s\' >> $DB_PATH/postgresql.conf
+pg_ctl -D $DB_PATH -l $DB_PATH/logfile -o '--port=5432' start
 
 psql "host=localhost port=5433 dbname=postgres" -c 'CREATE EXTENSION yezzey';
 
-sed -i "s/#shared_preload_libraries = ''/shared_preload_libraries = 'yezzey.so'/g" ./pgdata/postgresql.conf
-pg_ctl -D ./pgdata -l logfile -o '--port=5433' restart
+sed -i "s/#shared_preload_libraries = ''/shared_preload_libraries = 'yezzey.so'/g" $DB_PATH/postgresql.conf
+pg_ctl -D $DB_PATH -l $DB_PATH/logfile -o '--port=5432' restart
