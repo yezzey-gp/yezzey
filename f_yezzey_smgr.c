@@ -132,6 +132,26 @@ updateMoveTable(const char *oid, const char *forkName, const uint32 segNum, cons
 	StringInfoData result;
 	char *sn = (char *)palloc0(100);
 	int ret;
+
+	initStringInfo(&result);
+
+	appendStringInfoString(&result, "UPDATE yezzey.move_table SET isLocal = ");
+	if (isLocal) {
+		appendStringInfoString(&result, "true");
+	} else {
+		appendStringInfoString(&result, "false");
+	}
+
+	appendStringInfoString(&result, " WHERE oid = '");
+
+	appendStringInfoString(&result, oid);
+	appendStringInfoString(&result, "' AND forkName = '");
+	appendStringInfoString(&result, forkName);
+	appendStringInfoString(&result,  "' AND segNum = '");
+	appendStringInfoString(&result, segNum);
+	appendStringInfoString(&result, "';");
+
+	ret = SPI_execute(result.data, false, 1);
 	
 	sprintf(sn, "%u", segNum);
 	initStringInfo(&result);
