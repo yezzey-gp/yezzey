@@ -1,4 +1,4 @@
 # yezzey extension
-comment = 'yezzey something ffor gpdb'
+comment = 'S3 support for psql'
 default_version = '1.0'
 module_pathname = '$libdir/yezzey'

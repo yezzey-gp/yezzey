@@ -1,6 +1,8 @@
 #include "postgres.h"
 #include "fmgr.h"
 
+#include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -8,49 +10,49 @@
 #include "executor/spi.h"
 #include "pgstat.h"
 
-#define SmgrTrace DEBUG5
+#include "yezzey.h"
 
 PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(move_to_s3);
+PG_FUNCTION_INFO_V1(set_cluster_wal_g_config);
+PG_FUNCTION_INFO_V1(set_wal_g_config);
 
 Datum
 move_to_s3(PG_FUNCTION_ARGS)
 {
 	text *table_name = PG_GETARG_TEXT_P(0);
-	//text *shm_name = PG_GETARG_TEXT_P(1);
-	char *buf = (char *)palloc(100);
 	char *tableName = text_to_cstring(table_name);
 	int ret;
-	TupleDesc tupdesc;
-	SPITupleTable *tuptable;
-	HeapTuple tuple;
+	StringInfoData buf, b1;
 
-	elog(SmgrTrace, "[YEZZEY_SMGR] trying to move to S3");
-	elog(SmgrTrace, "[YEZZEY_SMGR] selecting oid from %s", tableName);
+	initStringInfo(&buf);
 
-        SPI_connect();
-
-	strcpy(buf, "SELECT '");
-	strcat(buf, tableName);
-	strcat(buf, "'::regclass::oid;");
-	ret = SPI_execute(buf, true, 1);
-
-	elog(SmgrTrace, "[YEZZEY_SMGR] tried %s, result = %d", buf, ret);
-
-	if (ret != SPI_OK_SELECT || SPI_processed < 1)
-		elog(FATAL, "Error while trying to get info about table");
+	elog(yezzey_log_level, "[YEZZEY_SMGR] checking table for ao or aocs type");
 	
-	tupdesc = SPI_tuptable->tupdesc;
-        tuptable = SPI_tuptable;
-	tuple = tuptable->vals[0];
-	
-	elog(SmgrTrace, "[YEZZEY_SMGR] moving %s into move_table", SPI_getvalue(tuple, tupdesc, 1));
+	SPI_connect();
 
-	strcpy(buf, "INSERT INTO yezzey.move_table VALUES('");
-	strcat(buf, SPI_getvalue(tuple, tupdesc, 1));
-	strcat(buf, "', 'main', '0', true);");
-	ret = SPI_execute(buf, false, 1);
+	initStringInfo(&b1);	
+	appendStringInfoString(&b1, "SELECT aosegtablefqn FROM (SELECT seg.aooid, quote_ident(aoseg_c.relname) AS aosegtablefqn, seg.relfilenode FROM pg_class aoseg_c JOIN ");
+	appendStringInfoString(&b1, "(SELECT pg_ao.relid AS aooid, pg_ao.segrelid, aotables.aotablefqn, aotables.relstorage, aotables.relnatts, aotables.relfilenode, aotables.reltablespace FROM pg_appendonly pg_ao JOIN ");
+	appendStringInfoString(&b1, "(SELECT c.oid, quote_ident(n.nspname)|| '.' || quote_ident(c.relname) AS aotablefqn, c.relstorage, c.relnatts, c.relfilenode, c.reltablespace FROM pg_class c JOIN ");
+	appendStringInfoString(&b1, "pg_namespace n ON c.relnamespace = n.oid WHERE relstorage IN ( 'ao', 'co' ) AND relpersistence='p') aotables ON pg_ao.relid = aotables.oid) seg ON aoseg_c.oid = seg.segrelid) ");
+	appendStringInfoString(&b1, "AS x WHERE aooid = '");
+	appendStringInfoString(&b1, tableName);
+	appendStringInfoString(&b1, "'::regclass::oid;");
+
+	ret = SPI_execute(b1.data, true, 0);
+
+	if (ret != SPI_OK_SELECT)
+		elog(FATAL, "Error while finding ao info");
+	if (SPI_processed < 1)
+		elog(ERROR, "Not an ao or aocs table");
+	
+	appendStringInfoString(&buf, "INSERT INTO yezzey.metatable VALUES ('");
+	appendStringInfoString(&buf, tableName);
+	appendStringInfoString(&buf, "', FALSE);");
+	
+	ret = SPI_execute(buf.data, false, 0);
 
 	if (ret != SPI_OK_INSERT)
 		elog(FATAL, "Error while trying to insert oid into move_table");
