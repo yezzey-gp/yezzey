@@ -148,7 +148,7 @@ updateMoveTable(const char *oid, const char *forkName, const uint32 segNum, cons
 	appendStringInfoString(&result, "' AND forkName = '");
 	appendStringInfoString(&result, forkName);
 	appendStringInfoString(&result,  "' AND segNum = '");
-	appendStringInfoString(&result, segNum);
+	appendStringInfo(&result, "%d", segNum);
 	appendStringInfoString(&result, "';");
 
 	ret = SPI_execute(result.data, false, 1);
@@ -186,7 +186,7 @@ removeLocalFile(const char *localPath)
 {
 	int rc = remove(localPath);
 
-	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", rmd, rc);
+	elog(yezzey_log_level, "[YEZZEY_SMGR_BG] tried to remove local file \"%s\", result: %d", localPath, rc);
 	return rc;
 }
 
@@ -739,128 +739,130 @@ yezzey_sighup(SIGNAL_ARGS)
 void addToMoveTable(char *tableName)
 {
 	char *oid = (char *)palloc(100);
-        char *sel = (char *)palloc(1000);
-        char *ao = (char *)palloc(1000);
-        int ret;
-        TupleDesc tupdesc;
-        SPITupleTable *tuptable;
-        HeapTuple tuple;
-        StringInfoData buf, b1, b2;
-        uint32 i, maxSeg;
-        bool chlen = true;
+	char *sel = (char *)palloc(1000);
+	char *ao = (char *)palloc(1000);
+	int ret;
+	TupleDesc tupdesc;
+	SPITupleTable *tuptable;
+	HeapTuple tuple;
+	StringInfoData buf, b1, b2;
+	uint32 i, maxSeg;
+	bool chlen = true;
 
-        initStringInfo(&buf);
+	initStringInfo(&buf);
 
-        elog(yezzey_log_level, "[YEZZEY_SMGR] selecting oid from %s", tableName);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] selecting oid from %s", tableName);
 
-        strcpy(sel, "SELECT pg_relation_filepath('");
-        strcat(sel, tableName);
-        strcat(sel, "');");
-        ret = SPI_execute(sel, true, 1);
+	strcpy(sel, "SELECT pg_relation_filepath('");
+	strcat(sel, tableName);
+	strcat(sel, "');");
+	ret = SPI_execute(sel, true, 1);
 
-        elog(yezzey_log_level, "[YEZZEY_SMGR] tried %s, result = %d", sel, ret);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] tried %s, result = %d", sel, ret);
 
-        if (ret != SPI_OK_SELECT || SPI_processed < 1)
-                elog(FATAL, "Error while trying to get info about table");
+	if (ret != SPI_OK_SELECT || SPI_processed < 1)
+			elog(FATAL, "Error while trying to get info about table");
 
-        tupdesc = SPI_tuptable->tupdesc;
-        tuptable = SPI_tuptable;
-        tuple = tuptable->vals[0];
+	tupdesc = SPI_tuptable->tupdesc;
+	tuptable = SPI_tuptable;
+	tuple = tuptable->vals[0];
 
-        strcpy(oid, SPI_getvalue(tuple, tupdesc, 1));
+	strcpy(oid, SPI_getvalue(tuple, tupdesc, 1));
 
-        elog(yezzey_log_level, "[YEZZEY_SMGR] moving %s into move_table", oid);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] moving %s into move_table", oid);
 
-        //maxseg
+	//maxseg
 
-        initStringInfo(&b1);
-        appendStringInfoString(&b1, "SELECT aosegtablefqn FROM (SELECT seg.aooid, quote_ident(aoseg_c.relname) AS aosegtablefqn, seg.relfilenode FROM pg_class aoseg_c JOIN ");
-        appendStringInfoString(&b1, "(SELECT pg_ao.relid AS aooid, pg_ao.segrelid, aotables.aotablefqn, aotables.relstorage, aotables.relnatts, aotables.relfilenode, aotables.reltablespace FROM pg_appendonly pg_ao JOIN ");
-        appendStringInfoString(&b1, "(SELECT c.oid, quote_ident(n.nspname)|| '.' || quote_ident(c.relname) AS aotablefqn, c.relstorage, c.relnatts, c.relfilenode, c.reltablespace FROM pg_class c JOIN ");
-        appendStringInfoString(&b1, "pg_namespace n ON c.relnamespace = n.oid WHERE relstorage IN ( 'ao', 'co' ) AND relpersistence='p') aotables ON pg_ao.relid = aotables.oid) seg ON aoseg_c.oid = seg.segrelid) ");
-        appendStringInfoString(&b1, "AS x WHERE aooid = '");
-        appendStringInfoString(&b1, tableName);
-        appendStringInfoString(&b1, "'::regclass::oid;");
+	initStringInfo(&b1);
+	appendStringInfoString(&b1, "SELECT aosegtablefqn FROM (SELECT seg.aooid, quote_ident(aoseg_c.relname) AS aosegtablefqn, seg.relfilenode FROM pg_class aoseg_c JOIN ");
+	appendStringInfoString(&b1, "(SELECT pg_ao.relid AS aooid, pg_ao.segrelid, aotables.aotablefqn, aotables.relstorage, aotables.relnatts, aotables.relfilenode, aotables.reltablespace FROM pg_appendonly pg_ao JOIN ");
+	appendStringInfoString(&b1, "(SELECT c.oid, quote_ident(n.nspname)|| '.' || quote_ident(c.relname) AS aotablefqn, c.relstorage, c.relnatts, c.relfilenode, c.reltablespace FROM pg_class c JOIN ");
+	appendStringInfoString(&b1, "pg_namespace n ON c.relnamespace = n.oid WHERE relstorage IN ( 'ao', 'co' ) AND relpersistence='p') aotables ON pg_ao.relid = aotables.oid) seg ON aoseg_c.oid = seg.segrelid) ");
+	appendStringInfoString(&b1, "AS x WHERE aooid = '");
+	appendStringInfoString(&b1, tableName);
+	appendStringInfoString(&b1, "'::regclass::oid;");
 
-        ret = SPI_execute(b1.data, true, 0);
+	ret = SPI_execute(b1.data, true, 0);
+
+	if (ret != SPI_OK_SELECT) {
+        elog(FATAL, "Error while finding ao info");
+	}
+	if (SPI_processed < 1)
+			elog(ERROR, "Not an ao or aocs table");
+
+	tupdesc = SPI_tuptable->tupdesc;
+	tuptable = SPI_tuptable;
+	tuple = tuptable->vals[0];
+
+	strcpy(ao, SPI_getvalue(tuple, tupdesc, 1));
+
+	elog(yezzey_log_level, "[YEZZEY_SMGR] found aosegtablefqn = %s", ao);
+
+	initStringInfo(&b2);
+	switch (ao[5])
+	{
+			case 's':       //ao
+					{
+							appendStringInfoString(&b2, "SELECT MAX(segno) AS mxsn FROM pg_aoseg.");
+							appendStringInfoString(&b2, ao);
+							appendStringInfoString(&b2, ";");
+
+							break;
+					}
+			case 'c':       //aocs
+					{
+							appendStringInfoString(&b2, "SELECT MAX(aocs.physical_segno) AS mxsn FROM gp_toolkit.__gp_aocsseg('");
+							appendStringInfoString(&b2, tableName);
+							appendStringInfoString(&b2, "'::regclass::oid) aocs;");
+
+							break;
+					}
+			default:
+					{
+							elog(FATAL, "Wrong symbol in aosegtablefqn");
+							break;
+					}
+	}
+
+	ret = SPI_execute(b2.data, true, 0);
 
 	if (ret != SPI_OK_SELECT)
-                elog(FATAL, "Error while finding ao info");
-        if (SPI_processed < 1)
-                elog(ERROR, "Not an ao or aocs table");
+			elog(FATAL, "Error while finding maxseg");
 
-        tupdesc = SPI_tuptable->tupdesc;
-        tuptable = SPI_tuptable;
-        tuple = tuptable->vals[0];
+	tupdesc = SPI_tuptable->tupdesc;
+	tuptable = SPI_tuptable;
+	tuple = tuptable->vals[0];
 
-        strcpy(ao, SPI_getvalue(tuple, tupdesc, 1));
+	maxSeg = (uint32)DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &chlen));
 
-        elog(yezzey_log_level, "[YEZZEY_SMGR] found aosegtablefqn = %s", ao);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] found maxseg = %u", maxSeg);
 
-        initStringInfo(&b2);
-        switch (ao[5])
-        {
-                case 's':       //ao
-                        {
-                                appendStringInfoString(&b2, "SELECT MAX(segno) AS mxsn FROM pg_aoseg.");
-                                appendStringInfoString(&b2, ao);
-                                appendStringInfoString(&b2, ";");
-
-                                break;
-                        }
-                case 'c':       //aocs
-                        {
-                                appendStringInfoString(&b2, "SELECT MAX(aocs.physical_segno) AS mxsn FROM gp_toolkit.__gp_aocsseg('");
-                                appendStringInfoString(&b2, tableName);
-                                appendStringInfoString(&b2, "'::regclass::oid) aocs;");
-
-                                break;
-                        }
-                default:
-                        {
-                                elog(FATAL, "Wrong symbol in aosegtablefqn");
-                                break;
-                        }
-        }
-
-        ret = SPI_execute(b2.data, true, 0);
-
-        if (ret != SPI_OK_SELECT)
-                elog(FATAL, "Error while finding maxseg");
-
-        tupdesc = SPI_tuptable->tupdesc;
-        tuptable = SPI_tuptable;
-        tuple = tuptable->vals[0];
-
-        maxSeg = (uint32)DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &chlen));
-
-        elog(yezzey_log_level, "[YEZZEY_SMGR] found maxseg = %u", maxSeg);
-	
 	appendStringInfoString(&buf, "INSERT INTO yezzey.move_table VALUES ('");
-        appendStringInfoString(&buf, oid);
-        appendStringInfoString(&buf, "', 'main', '0', true)");
+	appendStringInfoString(&buf, oid);
+	appendStringInfoString(&buf, "', 'main', '0', true)");
 
-        for (i = 1; i <= maxSeg; i++)
-        {
-                char *sn = (char *)palloc(100);
+	for (i = 1; i <= maxSeg; i++)
+	{
+			char *sn = (char *)palloc(100);
 
-                sprintf(sn, "%d", i);
+			sprintf(sn, "%d", i);
 
-		appendStringInfoString(&buf, ", ('");
-                appendStringInfoString(&buf, oid);
-                appendStringInfoString(&buf, "', 'main', '");
-                appendStringInfoString(&buf, sn);
-                appendStringInfoString(&buf, "', true)");
+	appendStringInfoString(&buf, ", ('");
+			appendStringInfoString(&buf, oid);
+			appendStringInfoString(&buf, "', 'main', '");
+			appendStringInfoString(&buf, sn);
+			appendStringInfoString(&buf, "', true)");
 
-                pfree(sn);
-        }
+			pfree(sn);
+	}
 
-        appendStringInfoString(&buf, ";");
+	appendStringInfoString(&buf, ";");
 
-        ret = SPI_execute(buf.data, false, 0);
+	ret = SPI_execute(buf.data, false, 0);
 
-        if (ret != SPI_OK_INSERT)
-                elog(FATAL, "Error while trying to insert oid into move_table");
+	if (ret != SPI_OK_INSERT) {
+		elog(FATAL, "Error while trying to insert oid into move_table");
+	}
 }
 
 void processTables(void)

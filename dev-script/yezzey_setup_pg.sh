@@ -1,6 +1,6 @@
 #/bin/bash
 
-DB_PATH=/home/fstilus/pg_build/z
+DB_PATH=./pgdata
 pg_ctl -D $DB_PATH -o '--port=5432' stop
 rm -fr $DB_PATH
 
