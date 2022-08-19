@@ -8,14 +8,14 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	f_yezzey_smgr.o yezzey.o
+	smgr.o yezzey.o
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql
-PGFILEDESC = "yezzey - something not so yezzey for gpdb"
+PGFILEDESC = "yezzey - extnernal storage tables offloading extension"
 
 ifdef USE_PGXS
-PG_CONFIG = "/home/fstilus/gpdb_src/src/bin/pg_config"
+PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 else

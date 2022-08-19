@@ -1,0 +1,10 @@
+Source: yezzey
+Section: database
+Priority: optional
+Build-Depends: debhelper (>= 9), postgresql-server-dev-all (>=195~), greenplum-db-6
+Standards-Version: 4.3.0
+
+Package: yezzey-6
+Architecture: any
+Depends: greenplum-db-6, ${misc:Depends}, ${shlibs:Depends}
+Description: Finds last lsn flushed to disk.

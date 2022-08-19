@@ -19,7 +19,7 @@ bool ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, B
 bool ensureFilepathLocal(char *filepath);
 void sendFileToS3(const char *localPath);
 void updateMoveTable(const char *oid, const char *forkName, const uint32 segNum, const bool isLocal);
-void removeLocalFile(const char *localPath);
+int removeLocalFile(const char *localPath);
 void sendOidToS3(const char *oid, const char *forkName, const uint32 segNum);
 
 void yezzey_prepare(void);

@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+override_dh_auto_build:
+
+override_dh_auto_test:
+	# nothing to do here, see debian/tests/* instead
+
+override_dh_auto_install:
+	+export PG_SUPPORTED_VERSIONS=installed && pg_buildext loop yezzey-%v
+
+override_dh_auto_clean:
+	+pg_buildext clean build-%v
+	$(MAKE) clean
+
+%:
+	dh $@
+
