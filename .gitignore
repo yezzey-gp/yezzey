@@ -1,5 +1,5 @@
 yezzey.o
 yezzey.so
-f_yezzey_smgr.o
+smgr.o
 .deps
 .vscode/
