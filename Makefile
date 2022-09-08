@@ -1,7 +1,8 @@
 # gpcontrib/yezzey/Makefile
 
-override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=implicit-fallthrough=3 -Wno-format-truncation -Wno-stringop-truncation -O3 -std=gnu99 -Werror=uninitialized -Werror=implicit-function-declaration -DGPBUILD
+override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Wno-format-truncation -Wno-stringop-truncation -O3 -std=gnu99 -Werror=uninitialized -Werror=implicit-function-declaration -DGPBUILD
 
+# -Werror=implicit-fallthrough=3
 
 
 MODULE_big = yezzey
