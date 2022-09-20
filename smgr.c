@@ -240,20 +240,20 @@ sendOidToS3(const char *oid, const char *forkName, const uint32 segNum)
 		mxsn = (uint32)DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1, &chlen));
 		mxsn++;	
 
-	        strcpy(mxpath, oid);
-       		sprintf(stmxsn, "%u", mxsn);
-		
-        	if (forkName[0] != 'm')
-        	{
-                	strcat(mxpath, "_");
-                	strcat(mxpath, forkName);
-        	}
-		
-        	if (mxsn != 0)
-        	{
-                	strcat(mxpath, ".");
-                	strcat(mxpath, stmxsn);
-        	}
+		strcpy(mxpath, oid);
+		sprintf(stmxsn, "%u", mxsn);
+	
+		if (forkName[0] != 'm')
+		{
+				strcat(mxpath, "_");
+				strcat(mxpath, forkName);
+		}
+	
+		if (mxsn != 0)
+		{
+				strcat(mxpath, ".");
+				strcat(mxpath, stmxsn);
+		}
 
 		tto = open(mxpath, O_RDONLY);
 
