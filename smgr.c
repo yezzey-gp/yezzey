@@ -82,6 +82,11 @@ static const struct config_enum_entry loglevel_options[] = {
 bool
 ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno)
 {	
+	if (IsCrashRecoveryOnly()) {
+		/* MDB-19689: do not consult catalog 
+			if crash recovery is in progress */
+		return true;
+	}
 	char *path = (char *)palloc0(1000);
 	char *sn = (char *)palloc0(100);
 	BlockNumber blockNum = blkno / ((BlockNumber) RELSEG_SIZE);
