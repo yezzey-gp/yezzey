@@ -105,13 +105,13 @@ ensureFilepathLocal(char *filepath)
 	int fd, cp, errno_;
 
 	fd = open(filepath, O_RDONLY);
-        errno_ = errno;
+	errno_ = errno;
 
-        cp = fd;
-        elog(yezzey_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
-        close(fd);
+	cp = fd;
+	elog(yezzey_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
+	close(fd);
 
-        return cp >= 0;
+	return cp >= 0;
 }
 
 void
