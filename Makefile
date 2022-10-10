@@ -1,6 +1,6 @@
 # gpcontrib/yezzey/Makefile
 
-override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Wno-format-truncation -Wno-stringop-truncation -O3 -std=gnu99 -Werror=uninitialized -Werror=implicit-function-declaration -DGPBUILD
+override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=gnu99 -Werror=uninitialized -Werror=implicit-function-declaration -DGPBUILD
 
 # -Werror=implicit-fallthrough=3
 
@@ -9,11 +9,11 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	smgr.o yezzey.o
+	yezzey_smgr.o yezzey.o external_storage.o
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql
-PGFILEDESC = "yezzey - extnernal storage tables offloading extension"
+PGFILEDESC = "yezzey - external storage tables offloading extension"
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
@@ -30,4 +30,4 @@ cleanall:
 	@-$(MAKE) clean # incase PGXS not included
 	rm -f *.o *.so *.a
 	rm -f *.gcov src/*.gcov src/*.gcda src/*.gcno
-	rm -f src/*.o src/*.d bin/gpcheckcloud/*.o bin/gpcheckcloud/*.d test/*.o test/*.d test/*.a lib/*.o lib/*.d
+	rm -f src/*.o src/*.d

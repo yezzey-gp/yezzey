@@ -15,7 +15,6 @@
 
 #include "utils/guc.h"
 
-bool ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blockNum);
 bool ensureFilepathLocal(char *filepath);
 void sendFileToS3(const char *localPath);
 void updateMoveTable(const char *oid, const char *forkName, const uint32 segNum, const bool isLocal);

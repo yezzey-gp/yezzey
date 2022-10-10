@@ -11,53 +11,109 @@
 #include "pgstat.h"
 
 #include "yezzey.h"
+#include "storage/lmgr.h"
+#include "access/aosegfiles.h"
+#include "utils/tqual.h"
+
+#include "external_storage.h"
+
+char *s3_getter = NULL;
+char *s3_putter = NULL;
+char *s3_prefix = NULL;
 
 PG_MODULE_MAGIC;
 
-PG_FUNCTION_INFO_V1(move_to_s3);
-PG_FUNCTION_INFO_V1(set_cluster_wal_g_config);
-PG_FUNCTION_INFO_V1(set_wal_g_config);
+PG_FUNCTION_INFO_V1(offload_relation);
+PG_FUNCTION_INFO_V1(force_segment_offload);
 
 Datum
-move_to_s3(PG_FUNCTION_ARGS)
+offload_relation(PG_FUNCTION_ARGS)
 {
-	text *table_name = PG_GETARG_TEXT_P(0);
-	char *tableName = text_to_cstring(table_name);
-	int ret;
-	StringInfoData buf, b1;
+	/*
+	* Force table offloading to external storage
+	* In order:
+	* 1) lock table in IN EXCLUSIVE MODE
+	* 2) check pg_aoseg.pg_aoseg_XXX table for all segments
+	* 3) go and offload each segment (XXX: enhancement: do offloading in parallel)
+ 	*/
 
-	initStringInfo(&buf);
+ 	Relation aorel;
+	Oid reloid;
+	int total_segfiles;
+	FileSegInfo **segfile_array;
+	Snapshot appendOnlyMetaDataSnapshot;
+	int i;
+	int segno;
+	int rc;
 
-	elog(yezzey_log_level, "[YEZZEY_SMGR] checking table for ao or aocs type");
+	reloid = PG_GETARG_OID(0);
+
+	aorel = relation_open(reloid, ExclusiveLock);
+
+	/*
+	* Relation segments named base/DBOID/aorel->rd_node.*
+	*/
+
+	elog(INFO, "offloading relnode %d", aorel->rd_node.relNode);
+
+	/* for now, we locked relation */
+
+	/* GetAllFileSegInfo_pg_aoseg_rel */
+
+	/* acquire snapshot for aoseg table lookup */
+	appendOnlyMetaDataSnapshot = SnapshotSelf;
+
+	/* Get information about all the file segments we need to scan */
+	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+
+
+
+	for (i = 0; i < total_segfiles; i++)
+	{
+		segno = segfile_array[i]->segno;
+		elog(INFO, "offloading segment no %d", segno);
+
+		rc = offloadRelationSegment(aorel->rd_node, segno);
+		if (rc < 0) {
+			elog(ERROR, "failed to offload segment number %d", segno);
+		}
+		/* segment if offloaded */
+	}
+
+	if (segfile_array)
+	{
+		FreeAllSegFileInfo(segfile_array, total_segfiles);
+		pfree(segfile_array);
+	}
+
+	/* cleanup */
+
+	relation_close(aorel, ExclusiveLock);
+	PG_RETURN_VOID();
+}
+
+PG_FUNCTION_INFO_V1(lock_aotable_seg);
+
+Datum
+lock_aotable_seg(PG_FUNCTION_ARGS) {
+	Oid reloid = PG_GETARG_OID(0);
+	int segno = PG_GETARG_INT32(1);
+
+	Relation	rel;
+	rel = relation_open(reloid, AccessShareLock);
+
+
 	
-	SPI_connect();
+	(&rel->rd_node,
+									  segno,
+									  AccessExclusiveLock,
+									   /* dontWait */ false);
 
-	initStringInfo(&b1);	
-	appendStringInfoString(&b1, "SELECT aosegtablefqn FROM (SELECT seg.aooid, quote_ident(aoseg_c.relname) AS aosegtablefqn, seg.relfilenode FROM pg_class aoseg_c JOIN ");
-	appendStringInfoString(&b1, "(SELECT pg_ao.relid AS aooid, pg_ao.segrelid, aotables.aotablefqn, aotables.relstorage, aotables.relnatts, aotables.relfilenode, aotables.reltablespace FROM pg_appendonly pg_ao JOIN ");
-	appendStringInfoString(&b1, "(SELECT c.oid, quote_ident(n.nspname)|| '.' || quote_ident(c.relname) AS aotablefqn, c.relstorage, c.relnatts, c.relfilenode, c.reltablespace FROM pg_class c JOIN ");
-	appendStringInfoString(&b1, "pg_namespace n ON c.relnamespace = n.oid WHERE relstorage IN ( 'ao', 'co' ) AND relpersistence='p') aotables ON pg_ao.relid = aotables.oid) seg ON aoseg_c.oid = seg.segrelid) ");
-	appendStringInfoString(&b1, "AS x WHERE aooid = '");
-	appendStringInfoString(&b1, tableName);
-	appendStringInfoString(&b1, "'::regclass::oid;");
+	PG_RETURN_VOID();
+}
 
-	ret = SPI_execute(b1.data, true, 0);
 
-	if (ret != SPI_OK_SELECT)
-		elog(FATAL, "Error while finding ao info");
-	if (SPI_processed < 1)
-		elog(ERROR, "Not an ao or aocs table");
-	
-	appendStringInfoString(&buf, "INSERT INTO yezzey.metatable VALUES ('");
-	appendStringInfoString(&buf, tableName);
-	appendStringInfoString(&buf, "', FALSE);");
-	
-	ret = SPI_execute(buf.data, false, 0);
-
-	if (ret != SPI_OK_INSERT)
-		elog(FATAL, "Error while trying to insert oid into move_table");
-
-        SPI_finish();
-
+Datum
+force_segment_offload(PG_FUNCTION_ARGS) {
 	PG_RETURN_VOID();
 }
