@@ -40,7 +40,7 @@ ensureFilepathLocal(char *filepath)
 	errno_ = errno;
 
 	cp = fd;
-	elog(INFO, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
+	elog(yezzey_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
 	close(fd);
 
 	return cp >= 0;
@@ -86,7 +86,7 @@ ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockN
 	// }
 
 
-    elog(INFO, "ensuring %d is local", rnode.relNode);
+    elog(yezzey_log_level, "ensuring %d is local", rnode.relNode);
     return true;
 	StringInfoData path;
 	bool result;
@@ -144,53 +144,18 @@ offloadRelationSegment(RelFileNode rnode, int segno) {
 }
 
 void
-offloadRelationSegmentOld(const char *oid, const char *forkName, const uint32 segNum)
-{
-	StringInfo path;
-	initStringInfo(&path);
-	int fd;
-	
-	appendStringInfoString(&path, oid);
-
-	if (forkName[0] != 'm')
-	{
-		appendStringInfo(&path, "_%s", forkName);
-	}
-
-	if (segNum)
-	{
-		appendStringInfo(&path, ".%u", segNum);
-	}
-
-	fd = open(path, O_RDONLY);
-
-	elog(INFO, "[YEZZEY_SMGR_BG] trying to open %s, result - %d", path, fd);
-
-	if (fd >= 0) {
-		offloadFileToExternalStorage(path);
-		removeLocalFile(path);
-		
-		close(fd);
-	}
-	pfree(path);
-}
-
-void
-getFilepathFromS3(char *filepath)
+getFilepathFromS3(const char *filepath)
 {
 	StringInfoData s3Path;
 	initStringInfo(&s3Path);
 	char *cd;
 	int rc;
 
-    // XXX: remove
-    // char * s3_getter = "/home/reshke/wal-g/main/pg/wal-g --config=/home/reshke/wal-g/conf.walg.yaml st get %s %f";
-
 	appendStringInfoString(&s3Path, s3_prefix);
 	appendStringInfoString(&s3Path, filepath);
 	appendStringInfoString(&s3Path, ".br");
 
-	elog(INFO, "[YEZZEY_SMGR] getting %s from %s using %s", filepath, s3Path, s3_getter);
+	elog(INFO, "[YEZZEY_SMGR] fetching %s from %s using %s", filepath, s3Path.data, s3_getter);
 
 	cd = buildExternalStorageCommand(s3_getter, filepath, s3Path.data);
 	rc = system(cd);

@@ -15,7 +15,6 @@
 
 #include "utils/guc.h"
 
-bool ensureFilepathLocal(char *filepath);
 void sendFileToS3(const char *localPath);
 void updateMoveTable(const char *oid, const char *forkName, const uint32 segNum, const bool isLocal);
 int removeLocalFile(const char *localPath);
@@ -25,10 +24,17 @@ void yezzey_prepare(void);
 void yezzey_finish(void);
 void sendTablesToS3(void);
 void getFileFromS3(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blockNum);
-void getFilepathFromS3(char *filepath);
 char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
 
+int offload_relation_internal(Oid reloid);
+
+void loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
+
 void yezzey_init(void);
+
+/*
+* SMGR - related functions
+*/
 #ifndef GPBUILD
 void yezzey_open(SMgrRelation reln);
 #endif
@@ -70,5 +76,6 @@ void smgr_init_yezzey(void);
 int yezzey_log_level;
 
 void _PG_init(void);
+
 
 #endif /* YEZZEY_H */
