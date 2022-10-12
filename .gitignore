@@ -3,5 +3,6 @@ yezzey_smgr.o
 yezzey.o
 yezzey.so
 smgr.o
+worker.o
 .deps
 .vscode/

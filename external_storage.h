@@ -21,8 +21,10 @@ buildExternalStorageCommand(const char *s3Command, const char *localPath, const 
 
 bool
 ensureFilepathLocal(char *filepath);
-
 bool
 ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
+
+void
+getFilepathFromS3(const char *filepath);
 
 #endif /* EXTERNAL_STORAGE */

@@ -9,6 +9,7 @@
 #include "utils/builtins.h"
 #include "executor/spi.h"
 #include "pgstat.h"
+#include "yezzey.h"
 
 #include "yezzey.h"
 #include "storage/lmgr.h"
@@ -24,29 +25,18 @@ char *s3_prefix = NULL;
 PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(offload_relation);
+PG_FUNCTION_INFO_V1(load_relation);
 PG_FUNCTION_INFO_V1(force_segment_offload);
 
-Datum
-offload_relation(PG_FUNCTION_ARGS)
-{
-	/*
-	* Force table offloading to external storage
-	* In order:
-	* 1) lock table in IN EXCLUSIVE MODE
-	* 2) check pg_aoseg.pg_aoseg_XXX table for all segments
-	* 3) go and offload each segment (XXX: enhancement: do offloading in parallel)
- 	*/
 
+int offload_relation_internal(Oid reloid) {
  	Relation aorel;
-	Oid reloid;
+	int i;
+	int segno;
 	int total_segfiles;
 	FileSegInfo **segfile_array;
 	Snapshot appendOnlyMetaDataSnapshot;
-	int i;
-	int segno;
 	int rc;
-
-	reloid = PG_GETARG_OID(0);
 
 	aorel = relation_open(reloid, ExclusiveLock);
 
@@ -67,7 +57,6 @@ offload_relation(PG_FUNCTION_ARGS)
 	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
 
-
 	for (i = 0; i < total_segfiles; i++)
 	{
 		segno = segfile_array[i]->segno;
@@ -86,32 +75,56 @@ offload_relation(PG_FUNCTION_ARGS)
 		pfree(segfile_array);
 	}
 
+
+	/* insert entry in relocate table, is no any */
+
+
 	/* cleanup */
 
 	relation_close(aorel, ExclusiveLock);
-	PG_RETURN_VOID();
-}
 
-PG_FUNCTION_INFO_V1(lock_aotable_seg);
+	return 0;
+}
 
 Datum
-lock_aotable_seg(PG_FUNCTION_ARGS) {
-	Oid reloid = PG_GETARG_OID(0);
-	int segno = PG_GETARG_INT32(1);
+load_relation(PG_FUNCTION_ARGS) {
+	/*
+	* Force table offloading to external storage
+	* In order:
+	* 1) lock table in IN EXCLUSIVE MODE (is that needed?) 
+	* 2) check pg_aoseg.pg_aoseg_XXX table for all segments
+	* 3) go and load each segment (XXX: enhancement: do loading in parallel)
+ 	*/
+	Oid reloid;
+	int rc;
 
-	Relation	rel;
-	rel = relation_open(reloid, AccessShareLock);
+	reloid = PG_GETARG_OID(0);
 
-
-	
-	(&rel->rd_node,
-									  segno,
-									  AccessExclusiveLock,
-									   /* dontWait */ false);
+	// rc = load_relation_internal(reloid);
 
 	PG_RETURN_VOID();
 }
 
+
+Datum
+offload_relation(PG_FUNCTION_ARGS)
+{
+	/*
+	* Force table offloading to external storage
+	* In order:
+	* 1) lock table in IN EXCLUSIVE MODE
+	* 2) check pg_aoseg.pg_aoseg_XXX table for all segments
+	* 3) go and offload each segment (XXX: enhancement: do offloading in parallel)
+ 	*/
+	Oid reloid;
+	int rc;
+
+	reloid = PG_GETARG_OID(0);
+
+	rc = offload_relation_internal(reloid);
+
+	PG_RETURN_VOID();
+}
 
 Datum
 force_segment_offload(PG_FUNCTION_ARGS) {

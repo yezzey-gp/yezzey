@@ -9,7 +9,7 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	yezzey_smgr.o yezzey.o external_storage.o
+	smgr.o worker.o yezzey.o external_storage.o
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql

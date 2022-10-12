@@ -27,3 +27,19 @@ JOIN (
 		WHERE relstorage IN ( 'ao', 'co' ) AND relpersistence='p'
 		) aotables ON pg_ao.relid = aotables.oid
 	) seg ON aoseg_c.oid = seg.segrelid;
+
+
+
+
+to install this:
+
+include yezzey into shared_preload_libraries
+modify your config:
+
+yezzey.S3_prefix = 'segment{{ content_id }}/'
+yezzey.S3_putter = '/home/reshke/wal-g/main/pg/wal-g --config=/home/reshke/wal-g/conf.walg.yaml st put -f %f %s'
+yezzey.S3_getter = '/home/reshke/wal-g/main/pg/wal-g --config=/home/reshke/wal-g/conf.walg.yaml st get %s %f'
+
+restart cluster
+
+create extension yezzey
