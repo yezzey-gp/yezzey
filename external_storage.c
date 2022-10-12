@@ -175,8 +175,6 @@ buildExternalStorageCommand(const char *s3Command, const char *localPath, const 
 	const char *sp;
 
 	initStringInfo(&result);
-	
-	elog(INFO, "[YEZZEY_SMGR] updating \"%s\" with \"%s\" and \"%s\"", s3Command, localPath, externalPath);
 
 	for (sp = s3Command; *sp; sp++)
 	{

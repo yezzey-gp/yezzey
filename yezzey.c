@@ -44,7 +44,7 @@ int offload_relation_internal(Oid reloid) {
 	* Relation segments named base/DBOID/aorel->rd_node.*
 	*/
 
-	elog(INFO, "offloading relnode %d", aorel->rd_node.relNode);
+	elog(yezzey_log_level, "offloading relnode %d", aorel->rd_node.relNode);
 
 	/* for now, we locked relation */
 
@@ -60,7 +60,7 @@ int offload_relation_internal(Oid reloid) {
 	for (i = 0; i < total_segfiles; i++)
 	{
 		segno = segfile_array[i]->segno;
-		elog(INFO, "offloading segment no %d", segno);
+		elog(yezzey_log_level, "offloading segment no %d", segno);
 
 		rc = offloadRelationSegment(aorel->rd_node, segno);
 		if (rc < 0) {
