@@ -90,6 +90,63 @@ int offload_relation_internal(Oid reloid) {
 	return 0;
 }
 
+int
+load_relation_internal(Oid reloid) {
+	Relation aorel;
+	int i;
+	int segno;
+	int total_segfiles;
+	FileSegInfo **segfile_array;
+	Snapshot appendOnlyMetaDataSnapshot;
+	int rc;
+
+	/*  XXX: maybe fix lock here to take more granular lock
+	*/
+	aorel = relation_open(reloid, AccessExclusiveLock);
+
+	/*
+	* Relation segments named base/DBOID/aorel->rd_node.*
+	*/
+
+	elog(yezzey_log_level, "loading relnode %d", aorel->rd_node.relNode);
+
+	/* for now, we locked relation */
+
+	/* GetAllFileSegInfo_pg_aoseg_rel */
+
+	/* acquire snapshot for aoseg table lookup */
+	appendOnlyMetaDataSnapshot = SnapshotSelf;
+
+	/* Get information about all the file segments we need to scan */
+	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+
+
+	for (i = 0; i < total_segfiles; i++)
+	{
+		segno = segfile_array[i]->segno;
+		elog(yezzey_log_level, "offloading segment no %d", segno);
+
+		rc = loadRelationSegment(aorel->rd_node, segno);
+		if (rc < 0) {
+			elog(ERROR, "failed to offload segment number %d", segno);
+		}
+		/* segment if offloaded */
+	}
+
+	if (segfile_array)
+	{
+		FreeAllSegFileInfo(segfile_array, total_segfiles);
+		pfree(segfile_array);
+	}
+
+	/* cleanup */
+
+	relation_close(aorel, AccessExclusiveLock);
+
+	return 0;
+}
+
+
 Datum
 load_relation(PG_FUNCTION_ARGS) {
 	/*
@@ -104,7 +161,7 @@ load_relation(PG_FUNCTION_ARGS) {
 
 	reloid = PG_GETARG_OID(0);
 
-	// rc = load_relation_internal(reloid);
+	rc = load_relation_internal(reloid);
 
 	PG_RETURN_VOID();
 }

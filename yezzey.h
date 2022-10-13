@@ -28,7 +28,7 @@ char *buildS3Command(const char *s3Command, const char *s3Path, const char *loca
 
 int offload_relation_internal(Oid reloid);
 
-void loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
+int loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
 
 void yezzey_init(void);
 

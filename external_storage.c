@@ -31,6 +31,9 @@
 int yezzey_log_level = INFO;
 
 
+/*
+* This function used by AO-related realtion functions
+*/
 bool
 ensureFilepathLocal(char *filepath)
 {
@@ -53,10 +56,6 @@ offloadFileToExternalStorage(const char *localPath)
 	initStringInfo(&s3Path);
 	int rc;
 	char *cd;
-
-    // XXX: remove
-    // char * s3_putter = "/home/reshke/wal-g/main/pg/wal-g --config=/home/reshke/wal-g/conf.walg.yaml st put %f %s";
-
 	
     appendStringInfoString(&s3Path, s3_prefix);
 	
@@ -77,6 +76,7 @@ offloadFileToExternalStorage(const char *localPath)
 bool
 ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno)
 {	
+	// XXX: not used by AOseg logic
 	// if (IsCrashRecoveryOnly()) {
 	// 	/* MDB-19689: do not consult catalog 
 	// 		if crash recovery is in progress */
@@ -85,14 +85,11 @@ ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockN
 	// 	return true;
 	// }
 
-
     elog(yezzey_log_level, "ensuring %d is local", rnode.relNode);
     return true;
 	StringInfoData path;
 	bool result;
 	initStringInfo(&path);
-
-	// constructExtenrnalStorageFilepath(&path, rnode, backend, forkNum, blkno);
 
 	result = ensureFilepathLocal(path.data);
 
@@ -143,7 +140,37 @@ offloadRelationSegment(RelFileNode rnode, int segno) {
     return 0;
 }
 
-void
+
+int
+loadRelationSegment(RelFileNode rnode, int segno) {
+    StringInfoData path;
+	int rc;
+
+    if (segno == 0) {
+        /* should never happen */
+        return 0;
+    }
+
+    initStringInfo(&path);
+    appendStringInfo(&path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+
+    elog(INFO, "contructed path %s", path.data);
+    if (ensureFilepathLocal(path.data)) {
+        // nothing to do
+        return 0;
+    }
+
+
+    if ((rc = getFilepathFromS3(path.data)) < 0) {
+        pfree(path.data);
+        return rc;
+    }
+
+    pfree(path.data);
+    return 0;
+}
+
+int
 getFilepathFromS3(const char *filepath)
 {
 	StringInfoData s3Path;
@@ -166,6 +193,8 @@ getFilepathFromS3(const char *filepath)
 	pfree(s3Path.data);
 	
 	elog(INFO, "[YEZZEY_SMGR] loading %s, retcode %d", filepath, rc);
+
+	return rc;
 }
 
 char *

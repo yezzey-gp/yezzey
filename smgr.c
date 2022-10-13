@@ -75,7 +75,7 @@ constructExtenrnalStorageFilepath(
 
 
 /* TODO: remove, or use external_storage.h funcs */ 
-void
+int
 loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno)
 {
 	StringInfoData path;
@@ -83,7 +83,7 @@ loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber for
 
 	constructExtenrnalStorageFilepath(&path, rnode, backend, forkNum, blkno);
 	
-	getFilepathFromS3(path.data);
+	return getFilepathFromS3(path.data);
 }
 
 void
@@ -286,8 +286,9 @@ void
 smgr_warmup_yezzey(RelFileNode rnode, char *filepath)
 {	
 	elog(INFO, "[YEZZEY_SMGR] ao hook");
-	if (!ensureFilepathLocal(filepath))
+	if (!ensureFilepathLocal(filepath)) {
 		getFilepathFromS3(filepath);
+	}
 }
 #endif
 
