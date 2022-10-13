@@ -38,7 +38,11 @@ int offload_relation_internal(Oid reloid) {
 	Snapshot appendOnlyMetaDataSnapshot;
 	int rc;
 
-	aorel = relation_open(reloid, ExclusiveLock);
+	/*  This mode guarantees that the holder is the only transaction accessing the table in any way. 
+	* we need to be sure, thar no other transaction either reads or write to given relation
+	* because we are going to delete relation from local storage
+	*/
+	aorel = relation_open(reloid, AccessExclusiveLock);
 
 	/*
 	* Relation segments named base/DBOID/aorel->rd_node.*
@@ -81,7 +85,7 @@ int offload_relation_internal(Oid reloid) {
 
 	/* cleanup */
 
-	relation_close(aorel, ExclusiveLock);
+	relation_close(aorel, AccessExclusiveLock);
 
 	return 0;
 }
