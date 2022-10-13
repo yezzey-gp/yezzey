@@ -27,6 +27,7 @@ void getFileFromS3(RelFileNode rnode, BackendId backend, ForkNumber forkNum, Blo
 char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
 
 int offload_relation_internal(Oid reloid);
+int load_relation_internal(Oid reloid);
 
 int loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
 
