@@ -70,11 +70,12 @@ void processTables(void);
 
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
 #ifdef GPBUILD
-void smgr_warmup_yezzey(RelFileNode rnode, char *filepath);
+const f_smgr_ao *smgrao_yezzey();
 #endif
 void smgr_init_yezzey(void);
 
-int yezzey_log_level;
+extern int yezzey_log_level;
+extern int yezzey_ao_log_level;
 
 void _PG_init(void);
 

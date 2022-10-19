@@ -439,6 +439,11 @@ _PG_init(void)
 				 NULL,&yezzey_log_level,
 				 LOG,loglevel_options,PGC_SUSET,
 				 0, NULL, NULL, NULL);
+	DefineCustomEnumVariable("yezzey.ao_log_level",
+				 "Log level for yezzey functions.",
+				 NULL, &yezzey_ao_log_level,
+				 WARNING,loglevel_options,PGC_SUSET,
+				 0, NULL, NULL, NULL);
 
 	elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
@@ -473,7 +478,9 @@ _PG_init(void)
 
 	elog(yezzey_log_level, "[YEZZEY_SMGR] set hook");
 	
-	smgrwarmup_hook = smgr_warmup_yezzey;
 	smgr_hook = smgr_yezzey;
+#if GPBUILD
+	smgrao_hook = smgrao_yezzey;
+#endif
 	smgr_init_hook = smgr_init_yezzey;
 }

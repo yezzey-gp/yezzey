@@ -275,22 +275,157 @@ static const struct f_smgr yezzey_smgr =
 	.smgr_immedsync = yezzey_immedsync,
 };
 
+
+
+/*
+typedef struct f_smgr_ao {
+	int64       (*smgr_NonVirtualCurSeek) (SMGRFile file);
+	int64 		(*smgr_FileSeek) (SMGRFile file, int64 offset, int whence);
+	void 		(*smgr_FileClose)(SMGRFile file);
+	SMGRFile    (*smgr_PathNameOpenFile) (FileName fileName, int fileFlags, int fileMode);
+	int         (*smgr_FileWrite)(SMGRFile file, char *buffer, int amount);
+    int         (*smgr_FileRead)(SMGRFile file, char *buffer, int amount);
+} f_smgr_ao;
+*/
+int64 yezzey_NonVirtualCurSeek (SMGRFile file);
+void yezzey_FileClose(SMGRFile file);
+int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence);
+SMGRFile yezzey_PathNameOpenFile (FileName fileName, int fileFlags, int fileMode);
+int yezzey_FileWrite(SMGRFile file, char *buffer, int amount);
+int yezzey_FileRead(SMGRFile file, char *buffer, int amount);
+
+
+typedef struct yezzey_vfd {
+	int y_vfd;
+	char * filepath;
+	int fileFlags; 
+	int fileMode;
+} yezzey_vfd;
+
+#define YEZZEY_VANANT_VFD 0
+#define YEZZEY_NOT_OPENED 1
+#define YEZZEY_OPENED 2
+#define YEZZEY_MIN_VFD 3
+#define MAXVFD 100
+
+yezzey_vfd yezzey_vfd_cache[MAXVFD];
+
+
+File virtualEnsure(SMGRFile file) {
+	File internal_vfd;
+	int rc;
+	if (yezzey_vfd_cache[file].y_vfd == YEZZEY_VANANT_VFD) {
+		elog(ERROR, "attempt to ensure locality of not opened file");
+	}	
+	if (yezzey_vfd_cache[file].y_vfd == YEZZEY_NOT_OPENED) {
+		// not opened yet
+		if (!ensureFilepathLocal(yezzey_vfd_cache[file].filepath)) {
+			if ((rc = getFilepathFromS3(yezzey_vfd_cache[file].filepath)) < 0) {
+       			elog(ERROR, "failed to download open file");
+			}
+		}
+
+		internal_vfd = PathNameOpenFile(yezzey_vfd_cache[file].filepath,
+		 yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
+		if (internal_vfd == -1) {
+			// error
+			elog(ERROR, "failed to proxy open file");
+		}
+		elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
+		yezzey_vfd_cache[file].y_vfd = internal_vfd;
+	}
+
+	return yezzey_vfd_cache[file].y_vfd;
+}
+
+int64 yezzey_NonVirtualCurSeek (SMGRFile file) {
+	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file seek with %d actual %d", file, actual_fd);
+	return FileNonVirtualCurSeek(actual_fd);
+}
+
+
+int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
+	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file seek with fd %d actual %d", file, actual_fd);
+	return FileSeek(actual_fd, offset, whence);
+}
+
+int	yezzey_FileSync(SMGRFile file) {
+	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file sync with fd %d actual %d", file, actual_fd);
+	return FileSync(actual_fd);
+}
+
+SMGRFile yezzey_PathNameOpenFile (FileName fileName, int fileFlags, int fileMode) {
+	int i;
+	elog(yezzey_ao_log_level, "path name open file %s", fileName);
+
+	/* lookup for virtual file desc entry */
+	for (i = 0; i < MAXVFD; ++i) {
+		if (yezzey_vfd_cache[i].y_vfd == YEZZEY_VANANT_VFD) {
+			yezzey_vfd_cache[i].filepath = strdup(fileName);
+			yezzey_vfd_cache[i].fileFlags = fileFlags;
+			yezzey_vfd_cache[i].fileMode = fileMode;
+			if (yezzey_vfd_cache[i].filepath == NULL) {
+				elog(ERROR, "out of mem");
+			}
+
+			yezzey_vfd_cache[i].y_vfd = YEZZEY_NOT_OPENED;
+
+			return i;
+		}
+	}
+/* no martch*/
+	return -1;
+}
+
+void yezzey_FileClose(SMGRFile file) {
+	
+	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file close with %d actual %d", file, actual_fd);
+	
+	yezzey_vfd_cache[file].fileFlags = yezzey_vfd_cache[file].y_vfd = yezzey_vfd_cache[file].fileMode = YEZZEY_VANANT_VFD;
+	yezzey_vfd_cache[file].filepath = NULL;
+
+	return FileClose(actual_fd);
+}
+
+int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
+	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
+	return FileWrite(actual_fd, buffer, amount);
+}
+
+int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
+	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file read with %d, actual %d", file, actual_fd);
+	return FileRead(actual_fd, buffer, amount);
+}
+
+static const struct f_smgr_ao yezzey_smgr_ao =
+{
+	.smgr_NonVirtualCurSeek = yezzey_NonVirtualCurSeek,
+	.smgr_FileSeek = yezzey_FileSeek,
+	.smgr_FileClose = yezzey_FileClose,
+	.smgr_PathNameOpenFile = yezzey_PathNameOpenFile,
+	.smgr_FileWrite = yezzey_FileWrite,
+	.smgr_FileRead = yezzey_FileRead,
+	.smgr_FileSync = yezzey_FileSync,
+};
+
+
 const f_smgr *
 smgr_yezzey(BackendId backend, RelFileNode rnode)
 {
 	return &yezzey_smgr;
 }
 
-#ifdef GPBUILD
-void
-smgr_warmup_yezzey(RelFileNode rnode, char *filepath)
-{	
-	elog(INFO, "[YEZZEY_SMGR] ao hook");
-	if (!ensureFilepathLocal(filepath)) {
-		getFilepathFromS3(filepath);
-	}
+const f_smgr_ao *
+smgrao_yezzey()
+{
+	return &yezzey_smgr_ao;
 }
-#endif
 
 void
 smgr_init_yezzey(void)

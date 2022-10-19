@@ -29,6 +29,7 @@
 
 
 int yezzey_log_level = INFO;
+int yezzey_ao_log_level = INFO;
 
 
 /*
@@ -43,7 +44,7 @@ ensureFilepathLocal(char *filepath)
 	errno_ = errno;
 
 	cp = fd;
-	elog(yezzey_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
+	elog(yezzey_ao_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
 	close(fd);
 
 	return cp >= 0;
