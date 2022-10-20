@@ -25,7 +25,7 @@
 #include "utils/tqual.h"
 
 #include "external_storage.h"
-
+#include "smgr_s3.h"
 
 
 int yezzey_log_level = INFO;
@@ -53,25 +53,57 @@ ensureFilepathLocal(char *filepath)
 int
 offloadFileToExternalStorage(const char *localPath)
 {
-	StringInfoData s3Path;
-	initStringInfo(&s3Path);
+	void * whandle;
 	int rc;
-	char *cd;
+	int tot;
+	int currptrtot;
+	char * buffer;
+	char * bptr;
+	size_t chunkSize;
+	File vfd;
+	int64 sz;
+	int64 progress;
 	
-    appendStringInfoString(&s3Path, s3_prefix);
-	
-	elog(INFO, "[YEZZEY_SMGR_BG] s3 prefix is  \"%s\"", s3_prefix);
-    appendStringInfoString(&s3Path, localPath);
+	chunkSize = 1 << 20;
+	buffer = palloc(chunkSize);
+	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
+	sz = FileDiskSize(vfd);
+	progress = 0;
 
-	cd = buildExternalStorageCommand(s3_putter, localPath, s3Path.data);
-	rc = system(cd);
-	
-	elog(INFO, "[YEZZEY_SMGR_BG] tried \"%s\", got %d", cd, rc);
-	
-	pfree(s3Path.data);
-	pfree(cd);
+	whandle = createWriterHandle(s3_prefix, localPath);
+	rc = 0;
 
-    return rc;
+	while (progress < sz)
+	{
+		/* code */
+		rc = FileRead(vfd, buffer, chunkSize);
+		if (rc < 0) {
+			return rc;
+		}
+		if (rc == 0) continue;
+
+		tot = 0;
+		bptr = buffer;
+
+		while (tot < rc) {
+			currptrtot = rc - tot;
+			if (!yezzey_writer_transfer_data(whandle, bptr, &currptrtot)) {
+				return -1;
+			}
+
+			tot += currptrtot;
+			bptr += currptrtot;
+		}
+
+
+		progress += rc;
+	}
+
+	yezzey_complete_w_transfer_data(&whandle);
+
+	pfree(buffer);
+
+	return rc;
 }
 
 bool
@@ -174,28 +206,48 @@ loadRelationSegment(RelFileNode rnode, int segno) {
 int
 getFilepathFromS3(const char *filepath)
 {
-	StringInfoData s3Path;
-	initStringInfo(&s3Path);
-	char *cd;
-	int rc;
+	// void * rhandle;
+	// int rc;
+	// char * buffer;
+	// size_t chunkSize;
+	// File vfd;
+	// int64 sz;
+	// int64 progress;
 
-	appendStringInfoString(&s3Path, s3_prefix);
-	appendStringInfoString(&s3Path, filepath);
-	appendStringInfoString(&s3Path, ".br");
+	// elog(INFO, "[YEZZEY_SMGR] fetching %s", filepath);
 
-	elog(INFO, "[YEZZEY_SMGR] fetching %s from %s using %s", filepath, s3Path.data, s3_getter);
+	// chunkSize = 1 << 20;
+	// buffer = palloc(chunkSize);
+	// vfd = PathNameOpenFile(localPath, O_WRONLY, 0600);
+	// sz = FileDiskSize(vfd);
+	// progress = 0;
 
-	cd = buildExternalStorageCommand(s3_getter, filepath, s3Path.data);
-	rc = system(cd);
+	// rhandle = createReaderHandle(localPath);
+	// rc = 0;
 
-	elog(INFO, "[YEZZEY_SMGR] tried \"%s\", got %d", cd, rc);
-	pfree(cd);
+	// while (progress < sz)
+	// {
+	// 	if (!yezzey_reader_transfer_data(rhandle, buffer, rc)) {
+	// 		return -1;
+	// 	}
+	// 	progress += rc;
 
-	pfree(s3Path.data);
-	
-	elog(INFO, "[YEZZEY_SMGR] loading %s, retcode %d", filepath, rc);
+	// 			/* code */
+	// 	rc = FileWrite(vfd, buffer, chunkSize);
+	// 	if (rc < 0) {
+	// 		return rc;
+	// 	}
+	// 	if (rc == 0) continue;
+	// }
 
-	return rc;
+	// yezzey_complete_r_transfer_data(&whandle);
+	// elog(INFO, "[YEZZEY_SMGR] load %s, retcode %d", filepath, rc);
+
+	// pfree(buffer);
+
+	// return rc;
+
+	return 0;
 }
 
 char *
