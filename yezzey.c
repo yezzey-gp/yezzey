@@ -40,6 +40,8 @@ int offload_relation_internal(Oid reloid) {
 	Snapshot appendOnlyMetaDataSnapshot;
 	int rc;
 	int nvp;
+	int64 modcount;
+	int64 logicalEof;
 	int pseudosegno;
 	int inat;
 
@@ -68,18 +70,21 @@ int offload_relation_internal(Oid reloid) {
 		/* Get information about all the file segments we need to scan */
 		segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		rc = offloadRelationSegment(aorel->rd_node, 0);
-		if (rc < 0) {
-			elog(ERROR, "failed to offload segment number %d", 0);
-		}
+		// rc = offloadRelationSegment(aorel->rd_node, 0, 0);
+		// if (rc < 0) {
+		// 	elog(ERROR, "failed to offload segment number %d", 0);
+		// }
 		for (i = 0; i < total_segfiles; i++)
 		{
 			segno = segfile_array[i]->segno;
-			elog(yezzey_log_level, "offloading segment no %d", segno);
+			modcount = segfile_array[i]->modcount;
+			logicalEof = segfile_array[i]->eof;
+			
+			elog(yezzey_log_level, "offloading segment no %d, modcount %ld up to logial eof %ld", segno, modcount, logicalEof);
 
-			rc = offloadRelationSegment(aorel->rd_node, segno);
+			rc = offloadRelationSegment(aorel->rd_node, segno, modcount, logicalEof);
 			if (rc < 0) {
-				elog(ERROR, "failed to offload segment number %d", segno);
+				elog(ERROR, "failed to offload segment number %d, modcount %ld, up to %ld", segno, modcount, logicalEof);
 			}
 			/* segment if offloaded */
 		}
@@ -94,21 +99,27 @@ int offload_relation_internal(Oid reloid) {
 		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
 										  appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		rc = offloadRelationSegment(aorel->rd_node, 0);
-		if (rc < 0) {
-			elog(ERROR, "failed to offload segment number %d", 0);
-		}
+		// rc = offloadRelationSegment(aorel->rd_node, 0, 0);
+		// if (rc < 0) {
+		// 	elog(ERROR, "failed to offload segment number %d", 0);
+		// }
 
 		for (inat = 0; inat < nvp; ++ inat) {
 			for (i = 0; i < total_segfiles; i++)
 			{
 				segno = segfile_array_cs[i]->segno;
+				/* in AOCS case actual *segno* differs from segfile_array_cs[i]->segno
+				* whis is logical number of segment. On physical level, each logical
+				* segno (segfile_array_cs[i]->segno) is represented by AOTupleId_MultiplierSegmentFileNum
+				* in storage (1 file per attribute)  */
 				pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
-				elog(WARNING, "offloading segment no %d, pseudosegno %d", segno, pseudosegno);
+				modcount = segfile_array_cs[i]->modcount;
+				logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
+				elog(WARNING, "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to eof %ld", segno, pseudosegno, modcount, logicalEof);
 
-				rc = offloadRelationSegment(aorel->rd_node, pseudosegno);
+				rc = offloadRelationSegment(aorel->rd_node, pseudosegno, modcount, logicalEof);
 				if (rc < 0) {
-					elog(ERROR, "failed to offload segment number %d, pseudosegno %d", segno, pseudosegno);
+					elog(ERROR, "failed to offload cs segment number %d, pseudosegno %d, up to %ld", segno, pseudosegno, logicalEof);
 				}
 				/* segment if offloaded */
 			}

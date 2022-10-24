@@ -43,3 +43,10 @@ yezzey.S3_getter = '/home/reshke/wal-g/main/pg/wal-g --config=/home/reshke/wal-g
 restart cluster
 
 create extension yezzey
+
+
+
+create table aocst(i int, j int, k int) with (appendonly=true, orientation=column);
+insert into aocst(k, j) select * from (select * from generate_series(1, 10)) a join (select * from generate_series(1, 10)) b on true;
+select count(1) from aocst;
+make destroy-demo-cluster && make create-demo-cluster && gpconfig -s shared_preload_libraries -v yezzey && gpstop -a -i && gpstart -a

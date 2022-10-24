@@ -9,17 +9,18 @@ void * createReaderHandle(int32_t id, const char * fileName) {
     url += "segment_" + std::to_string(id);
     url += "/";
     url += fileName;
-    url += "_";
+    url += "."; /* modcount follows */
     url += " config=/home/reshke/s3test.conf region=us-east-1";
 
     return reader_init(url.c_str());
 }
 
-void * createWriterHandle(int32_t id, const char * fileName) {
+void * createWriterHandle(int32_t id, int64_t modcount, const char * fileName) {
     std::string url = "s3://storage.yandexcloud.net/loh228/tmp_new/";
     url += "segment_" + std::to_string(id);
     url += "/";
     url += fileName;
+    url += "." + std::to_string(modcount);
     url += "_";
     url += " config=/home/reshke/s3test.conf region=us-east-1";
 
@@ -31,6 +32,10 @@ bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
     auto res = reader_transfer_data((GPReader*) handle, buffer, inner_amount);
     *amount = inner_amount;
     return res;
+}
+
+bool yezzey_reader_empty(void * handle) {
+    return reader_empty((GPReader*) handle);
 }
 
 bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amount) {

@@ -56,7 +56,7 @@ ensureFilepathLocal(char *filepath)
 }
 
 int
-offloadFileToExternalStorage(const char *localPath)
+offloadFileToExternalStorage(const char *localPath, int64 modcount, int64 logicalEof)
 {
 	void * whandle;
 	int rc;
@@ -66,22 +66,26 @@ offloadFileToExternalStorage(const char *localPath)
 	char * bptr;
 	size_t chunkSize;
 	File vfd;
-	int64 sz;
+	int64 curr_read_chunk;
 	int64 progress;
 	
 	chunkSize = 1 << 20;
 	buffer = palloc(chunkSize);
 	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
-	sz = FileDiskSize(vfd);
 	progress = 0;
 
-	whandle = createWriterHandle(GpIdentity.segindex, localPath);
+	whandle = createWriterHandle(GpIdentity.segindex, modcount, localPath);
 	rc = 0;
 
-	while (progress < sz)
+	while (progress < logicalEof)
 	{
-		/* code */
-		rc = FileRead(vfd, buffer, chunkSize);
+		curr_read_chunk = chunkSize;
+		if (progress + curr_read_chunk > logicalEof) {
+			/* should not read beyond logical eof */
+			curr_read_chunk = logicalEof - progress;
+		}
+ 		/* code */
+		rc = FileRead(vfd, buffer, curr_read_chunk);
 		if (rc < 0) {
 			return rc;
 		}
@@ -100,11 +104,12 @@ offloadFileToExternalStorage(const char *localPath)
 			bptr += currptrtot;
 		}
 
-
 		progress += rc;
 	}
 
-	yezzey_complete_w_transfer_data(&whandle);
+	if (!yezzey_complete_w_transfer_data(&whandle)) {
+		elog(ERROR, "failed to complete %s offloading", localPath);
+	}
 	FileClose(vfd);
 	pfree(buffer);
 
@@ -145,8 +150,9 @@ removeLocalFile(const char *localPath)
 }
 
 int
-offloadRelationSegment(RelFileNode rnode, int segno) {
+offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof) {
     StringInfoData path;
+	StringInfoData external_path;
 	int rc;
     initStringInfo(&path);
 	if (segno == 0) {
@@ -161,7 +167,7 @@ offloadRelationSegment(RelFileNode rnode, int segno) {
         return 0;
     }
 
-    if ((rc = offloadFileToExternalStorage(path.data)) < 0) {
+    if ((rc = offloadFileToExternalStorage(path.data, modcount, logicalEof)) < 0) {
         pfree(path.data);
         return rc;
     }
