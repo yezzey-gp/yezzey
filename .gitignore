@@ -1,8 +1,4 @@
-external_storage.o
-yezzey_smgr.o
-yezzey.o
-yezzey.so
-smgr.o
-worker.o
+*.o
+*.so
 .deps
 .vscode/

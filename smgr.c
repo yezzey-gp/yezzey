@@ -50,6 +50,11 @@
 
 #include "yezzey.h"
 
+
+// For GpIdentity
+#include "c.h"
+#include "cdb/cdbvars.h"
+
 /*
 * Construct external storage filepath. 
 * 
@@ -306,6 +311,7 @@ typedef struct yezzey_vfd {
 	char * filepath;
 	int fileFlags; 
 	int fileMode;
+	int64 offset;
 	void * rhandle;
 	void * whandle;
 } yezzey_vfd;
@@ -322,13 +328,20 @@ yezzey_vfd yezzey_vfd_cache[MAXVFD];
 
 File s3ext = -2;
 
+/* lazy allocate external storage connections */
 void readprepare(SMGRFile file) {
-	yezzey_vfd_cache[file].rhandle = createReaderHandle(s3_prefix, yezzey_vfd_cache[file].filepath);
+	if (yezzey_vfd_cache[file].rhandle) {
+		return;
+	}
+	yezzey_vfd_cache[file].rhandle = createReaderHandle(GpIdentity.segindex, yezzey_vfd_cache[file].filepath);
 	Assert(yezzey_vfd_cache[file].rhandle != NULL);
 }
 
 void writeprepare(SMGRFile file) {
-	yezzey_vfd_cache[file].whandle = createWriterHandle(s3_prefix, yezzey_vfd_cache[file].filepath);
+	if (yezzey_vfd_cache[file].whandle) {
+		return;
+	}
+	yezzey_vfd_cache[file].whandle = createWriterHandle(GpIdentity.segindex, yezzey_vfd_cache[file].filepath);
 	Assert(yezzey_vfd_cache[file].whandle != NULL);
 }
 
@@ -362,11 +375,11 @@ File virtualEnsure(SMGRFile file) {
 	return yezzey_vfd_cache[file].y_vfd;
 }
 
-int64 yezzey_NonVirtualCurSeek (SMGRFile file) {
+int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
 	elog(yezzey_ao_log_level, "non virt file seek with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
-		return 0;
+		return yezzey_vfd_cache[file].offset;
 	}
 	return FileNonVirtualCurSeek(actual_fd);
 }
@@ -392,7 +405,7 @@ int	yezzey_FileSync(SMGRFile file) {
 	return FileSync(actual_fd);
 }
 
-SMGRFile yezzey_PathNameOpenFile (FileName fileName, int fileFlags, int fileMode) {
+SMGRFile yezzey_PathNameOpenFile(FileName fileName, int fileFlags, int fileMode) {
 	int i;
 	elog(yezzey_ao_log_level, "path name open file %s", fileName);
 
@@ -416,31 +429,40 @@ SMGRFile yezzey_PathNameOpenFile (FileName fileName, int fileFlags, int fileMode
 
 void yezzey_FileClose(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
+	elog(yezzey_ao_log_level, "file close with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
-		// yezzey_complete_r_transfer_data(yezzey_vfd_cache[file].rhandle);
-		yezzey_complete_w_transfer_data(yezzey_vfd_cache[file].whandle);
+		yezzey_complete_r_transfer_data(&yezzey_vfd_cache[file].rhandle);
+		yezzey_complete_w_transfer_data(&yezzey_vfd_cache[file].whandle);
 	} else {
 		FileClose(actual_fd);
 	}
-	elog(yezzey_ao_log_level, "file close with %d actual %d", file, actual_fd);
 	
 	yezzey_vfd_cache[file].fileFlags = yezzey_vfd_cache[file].y_vfd = yezzey_vfd_cache[file].fileMode = YEZZEY_VANANT_VFD;
 	yezzey_vfd_cache[file].filepath = NULL;
 	yezzey_vfd_cache[file].rhandle = NULL;
 	yezzey_vfd_cache[file].whandle = NULL;
+	yezzey_vfd_cache[file].offset = 0;
 }
 
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 	File actual_fd = virtualEnsure(file);
 	if (actual_fd == s3ext) {
+#ifdef ALLOW_MODIFY_EXTERNAL_TABLE
 		int curr = amount;
 		writeprepare(file);
-		if (yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, &curr)) {
+		if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, &curr)) {
 			elog(yezzey_ao_log_level, "problem while direct write from s3 with %d", file);
+			return -1;
 		}
+
+		yezzey_vfd_cache[file].offset += curr;
 		
 		elog(yezzey_ao_log_level, "file write with %d", file);
 		return curr;
+#else
+		elog(ERROR, "external table modifications are not supported yet");
+#endif
+
 	}
 	elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
 	return FileWrite(actual_fd, buffer, amount);
@@ -457,6 +479,8 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 			elog(yezzey_ao_log_level, "problem while direct read from s3 read with %d curr: %d", file, curr);
 			return -1;
 		}
+
+		yezzey_vfd_cache[file].offset += curr;
 
 		elog(yezzey_ao_log_level, "file read with %d, actual %d, amount %d real %d", file, actual_fd, amount, curr);
 		return curr;

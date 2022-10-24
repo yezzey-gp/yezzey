@@ -28,6 +28,11 @@
 #include "smgr_s3.h"
 
 
+// For GpIdentity
+#include "c.h"
+#include "cdb/cdbvars.h"
+
+
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
 
@@ -44,7 +49,7 @@ ensureFilepathLocal(char *filepath)
 	errno_ = errno;
 
 	cp = fd;
-	elog(yezzey_ao_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
+	//elog(yezzey_ao_log_level, "[YEZZEY_SMGR] trying to open %s, result - %d, %d", filepath, fd, errno_);
 	close(fd);
 
 	return cp >= 0;
@@ -70,7 +75,7 @@ offloadFileToExternalStorage(const char *localPath)
 	sz = FileDiskSize(vfd);
 	progress = 0;
 
-	whandle = createWriterHandle(s3_prefix, localPath);
+	whandle = createWriterHandle(GpIdentity.segindex, localPath);
 	rc = 0;
 
 	while (progress < sz)
@@ -100,7 +105,7 @@ offloadFileToExternalStorage(const char *localPath)
 	}
 
 	yezzey_complete_w_transfer_data(&whandle);
-
+	FileClose(vfd);
 	pfree(buffer);
 
 	return rc;
@@ -135,7 +140,7 @@ int
 removeLocalFile(const char *localPath)
 {
 	int rc = remove(localPath);
-	elog(INFO, "[YEZZEY_SMGR_BG] tried to remove local file \"%s\", result: %d", localPath, rc);
+	elog(INFO, "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath, rc);
 	return rc;
 }
 
@@ -143,14 +148,12 @@ int
 offloadRelationSegment(RelFileNode rnode, int segno) {
     StringInfoData path;
 	int rc;
-
-    if (segno == 0) {
-        /* should never happen */
-        return 0;
-    }
-
     initStringInfo(&path);
-    appendStringInfo(&path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+	if (segno == 0) {
+    	appendStringInfo(&path, "base/%d/%d", rnode.dbNode, rnode.relNode);
+	} else {
+    	appendStringInfo(&path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+	}
 
     elog(INFO, "contructed path %s", path.data);
     if (!ensureFilepathLocal(path.data)) {

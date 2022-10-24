@@ -60,7 +60,10 @@ int offload_relation_internal(Oid reloid) {
 	/* Get information about all the file segments we need to scan */
 	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
-
+	rc = offloadRelationSegment(aorel->rd_node, 0);
+	if (rc < 0) {
+		elog(ERROR, "failed to offload segment number %d", 0);
+	}
 	for (i = 0; i < total_segfiles; i++)
 	{
 		segno = segfile_array[i]->segno;
@@ -79,9 +82,7 @@ int offload_relation_internal(Oid reloid) {
 		pfree(segfile_array);
 	}
 
-
 	/* insert entry in relocate table, is no any */
-
 
 	/* cleanup */
 
@@ -119,7 +120,6 @@ load_relation_internal(Oid reloid) {
 
 	/* Get information about all the file segments we need to scan */
 	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
-
 
 	for (i = 0; i < total_segfiles; i++)
 	{

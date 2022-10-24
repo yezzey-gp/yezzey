@@ -4,9 +4,9 @@
 #include <string>
 #include "smgr_s3.h"
 
-void * createReaderHandle(const char * prefix, const char * fileName) {
-    std::string url = "s3://storage.yandexcloud.net/loh228/tmp/";
-    url += prefix;
+void * createReaderHandle(int32_t id, const char * fileName) {
+    std::string url = "s3://storage.yandexcloud.net/loh228/tmp_new/";
+    url += "segment_" + std::to_string(id);
     url += "/";
     url += fileName;
     url += " config=/home/reshke/s3test.conf region=us-east-1";
@@ -14,9 +14,9 @@ void * createReaderHandle(const char * prefix, const char * fileName) {
     return reader_init(url.c_str());
 }
 
-void * createWriterHandle(const char * prefix, const char * fileName) {
-    std::string url = "s3://storage.yandexcloud.net/loh228/tmp/";
-    url += prefix;
+void * createWriterHandle(int32_t id, const char * fileName) {
+    std::string url = "s3://storage.yandexcloud.net/loh228/tmp_new/";
+    url += "segment_" + std::to_string(id);
     url += "/";
     url += fileName;
     url += " config=/home/reshke/s3test.conf region=us-east-1";
@@ -38,8 +38,10 @@ bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amount) {
     return res; 
 }
 
+/*XXX: fix cleanup*/
+
 bool yezzey_complete_r_transfer_data(void ** handle) {
-    if (handle ==NULL) return true;
+    if (handle == NULL) return true;
     if (*handle == NULL) return true;
     auto res = reader_cleanup((GPReader**) handle);
     *handle = NULL;
@@ -47,7 +49,7 @@ bool yezzey_complete_r_transfer_data(void ** handle) {
 }
 
 bool yezzey_complete_w_transfer_data(void ** handle) {
-    if (handle ==NULL) return true;
+    if (handle == NULL) return true;
     if (*handle == NULL) return true;
     auto res = writer_cleanup((GPWriter**) handle);
     *handle = NULL;
