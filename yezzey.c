@@ -14,6 +14,7 @@
 #include "yezzey.h"
 #include "storage/lmgr.h"
 #include "access/aosegfiles.h"
+#include "access/aocssegfiles.h"
 #include "utils/tqual.h"
 
 #include "external_storage.h"
@@ -35,6 +36,7 @@ int offload_relation_internal(Oid reloid) {
 	int segno;
 	int total_segfiles;
 	FileSegInfo **segfile_array;
+	AOCSFileSegInfo **segfile_array_cs;
 	Snapshot appendOnlyMetaDataSnapshot;
 	int rc;
 
@@ -57,29 +59,54 @@ int offload_relation_internal(Oid reloid) {
 	/* acquire snapshot for aoseg table lookup */
 	appendOnlyMetaDataSnapshot = SnapshotSelf;
 
-	/* Get information about all the file segments we need to scan */
-	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+	if (aorel->rd_rel->relstorage == 'a') {
 
-	rc = offloadRelationSegment(aorel->rd_node, 0);
-	if (rc < 0) {
-		elog(ERROR, "failed to offload segment number %d", 0);
-	}
-	for (i = 0; i < total_segfiles; i++)
-	{
-		segno = segfile_array[i]->segno;
-		elog(yezzey_log_level, "offloading segment no %d", segno);
+		/* Get information about all the file segments we need to scan */
+		segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		rc = offloadRelationSegment(aorel->rd_node, segno);
+		rc = offloadRelationSegment(aorel->rd_node, 0);
 		if (rc < 0) {
-			elog(ERROR, "failed to offload segment number %d", segno);
+			elog(ERROR, "failed to offload segment number %d", 0);
 		}
-		/* segment if offloaded */
-	}
+		for (i = 0; i < total_segfiles; i++)
+		{
+			segno = segfile_array[i]->segno;
+			elog(yezzey_log_level, "offloading segment no %d", segno);
 
-	if (segfile_array)
-	{
-		FreeAllSegFileInfo(segfile_array, total_segfiles);
-		pfree(segfile_array);
+			rc = offloadRelationSegment(aorel->rd_node, segno);
+			if (rc < 0) {
+				elog(ERROR, "failed to offload segment number %d", segno);
+			}
+			/* segment if offloaded */
+		}
+
+		if (segfile_array)
+		{
+			FreeAllSegFileInfo(segfile_array, total_segfiles);
+			pfree(segfile_array);
+		}
+	} else {
+				/* ao columns, relstorage == 'c' */
+		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
+										  appendOnlyMetaDataSnapshot, &total_segfiles);
+
+		for (i = 0; i < total_segfiles; i++)
+		{
+			segno = segfile_array_cs[i]->segno;
+			elog(yezzey_log_level, "offloading segment no %d", segno);
+
+			rc = offloadRelationSegment(aorel->rd_node, segno);
+			if (rc < 0) {
+				elog(ERROR, "failed to offload segment number %d", segno);
+			}
+			/* segment if offloaded */
+		}
+
+		if (segfile_array_cs)
+		{
+			FreeAllAOCSSegFileInfo(segfile_array_cs, total_segfiles);
+			pfree(segfile_array_cs);
+		}
 	}
 
 	/* insert entry in relocate table, is no any */
@@ -98,6 +125,7 @@ load_relation_internal(Oid reloid) {
 	int segno;
 	int total_segfiles;
 	FileSegInfo **segfile_array;
+	AOCSFileSegInfo **segfile_array_cs;
 	Snapshot appendOnlyMetaDataSnapshot;
 	int rc;
 
@@ -119,24 +147,49 @@ load_relation_internal(Oid reloid) {
 	appendOnlyMetaDataSnapshot = SnapshotSelf;
 
 	/* Get information about all the file segments we need to scan */
-	segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+	if (aorel->rd_rel->relstorage == 'a') {
+		/* ao rows relation */
+		segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
-	for (i = 0; i < total_segfiles; i++)
-	{
-		segno = segfile_array[i]->segno;
-		elog(yezzey_log_level, "offloading segment no %d", segno);
+		for (i = 0; i < total_segfiles; i++)
+		{
+			segno = segfile_array[i]->segno;
+			elog(yezzey_log_level, "loading segment no %d", segno);
 
-		rc = loadRelationSegment(aorel->rd_node, segno);
-		if (rc < 0) {
-			elog(ERROR, "failed to offload segment number %d", segno);
+			rc = loadRelationSegment(aorel->rd_node, segno);
+			if (rc < 0) {
+				elog(ERROR, "failed to offload segment number %d", segno);
+			}
+			/* segment if loaded */
 		}
-		/* segment if offloaded */
-	}
 
-	if (segfile_array)
-	{
-		FreeAllSegFileInfo(segfile_array, total_segfiles);
-		pfree(segfile_array);
+		if (segfile_array)
+		{
+			FreeAllSegFileInfo(segfile_array, total_segfiles);
+			pfree(segfile_array);
+		}
+	} else {
+		/* ao columns, relstorage == 'c' */
+		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
+										  appendOnlyMetaDataSnapshot, &total_segfiles);
+
+		for (i = 0; i < total_segfiles; i++)
+		{
+			segno = segfile_array_cs[i]->segno;
+			elog(yezzey_log_level, "loading cs segment no %d", segno);
+
+			rc = loadRelationSegment(aorel->rd_node, segno);
+			if (rc < 0) {
+				elog(ERROR, "failed to load cs segment number %d", segno);
+			}
+			/* segment if loaded */
+		}
+
+		if (segfile_array_cs)
+		{
+			FreeAllAOCSSegFileInfo(segfile_array_cs, total_segfiles);
+			pfree(segfile_array_cs);
+		}
 	}
 
 	/* cleanup */
