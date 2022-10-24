@@ -9,6 +9,7 @@ void * createReaderHandle(int32_t id, const char * fileName) {
     url += "segment_" + std::to_string(id);
     url += "/";
     url += fileName;
+    url += "_";
     url += " config=/home/reshke/s3test.conf region=us-east-1";
 
     return reader_init(url.c_str());
@@ -19,6 +20,7 @@ void * createWriterHandle(int32_t id, const char * fileName) {
     url += "segment_" + std::to_string(id);
     url += "/";
     url += fileName;
+    url += "_";
     url += " config=/home/reshke/s3test.conf region=us-east-1";
 
     return writer_init(url.c_str());

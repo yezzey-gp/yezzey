@@ -39,12 +39,16 @@ int offload_relation_internal(Oid reloid) {
 	AOCSFileSegInfo **segfile_array_cs;
 	Snapshot appendOnlyMetaDataSnapshot;
 	int rc;
+	int nvp;
+	int pseudosegno;
+	int inat;
 
 	/*  This mode guarantees that the holder is the only transaction accessing the table in any way. 
 	* we need to be sure, thar no other transaction either reads or write to given relation
 	* because we are going to delete relation from local storage
 	*/
 	aorel = relation_open(reloid, AccessExclusiveLock);
+	nvp = aorel->rd_att->natts;
 
 	/*
 	* Relation segments named base/DBOID/aorel->rd_node.*
@@ -90,16 +94,24 @@ int offload_relation_internal(Oid reloid) {
 		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
 										  appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		for (i = 0; i < total_segfiles; i++)
-		{
-			segno = segfile_array_cs[i]->segno;
-			elog(yezzey_log_level, "offloading segment no %d", segno);
+		rc = offloadRelationSegment(aorel->rd_node, 0);
+		if (rc < 0) {
+			elog(ERROR, "failed to offload segment number %d", 0);
+		}
 
-			rc = offloadRelationSegment(aorel->rd_node, segno);
-			if (rc < 0) {
-				elog(ERROR, "failed to offload segment number %d", segno);
+		for (inat = 0; inat < nvp; ++ inat) {
+			for (i = 0; i < total_segfiles; i++)
+			{
+				segno = segfile_array_cs[i]->segno;
+				pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
+				elog(WARNING, "offloading segment no %d, pseudosegno %d", segno, pseudosegno);
+
+				rc = offloadRelationSegment(aorel->rd_node, pseudosegno);
+				if (rc < 0) {
+					elog(ERROR, "failed to offload segment number %d, pseudosegno %d", segno, pseudosegno);
+				}
+				/* segment if offloaded */
 			}
-			/* segment if offloaded */
 		}
 
 		if (segfile_array_cs)
@@ -123,15 +135,20 @@ load_relation_internal(Oid reloid) {
 	Relation aorel;
 	int i;
 	int segno;
+	int pseudosegno;
+	int nvp;
+	int inat;
 	int total_segfiles;
 	FileSegInfo **segfile_array;
 	AOCSFileSegInfo **segfile_array_cs;
 	Snapshot appendOnlyMetaDataSnapshot;
-	int rc;
+	int rc;	
+	
 
 	/*  XXX: maybe fix lock here to take more granular lock
 	*/
 	aorel = relation_open(reloid, AccessExclusiveLock);
+	nvp = aorel->rd_att->natts;
 
 	/*
 	* Relation segments named base/DBOID/aorel->rd_node.*
@@ -173,16 +190,19 @@ load_relation_internal(Oid reloid) {
 		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
 										  appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		for (i = 0; i < total_segfiles; i++)
-		{
-			segno = segfile_array_cs[i]->segno;
-			elog(yezzey_log_level, "loading cs segment no %d", segno);
+		for (inat = 0; inat < nvp; ++inat) {
+			for (i = 0; i < total_segfiles; i++)
+			{
+				segno = segfile_array_cs[i]->segno;
+				pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
+				elog(yezzey_log_level, "loading cs segment no %d pseudosegno %d", segno, pseudosegno);
 
-			rc = loadRelationSegment(aorel->rd_node, segno);
-			if (rc < 0) {
-				elog(ERROR, "failed to load cs segment number %d", segno);
+				rc = loadRelationSegment(aorel->rd_node, pseudosegno);
+				if (rc < 0) {
+					elog(ERROR, "failed to load cs segment number %d pseudosegno %d", segno, pseudosegno);
+				}
+				/* segment if loaded */
 			}
-			/* segment if loaded */
 		}
 
 		if (segfile_array_cs)
