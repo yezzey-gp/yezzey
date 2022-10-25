@@ -42,15 +42,47 @@ yezzey.S3_getter = '/home/reshke/wal-g/main/pg/wal-g --config=/home/reshke/wal-g
 
 restart cluster
 
-create extension yezzey
 
 
+source gpAux/gpdemo/gpdemo-env.sh
+source /usr/local/gpdb/greenplum_path.sh
+export GPHOME=/usr/local/gpdb/
+export PATH=$PATH:/usr/local/gpdb/bin
 
+make destroy-demo-cluster && make create-demo-cluster
+gpconfig -c shared_preload_libraries -v yezzey
+
+
+create extension yezzey ;
 create table aocst(i int, j int, k int) with (appendonly=true, orientation=column);
 insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+
+insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+insert into aocst(i, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+
 select count(1) from aocst;
 select yezzey.offload_relation('aocst');
 insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+
+insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+insert into aocst(i, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
 select count(1) from aocst;
+select yezzey.offload_relation('aocst');
+select count(1) from aocst;
+
+insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+
+insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+insert into aocst(i, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+select count(1) from aocst;
+select yezzey.offload_relation('aocst');
+select count(1) from aocst;
+
+
+
+gpstop -a -i && gpstart -a
 
 make destroy-demo-cluster && make create-demo-cluster && gpconfig -s shared_preload_libraries -v yezzey && gpstop -a -i && gpstart -a

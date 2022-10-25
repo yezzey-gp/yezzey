@@ -72,6 +72,9 @@ offloadFileToExternalStorage(const char *localPath, const char * external_path, 
 	chunkSize = 1 << 20;
 	buffer = palloc(chunkSize);
 	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
+	if (vfd <= 0) {
+		elog(ERROR, "failed to open %s file to transfer to external storage", localPath);
+	}
 	progress = 0;
 
 	whandle = createWriterHandle(GpIdentity.segindex, modcount, external_path);

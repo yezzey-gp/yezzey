@@ -346,12 +346,13 @@ void readprepare(SMGRFile file) {
 
 	appendStringInfo(&localTmpPath, "%s_tmpbuf", yezzey_vfd_cache[file].filepath);
 
-	elog(WARNING, "open proxy file for read %s", localTmpPath.data);
-
 	yezzey_vfd_cache[file].localTmpVfd = 
 	PathNameOpenFile(localTmpPath.data, yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
 	if (yezzey_vfd_cache[file].localTmpVfd <= 0) {
 		// is ok
+		elog(WARNING, "failed to open proxy file for read %s", localTmpPath.data);
+	} else {
+		elog(WARNING, "opened proxy file for read %s", localTmpPath.data);
 	}
 }
 
@@ -464,6 +465,10 @@ void yezzey_FileClose(SMGRFile file) {
 		FileClose(actual_fd);
 	}
 
+	if (yezzey_vfd_cache[file].localTmpVfd > 0) {
+		FileClose(yezzey_vfd_cache[file].localTmpVfd);
+	}
+
 	memset(&yezzey_vfd_cache[file], 0, sizeof(yezzey_vfd));
 }
 
@@ -501,18 +506,31 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 
 	if (actual_fd == s3ext) {
 		readprepare(file);
-		if (!yezzey_reader_transfer_data(yezzey_vfd_cache[file].rhandle, buffer, &curr)) {
-			elog(yezzey_ao_log_level, "problem while direct read from s3 read with %d curr: %d", file, curr);
-			return -1;
-		}
 		if (yezzey_reader_empty(yezzey_vfd_cache[file].rhandle)) {
 			if (yezzey_vfd_cache[file].localTmpVfd <= 0) {
 				return 0;
 			}
 			/* tring to read proxy file */
-			elog(WARNING, "tring to read proxy file");
-			curr = FileRead(yezzey_vfd_cache[file].localTmpVfd , buffer, amount);
+			curr = FileRead(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
 			/* fall throught */
+
+			elog(WARNING, "read from proxy file %d", curr);
+		} else {
+			if (!yezzey_reader_transfer_data(yezzey_vfd_cache[file].rhandle, buffer, &curr)) {
+				elog(yezzey_ao_log_level, "problem while direct read from s3 read with %d curr: %d", file, curr);
+				return -1;
+			}
+
+			if (yezzey_reader_empty(yezzey_vfd_cache[file].rhandle)) {
+				if (yezzey_vfd_cache[file].localTmpVfd <= 0) {
+					return 0;
+				}
+				/* tring to read proxy file */
+				curr = FileRead(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
+				/* fall throught */
+
+				elog(WARNING, "read from proxy file %d", curr);
+			}
 		}
 
 		yezzey_vfd_cache[file].offset += curr;
