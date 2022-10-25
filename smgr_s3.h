@@ -16,6 +16,7 @@ EXTERNC bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amoun
 EXTERNC bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amount);
 
 EXTERNC bool yezzey_reader_empty(void *handle);
+EXTERNC int64_t yezzey_virtual_relation_size(int32_t segid, const char * fileName);
 
 EXTERNC bool yezzey_complete_r_transfer_data(void ** handle);
 EXTERNC bool yezzey_complete_w_transfer_data(void ** handle);

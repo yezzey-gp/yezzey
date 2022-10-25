@@ -47,6 +47,10 @@ create extension yezzey
 
 
 create table aocst(i int, j int, k int) with (appendonly=true, orientation=column);
-insert into aocst(k, j) select * from (select * from generate_series(1, 10)) a join (select * from generate_series(1, 10)) b on true;
+insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
 select count(1) from aocst;
+select yezzey.offload_relation('aocst');
+insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
+select count(1) from aocst;
+
 make destroy-demo-cluster && make create-demo-cluster && gpconfig -s shared_preload_libraries -v yezzey && gpstop -a -i && gpstart -a

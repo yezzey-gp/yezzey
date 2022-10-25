@@ -56,7 +56,7 @@ ensureFilepathLocal(char *filepath)
 }
 
 int
-offloadFileToExternalStorage(const char *localPath, int64 modcount, int64 logicalEof)
+offloadFileToExternalStorage(const char *localPath, const char * external_path, int64 modcount, int64 logicalEof)
 {
 	void * whandle;
 	int rc;
@@ -74,7 +74,7 @@ offloadFileToExternalStorage(const char *localPath, int64 modcount, int64 logica
 	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
 	progress = 0;
 
-	whandle = createWriterHandle(GpIdentity.segindex, modcount, localPath);
+	whandle = createWriterHandle(GpIdentity.segindex, modcount, external_path);
 	rc = 0;
 
 	while (progress < logicalEof)
@@ -149,36 +149,66 @@ removeLocalFile(const char *localPath)
 	return rc;
 }
 
-int
-offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof) {
-    StringInfoData path;
-	StringInfoData external_path;
+static int
+offloadRelationSegmentPath(const char * localpath, const char * external_path, int64 modcount, int64 logicalEof) {
 	int rc;
-    initStringInfo(&path);
-	if (segno == 0) {
-    	appendStringInfo(&path, "base/%d/%d", rnode.dbNode, rnode.relNode);
-	} else {
-    	appendStringInfo(&path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
-	}
 
-    elog(INFO, "contructed path %s", path.data);
-    if (!ensureFilepathLocal(path.data)) {
+    if (!ensureFilepathLocal(localpath)) {
         // nothing to do
         return 0;
     }
 
-    if ((rc = offloadFileToExternalStorage(path.data, modcount, logicalEof)) < 0) {
-        pfree(path.data);
+    if ((rc = offloadFileToExternalStorage(localpath, external_path, modcount, logicalEof)) < 0) {
         return rc;
     }
 
-    if ((rc = removeLocalFile(path.data)) < 0) {
+    if ((rc = removeLocalFile(localpath)) < 0) {
         elog(INFO, "errno while remove %d", errno);
-        pfree(path.data);
         return rc;
     }
+	return 0;
+}
 
-    pfree(path.data);
+int
+offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof) {
+    StringInfoData local_path;
+	StringInfoData external_path;
+	int rc;
+	int64_t virtual_sz;
+
+    initStringInfo(&local_path);
+	initStringInfo(&external_path);
+	if (segno == 0) {
+    	appendStringInfo(&local_path, "base/%d/%d", rnode.dbNode, rnode.relNode);
+		appendStringInfo(&external_path, "base/%d/%d", rnode.dbNode, rnode.relNode);
+	} else {
+    	appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+		appendStringInfo(&external_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+	}
+
+    elog(INFO, "contructed path %s", local_path.data);
+
+	if ((rc = offloadRelationSegmentPath(local_path.data, external_path.data, modcount, logicalEof)) < 0) {
+		pfree(local_path.data);
+		pfree(external_path.data);
+		return rc;
+	}
+
+	virtual_sz = yezzey_virtual_relation_size(GpIdentity.segindex, external_path.data);
+
+    appendStringInfo(&local_path, "_tmpbuf");
+    elog(INFO, "contructed path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
+
+	Assert(virtual_sz <= logicalEof);
+
+	if ((rc = offloadRelationSegmentPath(local_path.data, external_path.data, modcount, logicalEof - virtual_sz)) < 0) {
+		pfree(local_path.data);
+		pfree(external_path.data);
+		return rc;
+	}
+
+    pfree(local_path.data);
+	pfree(external_path.data);
     return 0;
 }
 

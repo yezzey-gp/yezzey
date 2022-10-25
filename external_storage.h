@@ -11,7 +11,7 @@ extern char *s3_putter;
 extern char *s3_prefix;
 
 int
-offloadFileToExternalStorage(const char *localPath, int64 modcount, int64 logicalEof);
+offloadFileToExternalStorage(const char *localPath, const char * external_path, int64 modcount, int64 logicalEof);
 
 int
 offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof);
