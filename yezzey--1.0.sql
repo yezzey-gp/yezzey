@@ -11,9 +11,15 @@ VOLATILE
 EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
 
+-- manually relocated relations
+CREATE TABLE relocated_relations(relname TEXT, last_archived TIMESTAMP)
+DISTRIBUTED REPLICATED;
 
-CREATE OR REPLACE FUNCTION yezzey.offload_relation(offload_relname TEXT) RETURNS VOID
+CREATE OR REPLACE FUNCTION
+yezzey.offload_relation(offload_relname TEXT)
+RETURNS VOID
 AS $$
+    INSERT INTO relocated_relations VALUES(offload_relname, NOW());
     SELECT yezzey.offload_relation(
         (SELECT OID FROM pg_class WHERE relname=offload_relname)
     );
@@ -21,7 +27,9 @@ $$
 LANGUAGE SQL;
 
 
-CREATE OR REPLACE FUNCTION yezzey.load_relation(reloid OID) RETURNS void
+CREATE OR REPLACE FUNCTION
+yezzey.load_relation(reloid OID)
+RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 EXECUTE ON ALL SEGMENTS

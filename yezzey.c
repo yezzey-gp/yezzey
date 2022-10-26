@@ -82,7 +82,7 @@ int offload_relation_internal(Oid reloid) {
 			
 			elog(yezzey_log_level, "offloading segment no %d, modcount %ld up to logial eof %ld", segno, modcount, logicalEof);
 
-			rc = offloadRelationSegment(aorel->rd_node, segno, modcount, logicalEof);
+			rc = offloadRelationSegment(aorel, aorel->rd_node, segno, modcount, logicalEof);
 			if (rc < 0) {
 				elog(ERROR, "failed to offload segment number %d, modcount %ld, up to %ld", segno, modcount, logicalEof);
 			}
@@ -117,7 +117,7 @@ int offload_relation_internal(Oid reloid) {
 				logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
 				elog(WARNING, "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to eof %ld", segno, pseudosegno, modcount, logicalEof);
 
-				rc = offloadRelationSegment(aorel->rd_node, pseudosegno, modcount, logicalEof);
+				rc = offloadRelationSegment(aorel, aorel->rd_node, pseudosegno, modcount, logicalEof);
 				if (rc < 0) {
 					elog(ERROR, "failed to offload cs segment number %d, pseudosegno %d, up to %ld", segno, pseudosegno, logicalEof);
 				}

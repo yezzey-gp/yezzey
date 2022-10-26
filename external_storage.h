@@ -14,7 +14,7 @@ int
 offloadFileToExternalStorage(const char *localPath, const char * external_path, int64 modcount, int64 logicalEof);
 
 int
-offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof);
+offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modcount, int64 logicalEof);
 
 int
 loadRelationSegment(RelFileNode rnode, int segno);

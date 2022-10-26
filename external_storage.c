@@ -28,6 +28,11 @@
 #include "smgr_s3.h"
 
 
+#include "catalog/storage.h"
+#include "catalog/storage_xlog.h"
+#include "storage/smgr.h"
+
+
 // For GpIdentity
 #include "c.h"
 #include "cdb/cdbvars.h"
@@ -173,7 +178,7 @@ offloadRelationSegmentPath(const char * localpath, const char * external_path, i
 }
 
 int
-offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof) {
+offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modcount, int64 logicalEof) {
     StringInfoData local_path;
 	StringInfoData external_path;
 	int rc;
@@ -191,12 +196,17 @@ offloadRelationSegment(RelFileNode rnode, int segno, int64 modcount, int64 logic
 
     elog(INFO, "contructed path %s", local_path.data);
 
+	/* xlog goes first */
+	// xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
+
 	if ((rc = offloadRelationSegmentPath(local_path.data, external_path.data, modcount, logicalEof)) < 0) {
 		pfree(local_path.data);
 		pfree(external_path.data);
 		return rc;
 	}
 
+	RelationDropStorage(aorel);
+	
 	virtual_sz = yezzey_virtual_relation_size(GpIdentity.segindex, external_path.data);
 
     appendStringInfo(&local_path, "_tmpbuf");
