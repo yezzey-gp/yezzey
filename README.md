@@ -52,6 +52,8 @@ export PATH=$PATH:/usr/local/gpdb/bin
 make destroy-demo-cluster && make create-demo-cluster
 gpconfig -c shared_preload_libraries -v yezzey
 
+gpstop -a -i && gpstart -a
+
 
 create extension yezzey ;
 create table aocst(i int, j int, k int) with (appendonly=true, orientation=column);

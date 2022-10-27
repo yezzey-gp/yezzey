@@ -115,7 +115,7 @@ int offload_relation_internal(Oid reloid) {
 				pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
 				modcount = segfile_array_cs[i]->modcount;
 				logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
-				elog(WARNING, "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to eof %ld", segno, pseudosegno, modcount, logicalEof);
+				elog(yezzey_ao_log_level, "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to eof %ld", segno, pseudosegno, modcount, logicalEof);
 
 				rc = offloadRelationSegment(aorel, aorel->rd_node, pseudosegno, modcount, logicalEof);
 				if (rc < 0) {

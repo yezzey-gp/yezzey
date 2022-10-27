@@ -153,7 +153,7 @@ int
 removeLocalFile(const char *localPath)
 {
 	int rc = remove(localPath);
-	elog(INFO, "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath, rc);
+	elog(yezzey_ao_log_level, "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath, rc);
 	return rc;
 }
 
@@ -194,7 +194,7 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 		appendStringInfo(&external_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
 	}
 
-    elog(INFO, "contructed path %s", local_path.data);
+    elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
 
 	/* xlog goes first */
 	// xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
@@ -205,12 +205,13 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 		return rc;
 	}
 
-	RelationDropStorage(aorel);
+	/*wtf*/
+	RelationDropStorageNoClose(aorel);
 	
 	virtual_sz = yezzey_virtual_relation_size(GpIdentity.segindex, external_path.data);
 
     appendStringInfo(&local_path, "_tmpbuf");
-    elog(INFO, "contructed path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
+    elog(yezzey_ao_log_level, "contructed path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
 
 	Assert(virtual_sz <= logicalEof);
 
@@ -239,12 +240,11 @@ loadRelationSegment(RelFileNode rnode, int segno) {
     initStringInfo(&path);
     appendStringInfo(&path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
 
-    elog(INFO, "contructed path %s", path.data);
+    elog(yezzey_ao_log_level, "contructed path %s", path.data);
     if (ensureFilepathLocal(path.data)) {
         // nothing to do
         return 0;
     }
-
 
     if ((rc = getFilepathFromS3(path.data)) < 0) {
         pfree(path.data);

@@ -350,9 +350,9 @@ void readprepare(SMGRFile file) {
 	PathNameOpenFile(localTmpPath.data, yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
 	if (yezzey_vfd_cache[file].localTmpVfd <= 0) {
 		// is ok
-		elog(WARNING, "failed to open proxy file for read %s", localTmpPath.data);
+		elog(yezzey_ao_log_level, "failed to open proxy file for read %s", localTmpPath.data);
 	} else {
-		elog(WARNING, "opened proxy file for read %s", localTmpPath.data);
+		elog(yezzey_ao_log_level, "opened proxy file for read %s", localTmpPath.data);
 	}
 }
 
@@ -363,12 +363,12 @@ void writeprepare(SMGRFile file) {
 
 	appendStringInfo(&localTmpPath, "%s_tmpbuf", yezzey_vfd_cache[file].filepath);
 
-	elog(WARNING, "creating proxy file for write %s", localTmpPath.data);
+	elog(yezzey_ao_log_level, "creating proxy file for write %s", localTmpPath.data);
 
 	yezzey_vfd_cache[file].localTmpVfd = 
 	PathNameOpenFile(localTmpPath.data, yezzey_vfd_cache[file].fileFlags | O_CREAT, yezzey_vfd_cache[file].fileMode);
 	if (yezzey_vfd_cache[file].localTmpVfd <= 0) {
-		elog(WARNING, "error creating proxy file for write %s: %d", localTmpPath.data, errno);
+		elog(yezzey_ao_log_level, "error creating proxy file for write %s: %d", localTmpPath.data, errno);
 	}
 	FileSeek(yezzey_vfd_cache[file].localTmpVfd, 0, SEEK_END);
 }
@@ -405,6 +405,7 @@ File virtualEnsure(SMGRFile file) {
 
 int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
+	size_t virtual_sz;
 	elog(yezzey_ao_log_level, "non virt file seek with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
 		return yezzey_vfd_cache[file].offset;
@@ -417,6 +418,7 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
 	File actual_fd = virtualEnsure(file);
 	if (actual_fd == s3ext) {
 		// what?
+		yezzey_vfd_cache[file].offset = offset;
 		return offset; 
 	}
 	elog(yezzey_ao_log_level, "file seek with fd %d offset %ld actual %d", file, offset, actual_fd);
@@ -427,6 +429,7 @@ int	yezzey_FileSync(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
 	if (actual_fd == s3ext) {
 		/* s3 always sync ? */
+		/* sync tmp buf file here */
 		return 0;
 	}
 	elog(yezzey_ao_log_level, "file sync with fd %d actual %d", file, actual_fd);
@@ -476,28 +479,28 @@ void yezzey_FileClose(SMGRFile file) {
 
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 	File actual_fd = virtualEnsure(file);
+	int rc;
 	if (actual_fd == s3ext) {
 #ifdef ALLOW_MODIFY_EXTERNAL_TABLE
 		int curr = amount;
 		writeprepare(file);
 		/*local writes*/
-		return FileWrite(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
-		// if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, &curr)) {
-		// 	elog(yezzey_ao_log_level, "problem while direct write from s3 with %d", file);
-		// 	return -1;
-		// }
-
-		// yezzey_vfd_cache[file].offset += curr;
-		
-		// elog(yezzey_ao_log_level, "file write with %d", file);
-		// return curr;
+		rc = FileWrite(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
+		if (rc > 0) {
+			yezzey_vfd_cache[file].offset += rc;
+		}
+		return rc;
 #else
 		elog(ERROR, "external table modifications are not supported yet");
 #endif
 
 	}
 	elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
-	return FileWrite(actual_fd, buffer, amount);
+	rc = FileWrite(actual_fd, buffer, amount);
+	if (rc > 0) {
+		yezzey_vfd_cache[file].offset += rc;
+	}
+	return rc;
 }
 
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
@@ -514,7 +517,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 			curr = FileRead(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
 			/* fall throught */
 
-			elog(WARNING, "read from proxy file %d", curr);
+			elog(yezzey_ao_log_level, "read from proxy file %d", curr);
 		} else {
 			if (!yezzey_reader_transfer_data(yezzey_vfd_cache[file].rhandle, buffer, &curr)) {
 				elog(yezzey_ao_log_level, "problem while direct read from s3 read with %d curr: %d", file, curr);
@@ -529,7 +532,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 				curr = FileRead(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
 				/* fall throught */
 
-				elog(WARNING, "read from proxy file %d", curr);
+				elog(yezzey_ao_log_level, "read from proxy file %d", curr);
 			}
 		}
 
@@ -539,6 +542,15 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 		return curr;
 	}
 	return FileRead(actual_fd, buffer, amount);
+}
+
+int yezzey_FileTruncate(SMGRFile file, int offset) {
+	File actual_fd = virtualEnsure(file);
+	if (actual_fd == s3ext) {
+		// ??
+		return 0;
+	}
+	return FileTruncate(actual_fd, offset);
 }
 
 static const struct f_smgr_ao yezzey_smgr_ao =

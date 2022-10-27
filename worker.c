@@ -442,7 +442,7 @@ _PG_init(void)
 	DefineCustomEnumVariable("yezzey.ao_log_level",
 				 "Log level for yezzey functions.",
 				 NULL, &yezzey_ao_log_level,
-				 WARNING,loglevel_options,PGC_SUSET,
+				 DEBUG1,loglevel_options,PGC_SUSET,
 				 0, NULL, NULL, NULL);
 
 	elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
