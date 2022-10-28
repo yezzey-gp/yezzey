@@ -436,8 +436,8 @@ _PG_init(void)
 
 	DefineCustomEnumVariable("yezzey.log_level",
 				 "Log level for yezzey functions.",
-				 NULL,&yezzey_log_level,
-				 LOG,loglevel_options,PGC_SUSET,
+				 NULL, &yezzey_log_level,
+				 DEBUG1, loglevel_options, PGC_SUSET,
 				 0, NULL, NULL, NULL);
 	DefineCustomEnumVariable("yezzey.ao_log_level",
 				 "Log level for yezzey functions.",
