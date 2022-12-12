@@ -11,15 +11,22 @@ VOLATILE
 EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
 
+CREATE TYPE offload_policy AS ENUM ('local', 'remote_always', 'cron');
+
 -- manually relocated relations
-CREATE TABLE relocated_relations(relname TEXT, last_archived TIMESTAMP)
+CREATE TABLE yezzey.offload_metadata(
+    relname          TEXT NOT NULL,
+    relpolicy        offload_policy NOT NULL,
+    relext_date      DATE,
+    rellast_archived TIMESTAMP
+)
 DISTRIBUTED REPLICATED;
 
 CREATE OR REPLACE FUNCTION
 yezzey.offload_relation(offload_relname TEXT)
 RETURNS VOID
 AS $$
-    INSERT INTO relocated_relations VALUES(offload_relname, NOW());
+    INSERT INTO yezzey.offload_metadata VALUES(offload_relname, 'remote_always', NULL, NOW());
     SELECT yezzey.offload_relation(
         (SELECT OID FROM pg_class WHERE relname=offload_relname)
     );
@@ -36,7 +43,8 @@ EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
 
 
--- CREATE OR REPLACE FUNCTION yezzey.offload_relation_status(relname TEXT) RETURNS void
+-- CREATE OR REPLACE FUNCTION yezzey.offload_relation_status(relname TEXT) 
+-- RETURNS TABLE ()
 -- AS 'MODULE_PATHNAME'
 -- VOLATILE
 -- LANGUAGE C STRICT;
