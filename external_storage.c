@@ -46,7 +46,7 @@ int yezzey_ao_log_level = INFO;
 * This function used by AO-related realtion functions
 */
 bool
-ensureFilepathLocal(char *filepath)
+ensureFilepathLocal(const char *filepath)
 {
 	int fd, cp, errno_;
 
@@ -227,6 +227,53 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 }
 
 
+
+int
+statRelationSpaceUsage(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, size_t *external_bytes) {
+    StringInfoData local_path;
+	StringInfoData external_path;
+	size_t virtual_sz;
+	int vfd;
+
+    initStringInfo(&local_path);
+	initStringInfo(&external_path);
+	if (segno == 0) {
+    	appendStringInfo(&local_path, "base/%d/%d", rnode.dbNode, rnode.relNode);
+		appendStringInfo(&external_path, "base/%d/%d", rnode.dbNode, rnode.relNode);
+	} else {
+    	appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+		appendStringInfo(&external_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+	}
+
+    elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
+	
+	/* stat external storage usage */
+	virtual_sz = yezzey_virtual_relation_size(GpIdentity.segindex, external_path.data);
+	*external_bytes = virtual_sz;
+
+	*local_bytes = 0;
+	vfd = PathNameOpenFile(local_path.data, O_RDONLY, 0600);
+	if (vfd != -1) {
+		*local_bytes += FileSeek(vfd, 0, SEEK_END);
+		FileClose(vfd);
+	}
+
+    appendStringInfo(&local_path, "_tmpbuf");
+    elog(yezzey_ao_log_level, "contructed path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
+	vfd = PathNameOpenFile(local_path.data, O_RDONLY, 0600);
+	if (vfd != -1) {
+		*local_bytes += FileSeek(vfd, 0, SEEK_END);
+		FileClose(vfd);
+	}
+	Assert(virtual_sz <= logicalEof);
+	*local_commited_bytes = logicalEof - virtual_sz;
+
+    pfree(local_path.data);
+	pfree(external_path.data);
+    return 0;
+}
+
+
 int
 loadRelationSegment(RelFileNode rnode, int segno) {
     StringInfoData path;
@@ -300,52 +347,4 @@ getFilepathFromS3(const char *filepath)
 	// return rc;
 
 	return 0;
-}
-
-char *
-buildExternalStorageCommand(const char *s3Command, const char *localPath, const char *externalPath)
-{
-	StringInfoData result;
-	const char *sp;
-
-	initStringInfo(&result);
-
-	for (sp = s3Command; *sp; sp++)
-	{
-		if (*sp == '%')
-		{
-			switch (sp[1])
-			{
-				case 'f':
-					{
-						sp++;
-						appendStringInfoString(&result, localPath);
-						break;
-					}
-				case 's':
-					{
-						sp++;
-						appendStringInfoString(&result, externalPath);
-						break;
-					}
-				case '%':
-					{
-						sp++;
-						appendStringInfoChar(&result, *sp);
-						break;
-					}
-				default:
-					{
-						appendStringInfoChar(&result, *sp);
-						break;
-					}
-			}
-		}
-		else
-		{
-			appendStringInfoChar(&result, *sp);
-		}
-	}
-
-	return result.data;
 }

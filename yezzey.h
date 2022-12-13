@@ -18,13 +18,9 @@
 void sendFileToS3(const char *localPath);
 void updateMoveTable(const char *oid, const char *forkName, const uint32 segNum, const bool isLocal);
 int removeLocalFile(const char *localPath);
-void sendOidToS3(const char *oid, const char *forkName, const uint32 segNum);
 
 void yezzey_prepare(void);
 void yezzey_finish(void);
-void sendTablesToS3(void);
-void getFileFromS3(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blockNum);
-char *buildS3Command(const char *s3Command, const char *s3Path, const char *localPath);
 
 int offload_relation_internal(Oid reloid);
 int load_relation_internal(Oid reloid);
@@ -74,10 +70,12 @@ const f_smgr_ao *smgrao_yezzey();
 #endif
 void smgr_init_yezzey(void);
 
+
+extern Datum yezzey_stat_get_external_storage_usage(PG_FUNCTION_ARGS);
+
 extern int yezzey_log_level;
 extern int yezzey_ao_log_level;
 
 void _PG_init(void);
-
 
 #endif /* YEZZEY_H */

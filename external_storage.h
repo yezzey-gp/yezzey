@@ -19,15 +19,15 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 int
 loadRelationSegment(RelFileNode rnode, int segno);
 
-char *
-buildExternalStorageCommand(const char *s3Command, const char *localPath, const char *externalPath);
+int
+getFilepathFromS3(const char *filepath);
 
 bool
-ensureFilepathLocal(char *filepath);
+ensureFilepathLocal(const char *filepath);
 bool
 ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
 
 int
-getFilepathFromS3(const char *filepath);
+statRelationSpaceUsage(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, size_t *external_bytes);
 
 #endif /* EXTERNAL_STORAGE */

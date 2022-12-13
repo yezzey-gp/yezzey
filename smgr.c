@@ -55,6 +55,11 @@
 #include "c.h"
 #include "cdb/cdbvars.h"
 
+
+
+void writeprepare(SMGRFile file);
+void readprepare(SMGRFile file);
+
 /*
 * Construct external storage filepath. 
 * 
@@ -304,6 +309,7 @@ int yezzey_FileSync(SMGRFile file);
 SMGRFile yezzey_PathNameOpenFile (FileName fileName, int fileFlags, int fileMode);
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount);
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount);
+int yezzey_FileTruncate(SMGRFile file, int offset);
 
 
 typedef struct yezzey_vfd {
@@ -375,7 +381,6 @@ void writeprepare(SMGRFile file) {
 
 File virtualEnsure(SMGRFile file) {
 	File internal_vfd;
-	int rc;
 	if (yezzey_vfd_cache[file].y_vfd == YEZZEY_VANANT_VFD) {
 		elog(ERROR, "attempt to ensure locality of not opened file");
 	}	
@@ -405,7 +410,6 @@ File virtualEnsure(SMGRFile file) {
 
 int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
-	size_t virtual_sz;
 	elog(yezzey_ao_log_level, "non virt file seek with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
 		return yezzey_vfd_cache[file].offset;
@@ -482,7 +486,6 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 	int rc;
 	if (actual_fd == s3ext) {
 #ifdef ALLOW_MODIFY_EXTERNAL_TABLE
-		int curr = amount;
 		writeprepare(file);
 		/*local writes*/
 		rc = FileWrite(yezzey_vfd_cache[file].localTmpVfd, buffer, amount);
