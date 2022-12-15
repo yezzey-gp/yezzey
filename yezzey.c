@@ -11,7 +11,10 @@
 #include "pgstat.h"
 #include "yezzey.h"
 
+#include "access/xlog.h"
+#include "catalog/storage_xlog.h"
 #include "funcapi.h"
+#include "common/relpath.h"
 
 #include "storage/lmgr.h"
 #include "access/aosegfiles.h"
@@ -37,6 +40,33 @@ PG_FUNCTION_INFO_V1(force_segment_offload);
 PG_FUNCTION_INFO_V1(yezzey_get_relation_offload_status);
 PG_FUNCTION_INFO_V1(yezzey_get_relation_offload_per_filesegment_status);
 
+void
+yezzey_log_smgroffload(RelFileNode *rnode);
+
+/*
+ * Perform XLogInsert of a XLOG_SMGR_CREATE record to WAL.
+ */
+void
+yezzey_log_smgroffload(RelFileNode *rnode)
+{
+	xl_smgr_create xlrec;
+	XLogRecData rdata;
+
+	/*
+	 * Make an XLOG entry reporting the file creation.
+	 */
+	xlrec.rnode = *rnode;
+	xlrec.forkNum = YEZZEY_FORKNUM;
+
+	rdata.data = (char *) &xlrec;
+	rdata.len = sizeof(xlrec);
+	rdata.buffer = InvalidBuffer;
+	rdata.next = NULL;
+
+	XLogInsert(RM_SMGR_ID, XLOG_SMGR_CREATE, &rdata);
+}
+
+
 
 int offload_relation_internal(Oid reloid) {
  	Relation aorel;
@@ -58,6 +88,7 @@ int offload_relation_internal(Oid reloid) {
 	* because we are going to delete relation from local storage
 	*/
 	aorel = relation_open(reloid, AccessExclusiveLock);
+	aorel->rd_smgr = smgropen(aorel->rd_node, InvalidBackendId);
 	nvp = aorel->rd_att->natts;
 
 	/*
@@ -103,7 +134,7 @@ int offload_relation_internal(Oid reloid) {
 			pfree(segfile_array);
 		}
 	} else {
-				/* ao columns, relstorage == 'c' */
+		/* ao columns, relstorage == 'c' */
 		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
 										  appendOnlyMetaDataSnapshot, &total_segfiles);
 
@@ -143,6 +174,11 @@ int offload_relation_internal(Oid reloid) {
 	/* insert entry in relocate table, is no any */
 
 	/* cleanup */
+	//yezzey_log_smgroffload(&aorel->rd_node);
+	//smgrcreate(aorel->rd_smgr, YEZZEY_FORKNUM, false);
+
+	smgrclose(aorel->rd_smgr);
+	aorel->rd_smgr = NULL;
 
 	relation_close(aorel, AccessExclusiveLock);
 

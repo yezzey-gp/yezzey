@@ -130,6 +130,9 @@ yezzey_close(SMgrRelation reln, ForkNumber forkNum)
 void
 yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo)
 {
+	if (forkNum == YEZZEY_FORKNUM) {
+		
+	} 
 	elog(yezzey_log_level, "[YEZZEY_SMGR] create");
 	if (forkNum == MAIN_FORKNUM && !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend, MAIN_FORKNUM, (uint32)0))
 		loadFileFromExternalStorage((reln->smgr_rnode).node, (reln->smgr_rnode).backend, MAIN_FORKNUM, (uint32)0);

@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION
 yezzey.define_offload_policy(offload_relname TEXT, policy offload_policy DEFAULT 'remote_always')
 RETURNS VOID
 AS $$
-    INSERT INTO yezzey.offload_metadata VALUES(offload_relname, offload_policy, NULL, NOW());
+    INSERT INTO yezzey.offload_metadata VALUES(offload_relname, policy, NULL, NOW());
     -- get xid before exeuting offload realtion func
     SELECT yezzey.offload_relation(
         (SELECT OID FROM pg_class WHERE relname=offload_relname)

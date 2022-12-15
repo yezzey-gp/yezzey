@@ -169,11 +169,6 @@ offloadRelationSegmentPath(const char * localpath, const char * external_path, i
     if ((rc = offloadFileToExternalStorage(localpath, external_path, modcount, logicalEof)) < 0) {
         return rc;
     }
-
-    if ((rc = removeLocalFile(localpath)) < 0) {
-        elog(INFO, "errno while remove %d", errno);
-        return rc;
-    }
 	return 0;
 }
 
