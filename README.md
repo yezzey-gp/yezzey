@@ -9,6 +9,7 @@ Data offloading means physical move of relation data to external storage, namely
 --- some more info here (TBD)
 
 Conditions:
+
 - no generic wal availabale in gp6 (pg 9.4)
 - no custom access method in pg9.4
 - no custom wal redo routines
@@ -35,18 +36,24 @@ Case: AO/AOCS file segments being read throught yezzey SMGR. Filename to be acce
 
 base/\<dboid\>/\<tableoid\>.\<segnum\>
 
-1) Check if base/<dboid>/<tableoid>.<segnum> present locally. If yes, this means table (and this segment file) was not (yet) offloaded to external storage. So, process normally.
 
-1.5) Read/write logic in GP with AO/AOCS tables works in following way:
-1.5.1) Open AO/AOCS segment file
-1.5.2) Set read/write offset to either 0 or $logicalEof
-1.5.3) Read/Write X bytes
-1.5.4) Close file
+Read/write logic in GP with AO/AOCS tables works in following way:
 
+* In case of read operation,
+* Open AO/AOCS segment file.
+*
+* Set read/write offset to either 0 or $logicalEof
+* Read/Write X bytes
+* Close file
+
+
+So, our read logic will be following:
+
+1) Check if base/\<dboid\>/\<tableoid\>.<segnum> present locally. If yes, this means table (and this segment file) was not (yet) offloaded to external storage. So, process normally.
 2) If not, try to search for file with prefix segment<gpsegment>/base/<dboid>/<tableoid>.<segnum>.<current_read_offset>* with highest epoch number is external storage (S3). Is there is,
    read them in lexicographically ascending order. Sum of sizes of external files should be >= than logical EOF (which can be found in pg_aoseg.pg_aoseg_<tableoid> table)
-   2.1) Read this file, while not exhausted
-3) If any failure, there is probably a corruption by to some unknown bugs in implementation.
+3) Read this file, while not exhausted
+4) If any failure, there is probably a corruption by to some unknown bugs in implementation.
 
 ### Offloading API and implementation
 
@@ -74,6 +81,10 @@ Write to already offloaeded AO/AOCS segment logic is following:
      |        |
       \______/
 ```
+
+
+
+## end
 
 
 

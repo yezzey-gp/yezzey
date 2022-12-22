@@ -4,10 +4,11 @@
 #include <string>
 #include "smgr_s3.h"
 
-void * createReaderHandle(int32_t segid, const char * fileName) {
-    std::string url = "s3://storage.yandexcloud.net/loh228/tmp_new/";
-    url += "segment_" + std::to_string(segid);
-    url += "/";
+void * createReaderHandle(char * bucket, char * external_storage_prefix, int32_t segid, const char * fileName) {
+    std::string url = "s3://storage.yandexcloud.net/";
+    url += bucket + "/";
+    url += external_storage_prefix + "/";
+    url += "seg" + std::to_string(segid) + "/";
     url += fileName;
     url += "."; /* modcount follows */
     url += " config=/home/reshke/s3test.conf region=us-east-1";
@@ -15,7 +16,7 @@ void * createReaderHandle(int32_t segid, const char * fileName) {
     return reader_init(url.c_str());
 }
 
-void * createWriterHandle(int32_t segid, int64_t modcount, const char * fileName) {
+void * createWriterHandle(char * bucket, char * external_storage_prefix, int32_t segid, int64_t modcount, const char * fileName) {
     std::string url = "s3://storage.yandexcloud.net/loh228/tmp_new/";
     url += "segment_" + std::to_string(segid);
     url += "/";
