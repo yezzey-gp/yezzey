@@ -350,7 +350,7 @@ void readprepare(SMGRFile file) {
 #endif
 
 	yezzey_vfd_cache[file].rhandle = createReaderHandle(yezzey_vfd_cache[file].relname,
-	 ""/*bucket*/, ""/*prefix*/, yezzey_vfd_cache[file].filepath,  GpIdentity.segindex);
+	 storage_bucket /*bucket*/, storage_prefix /*prefix*/, yezzey_vfd_cache[file].filepath,  GpIdentity.segindex);
 	Assert(yezzey_vfd_cache[file].rhandle != NULL);
 
 #ifdef CACHE_LOCAL_WRITES_FEATURE
@@ -373,9 +373,11 @@ void readprepare(SMGRFile file) {
 
 void writeprepare(SMGRFile file) {
 
+	/* should be called once*/
+	readprepare(file);
 
-	yezzey_vfd_cache[file].whandle = createWriterHandle(yezzey_vfd_cache[file].relname,
-	 ""/*bucket*/, ""/*prefix*/,yezzey_vfd_cache[file].filepath, GpIdentity.segindex, yezzey_vfd_cache[file].modcount);
+	yezzey_vfd_cache[file].whandle = createWriterHandle(yezzey_vfd_cache[file].rhandle, yezzey_vfd_cache[file].relname,
+	 storage_bucket/*bucket*/, storage_prefix/*prefix*/,yezzey_vfd_cache[file].filepath, GpIdentity.segindex, yezzey_vfd_cache[file].modcount);
 	Assert(yezzey_vfd_cache[file].whandle != NULL);
 
 
@@ -486,7 +488,6 @@ SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlag
 						break;
 					case O_RDWR:
 						writeprepare(yezzey_fd);
-						readprepare(yezzey_fd);
 						break;
 					default:
 						break;

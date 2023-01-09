@@ -763,21 +763,15 @@ _PG_init(void)
 {
 	/* XXX: yezzey naptime interval should be here */
 
-	DefineCustomStringVariable("yezzey.S3_getter",
-				   "getting file from S3",
-				   NULL, &s3_getter,
+	DefineCustomStringVariable("yezzey.storage_prefix",
+				   "segment name prefix",
+				   NULL, &storage_prefix,
 				   "",PGC_USERSET,0,
 				   NULL, NULL, NULL);
 
-	DefineCustomStringVariable("yezzey.S3_putter",
-                                   "putting file to S3",
-                                   NULL, &s3_putter,
-                                   "",PGC_USERSET,0,
-                                   NULL, NULL, NULL);
-
-	DefineCustomStringVariable("yezzey.S3_prefix",
+	DefineCustomStringVariable("yezzey.storage_bucket",
 				   "segment name prefix",
-				   NULL, &s3_prefix,
+				   NULL, &storage_bucket,
 				   "",PGC_USERSET,0,
 				   NULL, NULL, NULL);
 
@@ -792,6 +786,7 @@ _PG_init(void)
 				 NULL, &yezzey_log_level,
 				 DEBUG1, loglevel_options, PGC_SUSET,
 				 0, NULL, NULL, NULL);
+
 	DefineCustomEnumVariable("yezzey.ao_log_level",
 				 "Log level for yezzey functions.",
 				 NULL, &yezzey_ao_log_level,

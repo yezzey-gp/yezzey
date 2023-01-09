@@ -27,10 +27,8 @@
 #include "c.h"
 #include "cdb/cdbvars.h"
 
-
-char *s3_getter = NULL;
-char *s3_putter = NULL;
-char *s3_prefix = NULL;
+char *storage_prefix = NULL;
+char *storage_bucket = NULL;
 
 PG_MODULE_MAGIC;
 

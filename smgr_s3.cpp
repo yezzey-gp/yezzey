@@ -50,10 +50,10 @@ std::string getYezzeyRelationUrl(char * relname, char * bucket, char * external_
 * fileName is in form 'base=DEFAULTTABLESPACE_OID/<dboid>/<tableoid>.<seg>'
 */
 
-std::vector<int> parseModcounts(const std::string &prefix, std::string name){
-    std::vector<int> res;
+std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name){
+    std::vector<int64_t> res;
     auto indx = name.find(prefix);
-    if (indx == -1) {
+    if (indx == std::string::npos) {
         return res;
     }
     indx += prefix.size();
@@ -81,7 +81,7 @@ void * createReaderHandle(char * relname, char * bucket, char * external_storage
     auto reader = reader_init(prefix.c_str());
 
     auto content = reader->getKeyList().contents;
-    std::map<std::string, std::vector<int>> cache;
+    std::map<std::string, std::vector<int64_t>> cache;
 
     std::sort(content.begin(), content.end(), [&cache, &prefix](const BucketContent & c1, const BucketContent & c2){
         auto v1 = cache[c1.getName()] = cache.count(c1.getName()) ? cache[c1.getName()] : parseModcounts(prefix, c1.getName());
@@ -93,7 +93,7 @@ void * createReaderHandle(char * relname, char * bucket, char * external_storage
     return reader;
 }
 
-std::string make_yezzey_url(const std::string &prefix, const std::vector<int> & modcounts) {
+std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t> & modcounts) {
     auto ret = prefix;
 
     for (size_t i = 0; i < modcounts.size(); ++ i) {

@@ -6,12 +6,11 @@
 // XXX: todo proder interface for external storage offloading
 
 
-extern char *s3_getter;
-extern char *s3_putter;
-extern char *s3_prefix;
+extern char *storage_prefix;
+extern char *storage_bucket;
 
 int
-offloadFileToExternalStorage(const char *localPath, const char * external_path, int64 modcount, int64 logicalEof);
+offloadFileToExternalStorage(const char *relname, const char *localPath, int64 modcount, int64 logicalEof);
 
 int
 offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modcount, int64 logicalEof);
