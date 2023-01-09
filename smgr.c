@@ -57,7 +57,7 @@
 
 
 void readprepare(SMGRFile file);
-void writeprepare(SMGRFile file, int64 modcount);
+void writeprepare(SMGRFile file);
 
 /*
 * Construct external storage filepath. 
@@ -296,19 +296,18 @@ typedef struct f_smgr_ao {
 	int64       (*smgr_NonVirtualCurSeek) (SMGRFile file);
 	int64 		(*smgr_FileSeek) (SMGRFile file, int64 offset, int whence);
 	void 		(*smgr_FileClose)(SMGRFile file);
-	SMGRFile    (*smgr_AORelOpenSegFile) (FileName fileName, int fileFlags, int fileMode, int64 modcount);
+	SMGRFile    (*smgr_AORelOpenSegFile) (char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount);
 	int         (*smgr_FileWrite)(SMGRFile file, char *buffer, int amount);
     int         (*smgr_FileRead)(SMGRFile file, char *buffer, int amount);
 } f_smgr_ao;
 */
 
 
-
 int64 yezzey_NonVirtualCurSeek (SMGRFile file);
 void yezzey_FileClose(SMGRFile file);
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence);
 int yezzey_FileSync(SMGRFile file);
-SMGRFile yezzey_AORelOpenSegFile(FileName fileName, int fileFlags, int fileMode, int64 modcount);
+SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount);
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount);
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount);
 int yezzey_FileTruncate(SMGRFile file, int offset);
@@ -318,6 +317,7 @@ typedef struct yezzey_vfd {
 	int y_vfd;
 	int localTmpVfd; /* for writing files */
 	char * filepath;
+	char * relname;
 	int fileFlags; 
 	int fileMode;
 	int64 offset;
@@ -349,7 +349,8 @@ void readprepare(SMGRFile file) {
 	}
 #endif
 
-	yezzey_vfd_cache[file].rhandle = createReaderHandle(""/*bucket*/, ""/*prefix*/, GpIdentity.segindex, yezzey_vfd_cache[file].filepath);
+	yezzey_vfd_cache[file].rhandle = createReaderHandle(yezzey_vfd_cache[file].relname,
+	 ""/*bucket*/, ""/*prefix*/, yezzey_vfd_cache[file].filepath,  GpIdentity.segindex);
 	Assert(yezzey_vfd_cache[file].rhandle != NULL);
 
 #ifdef CACHE_LOCAL_WRITES_FEATURE
@@ -370,10 +371,11 @@ void readprepare(SMGRFile file) {
 #endif
 }
 
-void writeprepare(SMGRFile file, int64 modcount) {
+void writeprepare(SMGRFile file) {
 
 
-	yezzey_vfd_cache[file].whandle = createWriterHandle(GpIdentity.segindex, modcount, yezzey_vfd_cache[file].filepath);
+	yezzey_vfd_cache[file].whandle = createWriterHandle(yezzey_vfd_cache[file].relname,
+	 ""/*bucket*/, ""/*prefix*/,yezzey_vfd_cache[file].filepath, GpIdentity.segindex, yezzey_vfd_cache[file].modcount);
 	Assert(yezzey_vfd_cache[file].whandle != NULL);
 
 
@@ -405,9 +407,6 @@ File virtualEnsure(SMGRFile file) {
 		if (!ensureFilepathLocal(yezzey_vfd_cache[file].filepath)) {
 			// do s3 read
 			return s3ext;
-			// if ((rc = getFilepathFromS3(yezzey_vfd_cache[file].filepath)) < 0) {
-       		// 	elog(ERROR, "failed to download open file");
-			// }
 		}
 
 		internal_vfd = PathNameOpenFile(yezzey_vfd_cache[file].filepath,
@@ -456,56 +455,59 @@ int	yezzey_FileSync(SMGRFile file) {
 	return FileSync(actual_fd);
 }
 
-SMGRFile yezzey_AORelOpenSegFile(FileName fileName, int fileFlags, int fileMode, int64 modcount) {
-	int i;
+SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
+	int yezzey_fd;
 	File internal_vfd;
 	elog(yezzey_ao_log_level, "path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */
-	for (i = 0; i < MAXVFD; ++i) {
-		if (yezzey_vfd_cache[i].y_vfd == YEZZEY_VANANT_VFD) {
-			yezzey_vfd_cache[i].filepath = strdup(fileName);
-			yezzey_vfd_cache[i].fileFlags = fileFlags;
-			yezzey_vfd_cache[i].fileMode = fileMode;
-			yezzey_vfd_cache[i].modcount = modcount;
-			if (yezzey_vfd_cache[i].filepath == NULL) {
+	for (yezzey_fd = 0; yezzey_fd < MAXVFD; ++yezzey_fd) {
+		if (yezzey_vfd_cache[yezzey_fd].y_vfd == YEZZEY_VANANT_VFD) {
+			yezzey_vfd_cache[yezzey_fd].filepath = strdup(fileName);
+			yezzey_vfd_cache[yezzey_fd].relname = strdup(relname);
+			yezzey_vfd_cache[yezzey_fd].fileFlags = fileFlags;
+			yezzey_vfd_cache[yezzey_fd].fileMode = fileMode;
+			yezzey_vfd_cache[yezzey_fd].modcount = modcount;
+			if (yezzey_vfd_cache[yezzey_fd].filepath == NULL || yezzey_vfd_cache[yezzey_fd].relname == NULL) {
 				elog(ERROR, "out of mem");
 			}
 
-			yezzey_vfd_cache[i].y_vfd = YEZZEY_NOT_OPENED;
+			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
 
-			if (!ensureFilepathLocal(yezzey_vfd_cache[i].filepath)) {
-
-				if (fileMode & O_RDWR) {
-					/* allocate handle struct */
-					writeprepare(i, yezzey_vfd_cache[i].modcount);
-				} else {
-					/* allocate handle struct */
-					readprepare(file);
+			if (!ensureFilepathLocal(yezzey_vfd_cache[yezzey_fd].filepath)) {
+				switch (fileMode) {
+					case O_WRONLY:
+						/* allocate handle struct */
+						writeprepare(yezzey_fd);
+						break;
+					case O_RDONLY:
+						/* allocate handle struct */
+						readprepare(yezzey_fd);
+						break;
+					case O_RDWR:
+						writeprepare(yezzey_fd);
+						readprepare(yezzey_fd);
+						break;
+					default:
+						break;
+					/* raise error */
 				}
-				
 				// do s3 read
-				return s3ext;
-				// if ((rc = getFilepathFromS3(yezzey_vfd_cache[file].filepath)) < 0) {
-				// 	elog(ERROR, "failed to download open file");
-				// }
+			} else {
+				internal_vfd = PathNameOpenFile(yezzey_vfd_cache[yezzey_fd].filepath,
+				yezzey_vfd_cache[yezzey_fd].fileFlags, yezzey_vfd_cache[yezzey_fd].fileMode);
+				if (internal_vfd == -1) {
+					return -1;
+				}
+				elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
+				yezzey_vfd_cache[yezzey_fd].y_vfd = internal_vfd;
 			}
 
-			internal_vfd = PathNameOpenFile(yezzey_vfd_cache[i].filepath,
-			yezzey_vfd_cache[i].fileFlags, yezzey_vfd_cache[i].fileMode);
-			if (internal_vfd == -1) {
-				return -1;
-			}
-
-			yezzey_vfd_cache[i].y_vfd = YEZZEY_OPENED;
-
-			elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
-			yezzey_vfd_cache[i].y_vfd = internal_vfd;
-
-			return i;
+			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_OPENED;
+			return yezzey_fd;
 		}
 	}
-/* no martch*/
+/* no match*/
 	return -1;
 }
 
@@ -558,7 +560,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 #else
 		elog(ERROR, "external table modifications are not supported yet");
 #endif
-		return yezzey_writer_transfer_data(yezzey_vfd_cache[file], buffer, amount);
+		return yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, amount);
 	}
 	elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
 	rc = FileWrite(actual_fd, buffer, amount);

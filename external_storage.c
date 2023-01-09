@@ -82,7 +82,7 @@ offloadFileToExternalStorage(const char *localPath, const char * external_path, 
 	}
 	progress = 0;
 
-	whandle = createWriterHandle(""/*bucket*/, "" /*prefix*/, GpIdentity.segindex, modcount, external_path);
+	whandle = createWriterHandle(""/*relname*/, ""/*bucket*/, "" /*prefix*/, GpIdentity.segindex, modcount, external_path);
 	rc = 0;
 
 	while (progress < logicalEof)
