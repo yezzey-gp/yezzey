@@ -108,10 +108,11 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
     return ret;
 }
 
-void * createWriterHandle(void * reader_ptr, char * relname, char * bucket, char * external_storage_prefix, const char * fileName, int32_t segid, int64_t modcount) {
+void * createWriterHandle(char * rhandle_ptr,
+ char * relname, char * bucket, char * external_storage_prefix, char * fileName, int32_t segid, int64_t modcount) {
     auto prefix = getYezzeyRelationUrl(relname, bucket, external_storage_prefix, fileName, segid);
 
-    GPReader * reader = (GPReader *) reader_ptr;
+    GPReader * reader = (GPReader *) rhandle_ptr;
 
     auto content = reader->getKeyList().contents;
     if (content.size() == 0) {

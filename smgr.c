@@ -314,7 +314,7 @@ int yezzey_FileTruncate(SMGRFile file, int offset);
 
 
 typedef struct yezzey_vfd {
-	int y_vfd;
+	int y_vfd; /* Either YEZZEY_* preserved fd or pg internal fd >= 9 */
 	int localTmpVfd; /* for writing files */
 	char * filepath;
 	char * relname;
@@ -411,6 +411,8 @@ File virtualEnsure(SMGRFile file) {
 			return s3ext;
 		}
 
+		/* Do we need this? */
+
 		internal_vfd = PathNameOpenFile(yezzey_vfd_cache[file].filepath,
 		 yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
 		if (internal_vfd == -1) {
@@ -466,12 +468,18 @@ SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlag
 	for (yezzey_fd = 0; yezzey_fd < MAXVFD; ++yezzey_fd) {
 		if (yezzey_vfd_cache[yezzey_fd].y_vfd == YEZZEY_VANANT_VFD) {
 			yezzey_vfd_cache[yezzey_fd].filepath = strdup(fileName);
-			yezzey_vfd_cache[yezzey_fd].relname = strdup(relname);
+			if (relname == NULL) {
+				/* Should be possible only in recovery */
+				Assert(RecoveryInProgress());
+			} else {
+				yezzey_vfd_cache[yezzey_fd].relname = strdup(relname);
+			}
 			yezzey_vfd_cache[yezzey_fd].fileFlags = fileFlags;
 			yezzey_vfd_cache[yezzey_fd].fileMode = fileMode;
 			yezzey_vfd_cache[yezzey_fd].modcount = modcount;
-			if (yezzey_vfd_cache[yezzey_fd].filepath == NULL || yezzey_vfd_cache[yezzey_fd].relname == NULL) {
-				elog(ERROR, "out of mem");
+			if (yezzey_vfd_cache[yezzey_fd].filepath == NULL || 
+			(!RecoveryInProgress() && yezzey_vfd_cache[yezzey_fd].relname == NULL)) {
+				elog(ERROR, "out of memory");
 			}
 
 			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
@@ -503,8 +511,6 @@ SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlag
 				elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
 				yezzey_vfd_cache[yezzey_fd].y_vfd = internal_vfd;
 			}
-
-			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_OPENED;
 			return yezzey_fd;
 		}
 	}
