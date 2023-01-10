@@ -10,8 +10,8 @@
 #define EXTERNC
 #endif
 
-EXTERNC void * createReaderHandle(char * relname, char * bucket, char * external_storage_prefix, const char * fileName, int32_t segid);
-EXTERNC void * createWriterHandle(char * rhandle_ptr, char * relname, char * bucket, char * external_storage_prefix, char * fileName, int32_t segid, int64_t modcount);
+EXTERNC void * createReaderHandle(char * relname, char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid);
+EXTERNC void * createWriterHandle(char * rhandle_ptr, char * relname, char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid, int64_t modcount);
 EXTERNC bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount);
 EXTERNC bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amount);
 

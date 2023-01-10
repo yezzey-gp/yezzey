@@ -10,27 +10,42 @@
 #define DEFAULTTABLESPACE_OID 1663 /* FIXME */
 
 
-std::string getYezzeyRelationUrl(char * relname, char * bucket, char * external_storage_prefix, const char * fileName, int32_t segid) {
+std::string getYezzeyExtrenalStorageBucket(const char * bucket) {
     std::string url = "s3://storage.yandexcloud.net/";
     url += bucket;
     url += "/";
+
+    return url;
+}
+
+std::string getYezzeyRelationUrl(char * relname, const char * external_storage_prefix, const char * fileName, int32_t segid) {
+    std::string url = "";
     url += external_storage_prefix;
     url += "/";
     url += "seg" + std::to_string(segid);
     url += "/basebackups_005/aosegments/";
+    size_t len = strlen(fileName);
 
     int64_t dboid = 0, tableoid = 0;
 
-    for (size_t it = 0; it < strlen(fileName); ++ it) {
+    for (size_t it = 0; it < len;) {
         if (!isdigit(fileName[it])) {
+            ++it;
             continue;
         }
+        if (dboid && tableoid) {
+            break; //seg num follows
+        }
         if (dboid) {
-            tableoid *= 10;
-            tableoid += fileName[it] - '0';
+            while (it < len && isdigit(fileName[it])) {
+                tableoid *= 10;
+                tableoid += fileName[it++] - '0';
+            }
         } else {
-            dboid *= 10;
-            dboid += fileName[it] - '0';
+            while (it < len && isdigit(fileName[it])) {
+                dboid *= 10;
+                dboid += fileName[it++] - '0';
+            }
         }
     }
 
@@ -38,10 +53,18 @@ std::string getYezzeyRelationUrl(char * relname, char * bucket, char * external_
 
 
     url += std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(dboid) + "_";
-    url += (char*)MD5((const unsigned char*)relname, strlen(relname), md);
-    url += "_" + std::to_string(tableoid) + "_" + std::to_string(segid) + "_";
-    
-    url += " config=/home/reshke/s3test.conf region=us-east-1";
+
+    /* compute AO/AOCS relation name, just like walg does*/
+    (void)MD5((const unsigned char*)relname, strlen(relname), md);
+
+    for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i) {
+        char chunk[3];
+        (void)sprintf(chunk,"%.2x", md[i]);
+        url += chunk[0];
+        url += chunk[1];
+    }
+
+    url += "_" + std::to_string(tableoid) + "_";
 
     return url;
 }
@@ -59,26 +82,35 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
     indx += prefix.size();
     auto endindx = name.find("_aoseg", indx);
 
-    for (size_t it = indx + 1; it < endindx; ++ it) {
+    size_t prev = 0;
+
+    /* name[endindx] -> not digit */
+    for (size_t it = indx + 1; it <= endindx; ++ it) {
         if (!isdigit(name[it])) {
-            res.push_back(0);
+            if (prev) {
+                res.push_back(prev);
+            }
+            prev = 0;
             continue;
         }
-        res.back() *= 10;
-        res.back() += name[it] - '0';
-    }
-
-    if (res.size() && res.back() == 0) {
-        res.pop_back();
+        prev *= 10;
+        prev += name[it] - '0';
     }
 
     return res;
 }
 
-void * createReaderHandle(char * relname, char * bucket, char * external_storage_prefix, const char * fileName, int32_t segid) {
-    auto prefix = getYezzeyRelationUrl(relname, bucket, external_storage_prefix, fileName, segid);
+void * createReaderHandle(char * relname, char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid) {
+    auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
 
-    auto reader = reader_init(prefix.c_str());
+    // add config path FIXME
+    auto reader = reader_init(
+        (getYezzeyExtrenalStorageBucket(bucket) + prefix +  " config=/home/reshke/s3test.conf region=us-east-1").c_str());
+
+    if (reader == NULL) {
+        /* error while external storage initialization */
+        return NULL;
+    }
 
     auto content = reader->getKeyList().contents;
     std::map<std::string, std::vector<int64_t>> cache;
@@ -108,15 +140,24 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
     return ret;
 }
 
-void * createWriterHandle(char * rhandle_ptr,
- char * relname, char * bucket, char * external_storage_prefix, char * fileName, int32_t segid, int64_t modcount) {
-    auto prefix = getYezzeyRelationUrl(relname, bucket, external_storage_prefix, fileName, segid);
+void * createWriterHandle(
+    char * rhandle_ptr,
+    char * relname, 
+    char * bucket, 
+    const char * external_storage_prefix, 
+    const char * fileName, int32_t segid, int64_t modcount) {
+    if (rhandle_ptr == NULL) {
+        return NULL;
+    }
+
+    auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
 
     GPReader * reader = (GPReader *) rhandle_ptr;
 
     auto content = reader->getKeyList().contents;
     if (content.size() == 0) {
-        auto url = make_yezzey_url(prefix, {modcount, modcount, modcount, modcount});
+        auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(bucket) + prefix, {modcount, modcount, modcount, modcount});
+        url += " config=/home/reshke/s3test.conf region=us-east-1";
         return writer_init(url.c_str());
     }
 
@@ -129,7 +170,11 @@ void * createWriterHandle(char * rhandle_ptr,
         // else error
     }
 
-    auto url = make_yezzey_url(prefix, largest);
+    auto url = make_yezzey_url(
+        getYezzeyExtrenalStorageBucket(bucket) + prefix, largest);
+
+    // config path
+    url += " config=/home/reshke/s3test.conf region=us-east-1";
 
     return writer_init(url.c_str());
 }

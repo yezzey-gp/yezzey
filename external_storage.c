@@ -87,9 +87,17 @@ offloadFileToExternalStorage(const char *relname, const char *localPath, int64 m
 	rhandle = createReaderHandle(relname, 
 		storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex);
 
+	if (rhandle == NULL) {
+		elog(ERROR, "offloading %s: failed to get external storage read handler", localPath);
+	}
+
 	whandle = createWriterHandle(rhandle, relname/*relname*/, 
 		storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex, modcount);
 	
+	if (whandle == NULL) {
+		elog(ERROR, "offloading %s: failed to get external storage write handler", localPath);
+	}
+
 	rc = 0;
 
 	while (progress < logicalEof)
@@ -134,14 +142,7 @@ offloadFileToExternalStorage(const char *relname, const char *localPath, int64 m
 bool
 ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno)
 {	
-	// XXX: not used by AOseg logic
-	// if (IsCrashRecoveryOnly()) {
-	// 	/* MDB-19689: do not consult catalog 
-	// 		if crash recovery is in progress */
-
-	// 	elog(yezzey_log_level, "[YEZZEY_SMGR]: skip ensuring while crash recovery");
-	// 	return true;
-	// }
+	/* MDB-19689: do not consult catalog */
 
     elog(yezzey_log_level, "ensuring %d is local", rnode.relNode);
     return true;
@@ -263,7 +264,6 @@ statRelationSpaceUsage(RelFileNode rnode, int segno, int64 modcount, int64 logic
     return 0;
 }
 
-
 int
 loadRelationSegment(RelFileNode rnode, int segno) {
     StringInfoData path;
@@ -283,58 +283,13 @@ loadRelationSegment(RelFileNode rnode, int segno) {
         return 0;
     }
 
+#if 0
     if ((rc = getFilepathFromS3(path.data)) < 0) {
         pfree(path.data);
         return rc;
     }
+#endif
 
     pfree(path.data);
     return 0;
-}
-
-int
-getFilepathFromS3(const char *filepath)
-{
-	// void * rhandle;
-	// int rc;
-	// char * buffer;
-	// size_t chunkSize;
-	// File vfd;
-	// int64 sz;
-	// int64 progress;
-
-	// elog(INFO, "[YEZZEY_SMGR] fetching %s", filepath);
-
-	// chunkSize = 1 << 20;
-	// buffer = palloc(chunkSize);
-	// vfd = PathNameOpenFile(localPath, O_WRONLY, 0600);
-	// sz = FileDiskSize(vfd);
-	// progress = 0;
-
-	// rhandle = createReaderHandle(localPath);
-	// rc = 0;
-
-	// while (progress < sz)
-	// {
-	// 	if (!yezzey_reader_transfer_data(rhandle, buffer, rc)) {
-	// 		return -1;
-	// 	}
-	// 	progress += rc;
-
-	// 			/* code */
-	// 	rc = FileWrite(vfd, buffer, chunkSize);
-	// 	if (rc < 0) {
-	// 		return rc;
-	// 	}
-	// 	if (rc == 0) continue;
-	// }
-
-	// yezzey_complete_r_transfer_data(&whandle);
-	// elog(INFO, "[YEZZEY_SMGR] load %s, retcode %d", filepath, rc);
-
-	// pfree(buffer);
-
-	// return rc;
-
-	return 0;
 }
