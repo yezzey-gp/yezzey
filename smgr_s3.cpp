@@ -207,6 +207,36 @@ int64_t yezzey_virtual_relation_size(const char * relname, const char * bucket, 
     return sz;
 }
 
+
+void * yezzey_list_relation_chunks(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName,  int32_t segid, size_t * cnt_chunks) {
+	GPReader * rhandle = (GPReader * )createReaderHandle(relname, 
+		bucket/*bucket*/, external_storage_prefix /*prefix*/, fileName, segid);
+    
+    int64_t sz = 0;
+    auto content = rhandle->getKeyList().contents;
+    *cnt_chunks = content.size();
+    return rhandle;
+}
+
+int64_t yezzey_copy_relation_chunks(void *rhandle_ptr, externalChunkMeta * chunks){
+	GPReader * rhandle = (GPReader * )rhandle_ptr;
+    
+    auto content = rhandle->getKeyList().contents;
+    for (size_t i = 0; i < content.size(); ++ i) {
+        auto key = content[i];
+        chunks[i].chunkName = strdup(key.getName().c_str());
+        chunks[i].chunkSize = key.getSize();
+    }
+    return 0;
+}
+
+
+int64_t yezzey_list_relation_chunks_cleanup(void *rhandle_ptr) {
+    auto reader = (GPReader*) rhandle_ptr;
+    reader_cleanup(&reader);
+    return 0;
+}
+
 bool yezzey_reader_empty(void * handle) {
     return reader_empty((GPReader*) handle);
 }

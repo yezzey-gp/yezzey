@@ -216,7 +216,6 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 }
 
 
-
 int
 statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, size_t *external_bytes) {
     StringInfoData local_path;
@@ -251,6 +250,60 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 
 	Assert(virtual_sz <= logicalEof);
 	*local_commited_bytes = logicalEof - virtual_sz;
+
+    pfree(local_path.data);
+    return 0;
+}
+
+int
+statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, yezzeyChunkMeta **list, size_t *cnt_chunks) {
+    StringInfoData local_path;
+	RelFileNode rnode;
+	int vfd;
+	void *rhanlde;
+	struct externalChunkMeta * meta;
+
+	rnode = aorel->rd_node;
+	
+	initStringInfo(&local_path);
+	if (segno == 0) {
+		appendStringInfo(&local_path, "base/%d/%d", rnode.dbNode, rnode.relNode);
+	} else {
+		appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+	}
+
+    elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
+	
+	/* stat external storage usage */
+	rhanlde = yezzey_list_relation_chunks(aorel->rd_rel->relname.data, 
+		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex, cnt_chunks);
+
+	Assert((*cnt_chunks) >= 0);
+	meta = palloc(sizeof(struct externalChunkMeta) * (*cnt_chunks));
+
+	yezzey_copy_relation_chunks(rhanlde, meta);
+
+	// do copy;
+	*list = palloc(sizeof(struct yezzeyChunkMeta) * (*cnt_chunks));
+
+	for (size_t i = 0; i < *cnt_chunks; ++i){
+		(*list)[i].chunkSize = meta[i].chunkSize;
+		(*list)[i].chunkName = pstrdup(meta[i].chunkName);
+		free(meta[i].chunkName);
+	}
+
+	yezzey_list_relation_chunks_cleanup(rhanlde);
+	pfree(meta);
+	/* No local storage cache logic for now */
+	*local_bytes = 0;
+
+	vfd = PathNameOpenFile(local_path.data, O_RDONLY, 0600);
+	if (vfd != -1) {
+		*local_bytes += FileSeek(vfd, 0, SEEK_END);
+		FileClose(vfd);
+	}
+
+	*local_commited_bytes = 0;
 
     pfree(local_path.data);
     return 0;

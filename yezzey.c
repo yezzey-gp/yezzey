@@ -37,6 +37,7 @@ PG_FUNCTION_INFO_V1(load_relation);
 PG_FUNCTION_INFO_V1(force_segment_offload);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_internal);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_per_filesegment);
+PG_FUNCTION_INFO_V1(yezzey_relation_describe_external_storage_structure_internal);
 
 void
 yezzey_log_smgroffload(RelFileNode *rnode);
@@ -477,6 +478,202 @@ yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS)
 		SRF_RETURN_NEXT(funcctx, result);
 	} else {
 		elog(ERROR, "wrong rel");
+	}
+	PG_RETURN_VOID();
+}
+
+
+typedef struct yezzeyChunkMetaInfo {
+	Oid reloid;	// "reloid" column
+	int32_t segindex; // "segindex" column
+	int32_t segfileindex; // "segfileindex" column
+	const char* external_storage_filepath; // "external_storage_filepath" column
+	int64_t local_bytes; // "local_bytes" column
+	int64_t local_commited_bytes; // "local_commited_bytes" column
+	int64_t external_bytes; // "external_bytes" column
+} yezzeyChunkMetaInfo;
+
+Datum
+yezzey_relation_describe_external_storage_structure_internal(PG_FUNCTION_ARGS)
+{
+	Oid reloid;
+	Relation aorel;
+	int i;
+	int segno;
+	int total_segfiles;
+	int64 modcount;
+	int64 logicalEof;
+	FileSegInfo **segfile_array;
+	Snapshot appendOnlyMetaDataSnapshot;
+	FuncCallContext *funcctx;
+	MemoryContext oldcontext;
+	AttInMetadata *attinmeta;
+	int32		call_cntr;
+	yezzeyChunkMetaInfo *chunkInfo;
+	chunkInfo = palloc(sizeof(yezzeyChunkMetaInfo));
+
+	reloid = PG_GETARG_OID(0);
+
+	/*  This mode guarantees that the holder is the only transaction accessing the table in any way. 
+	* we need to be sure, thar no other transaction either reads or write to given relation
+	* because we are going to delete relation from local storage
+	*/
+	aorel = relation_open(reloid, AccessShareLock);
+
+	/* GetAllFileSegInfo_pg_aoseg_rel */
+
+	/* acquire snapshot for aoseg table lookup */
+	appendOnlyMetaDataSnapshot = SnapshotSelf;
+
+	/* stuff done only on the first call of the function */
+	if (SRF_IS_FIRSTCALL()) {
+		/* create a function context for cross-call persistence */
+		funcctx = SRF_FIRSTCALL_INIT();
+
+		/*
+		 * switch to memory context appropriate for multiple function calls
+		 */
+		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+		size_t total_row = 0;
+
+		if (aorel->rd_rel->relstorage == 'a') {
+			/* ao rows relation */
+			segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+			size_t local_bytes = 0;
+			size_t external_bytes = 0;
+			size_t local_commited_bytes = 0;
+
+			for (i = 0; i < total_segfiles; ++ i) {		
+			
+				segno = segfile_array[i]->segno;
+				modcount = segfile_array[i]->modcount;
+				logicalEof = segfile_array[i]->eof;
+				
+				elog(yezzey_log_level, "stat segment no %d, modcount %ld with to logial eof %ld", segno, modcount, logicalEof);
+				size_t curr_local_bytes = 0;
+				size_t curr_external_bytes = 0;
+				size_t curr_local_commited_bytes = 0;
+				yezzeyChunkMeta * list;
+				size_t cnt_chunks;
+
+				if (statRelationSpaceUsagePerExternalChunk(aorel, segno, modcount, logicalEof, &curr_local_bytes, &curr_local_commited_bytes, &list, &cnt_chunks) < 0) {
+					elog(ERROR, "failed to stat segment %d usage", segno);
+				}
+
+			
+				local_bytes = curr_local_bytes;
+				external_bytes = curr_external_bytes;
+				local_commited_bytes = curr_local_commited_bytes;
+
+				chunkInfo = repalloc(chunkInfo, sizeof(yezzeyChunkMetaInfo) * (total_row + cnt_chunks));
+
+				for (size_t chunk_index = 0; chunk_index < cnt_chunks; ++chunk_index) {
+					chunkInfo[total_row + chunk_index].reloid = reloid;
+					chunkInfo[total_row + chunk_index].segindex = GpIdentity.segindex;
+					chunkInfo[total_row + chunk_index].segfileindex = i;
+					chunkInfo[total_row + chunk_index].external_storage_filepath = list[chunk_index].chunkName;
+					chunkInfo[total_row + chunk_index].local_bytes = local_bytes;
+					chunkInfo[total_row + chunk_index].local_commited_bytes = local_commited_bytes;
+					chunkInfo[total_row + chunk_index].external_bytes = list[chunk_index].chunkSize;
+				}
+				total_row += cnt_chunks;
+			}
+
+			/*
+			* Build a tuple descriptor for our result type
+			* The number and type of attributes have to match the definition of the
+			* view yezzey_offload_relation_status_internal
+			*/
+#define NUM_USED_OFFLOAD_PER_SEGMENT_STATUS 7
+			funcctx->tuple_desc = CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
+
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 1, "reloid",
+					OIDOID, -1 /* typmod */, 0 /* attdim */);
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 2, "segindex",
+					INT4OID, -1 /* typmod */, 0 /* attdim */);
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 3, "segfileindex",
+					INT4OID, -1 /* typmod */, 0 /* attdim */);
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 4, "external_storage_filepath",
+					TEXTOID, -1 /* typmod */, 0 /* attdim */);
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 5, "local_bytes",
+					INT8OID, -1 /* typmod */, 0 /* attdim */);
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 6, "local_commited_bytes",
+					INT8OID, -1 /* typmod */, 0 /* attdim */);
+			TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber) 7, "external_bytes",
+					INT8OID, -1 /* typmod */, 0 /* attdim */);
+
+			funcctx->tuple_desc =  BlessTupleDesc(funcctx->tuple_desc);
+		} else {
+			elog(ERROR, "yezzey: wrong rel");
+		}
+
+		/*
+		 * Generate attribute metadata needed later to produce tuples from raw
+		 * C strings
+		 */
+		attinmeta = TupleDescGetAttInMetadata(funcctx->tuple_desc);
+		funcctx->attinmeta = attinmeta;
+
+		if (total_row > 0)
+		{
+			funcctx->max_calls = total_row;
+			funcctx->user_fctx = chunkInfo;
+			/* funcctx->user_fctx */
+		}
+		else
+		{
+			/* fast track when no results */
+			MemoryContextSwitchTo(oldcontext);
+			relation_close(aorel, AccessShareLock);
+			SRF_RETURN_DONE(funcctx);
+		}
+
+		MemoryContextSwitchTo(oldcontext);
+	}
+
+	/* stuff done on every call of the function */
+	funcctx = SRF_PERCALL_SETUP();
+
+	call_cntr = funcctx->call_cntr;
+
+	attinmeta = funcctx->attinmeta;
+	
+	if (call_cntr == funcctx->max_calls) {
+		/* no pfree on segfile_array because context will be destroyed */
+		relation_close(aorel, AccessShareLock);
+		/* do when there is no more left */
+		SRF_RETURN_DONE(funcctx);
+	}
+
+	chunkInfo = funcctx->user_fctx;
+
+	if (aorel->rd_rel->relstorage == 'a') {
+		/* ao rows relation */
+
+		i = call_cntr;
+
+		/* segment if loaded */
+		Datum		values[NUM_USED_OFFLOAD_PER_SEGMENT_STATUS];
+		bool		nulls[NUM_USED_OFFLOAD_PER_SEGMENT_STATUS];
+		MemSet(nulls, 0, sizeof(nulls));
+
+		values[0] = ObjectIdGetDatum(chunkInfo[i].reloid);
+		values[1] = Int32GetDatum(GpIdentity.segindex);
+		values[2] = Int32GetDatum(chunkInfo[i].segfileindex);
+		values[3] = CStringGetTextDatum(chunkInfo[i].external_storage_filepath);
+		values[4] = Int64GetDatum(chunkInfo[i].local_bytes);
+		values[5] = Int64GetDatum(chunkInfo[i].local_commited_bytes);
+		values[6] = Int64GetDatum(chunkInfo[i].external_bytes);
+
+		HeapTuple tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
+		Datum result = HeapTupleGetDatum(tuple);
+		relation_close(aorel, AccessShareLock);
+		
+		SRF_RETURN_NEXT(funcctx, result);
+		
+	} else {
+		elog(ERROR, "yezzey: wrong rel");
 	}
 	PG_RETURN_VOID();
 }

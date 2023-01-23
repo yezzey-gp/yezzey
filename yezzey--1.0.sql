@@ -88,6 +88,13 @@ AS 'MODULE_PATHNAME'
 VOLATILE
 LANGUAGE C STRICT;
 
+-- even more detailed debug about relations file segments
+CREATE OR REPLACE FUNCTION yezzey_relation_describe_external_storage_structure_internal(reloid OID) 
+RETURNS TABLE (reloid OID, segindex INTEGER, segfileindex INTEGER, external_storage_filepath TEXT, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+AS 'MODULE_PATHNAME'
+VOLATILE
+LANGUAGE C STRICT;
+
 
 CREATE OR REPLACE FUNCTION yezzey_offload_relation_status(i_relname TEXT) 
 RETURNS TABLE (reloid OID, segindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
@@ -132,6 +139,29 @@ END;
 $$
 EXECUTE ON ALL SEGMENTS
 LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION yezzey_relation_describe_external_storage_structure(i_relname TEXT) 
+RETURNS TABLE (reloid OID, segindex INTEGER, segfileindex INTEGER, external_storage_filepath TEXT, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+AS $$
+DECLARE
+    v_tmp_relname yezzey.offload_metadata%rowtype;
+BEGIN
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = i_relname;
+    IF NOT FOUND THEN
+        RAISE WARNING'relation % is not in offload metadata table', i_relname;
+    END IF;
+ 
+    RETURN QUERY SELECT 
+        *
+    FROM yezzey_relation_describe_external_storage_structure_internal(
+        i_relname::regclass::oid
+    );
+END;
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE PLPGSQL;
+
 
 
 CREATE OR REPLACE FUNCTION yezzey.force_segment_offload(reloid OID, segid INT) RETURNS void
