@@ -22,7 +22,7 @@ int removeLocalFile(const char *localPath);
 void yezzey_prepare(void);
 void yezzey_finish(void);
 
-int offload_relation_internal(Oid reloid);
+int yezzey_offload_relation_internal(Oid reloid);
 int load_relation_internal(Oid reloid);
 
 int loadFileFromExternalStorage(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);

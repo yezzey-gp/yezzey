@@ -5,7 +5,7 @@
 
 CREATE SCHEMA yezzey;
 
-CREATE OR REPLACE FUNCTION yezzey.offload_relation(reloid OID) RETURNS void
+CREATE OR REPLACE FUNCTION yezzey_offload_relation(reloid OID) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 EXECUTE ON ALL SEGMENTS
@@ -23,19 +23,27 @@ CREATE TABLE yezzey.offload_metadata(
 DISTRIBUTED REPLICATED;
 
 CREATE OR REPLACE FUNCTION
-yezzey.define_offload_policy(offload_relname TEXT, policy offload_policy DEFAULT 'remote_always')
+yezzey_define_offload_policy(offload_relname TEXT, policy offload_policy DEFAULT 'remote_always')
 RETURNS VOID
 AS $$
+DECLARE
+    v_pg_class_entry pg_catalog.pg_class%rowtype;
+BEGIN
+    SELECT * FROM pg_catalog.pg_class INTO v_pg_class_entry WHERE relname = offload_relname;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'relation % is not found in pg_class', offload_relname;
+    END IF;
     INSERT INTO yezzey.offload_metadata VALUES(offload_relname, policy, NULL, NOW());
-    -- get xid before exeuting offload realtion func
-    SELECT yezzey.offload_relation(
-        (SELECT OID FROM pg_class WHERE relname=offload_relname)
+    -- get xid before executing offload realtion func
+    PERFORM yezzey_offload_relation(
+        (SELECT oid FROM pg_catalog.pg_class WHERE relname=offload_relname)
     );
+END;
 $$
-LANGUAGE SQL;
+LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION
-yezzey.offload_relation(offload_relname TEXT)
+yezzey_offload_relation(offload_relname TEXT)
 RETURNS VOID
 AS $$
 DECLARE
@@ -43,10 +51,10 @@ DECLARE
 BEGIN
     SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = offload_relname;
     IF NOT FOUND THEN
-        RAISE WARNING'relation %s is not in offload metadata table', offload_relname;
+        RAISE WARNING'relation % is not in offload metadata table', offload_relname;
     END IF;
     UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
-    PERFORM yezzey.offload_relation(
+    PERFORM yezzey_offload_relation(
         (SELECT OID FROM pg_class WHERE relname=offload_relname)
     );
     UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
@@ -66,7 +74,7 @@ LANGUAGE C STRICT;
 
 -- external bytes always commited
 
-CREATE OR REPLACE FUNCTION yezzey.yezzey_get_relation_offload_status(reloid OID) 
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status_internal(reloid OID) 
 RETURNS TABLE (reloid OID, segindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS 'MODULE_PATHNAME'
 VOLATILE
@@ -74,14 +82,14 @@ LANGUAGE C STRICT;
 
 
 -- more detailed debug about relations file segments
-CREATE OR REPLACE FUNCTION yezzey.yezzey_get_relation_offload_per_filesegment_status(reloid OID) 
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status_per_filesegment(reloid OID) 
 RETURNS TABLE (reloid OID, segindex INTEGER, segfileindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS 'MODULE_PATHNAME'
 VOLATILE
 LANGUAGE C STRICT;
 
 
-CREATE OR REPLACE FUNCTION yezzey.stat_offload_relation(i_relname TEXT) 
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status(i_relname TEXT) 
 RETURNS TABLE (reloid OID, segindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS $$
 DECLARE
@@ -89,12 +97,12 @@ DECLARE
 BEGIN
     SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = i_relname;
     IF NOT FOUND THEN
-        RAISE WARNING'relation %s is not in offload metadata table', i_relname;
+        RAISE WARNING'relation % is not in offload metadata table', i_relname;
     END IF;
 
     RETURN QUERY SELECT 
         *
-    FROM yezzey.yezzey_get_relation_offload_status(
+    FROM yezzey_offload_relation_status_internal(
         i_relname::regclass::oid
     );
 END;
@@ -104,7 +112,7 @@ LANGUAGE PLPGSQL;
 
 
 
-CREATE OR REPLACE FUNCTION yezzey.stat_offload_relation_full(i_relname TEXT) 
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status_per_filesegment(i_relname TEXT) 
 RETURNS TABLE (reloid OID, segindex INTEGER, segfileindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS $$
 DECLARE
@@ -112,12 +120,12 @@ DECLARE
 BEGIN
     SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = i_relname;
     IF NOT FOUND THEN
-        RAISE WARNING'relation %s is not in offload metadata table', i_relname;
+        RAISE WARNING'relation % is not in offload metadata table', i_relname;
     END IF;
  
     RETURN QUERY SELECT 
         *
-    FROM yezzey.yezzey_get_relation_offload_per_filesegment_status(
+    FROM yezzey_offload_relation_status_per_filesegment(
         i_relname::regclass::oid
     );
 END;

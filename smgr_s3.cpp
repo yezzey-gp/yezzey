@@ -18,7 +18,7 @@ std::string getYezzeyExtrenalStorageBucket(const char * bucket) {
     return url;
 }
 
-std::string getYezzeyRelationUrl(char * relname, const char * external_storage_prefix, const char * fileName, int32_t segid) {
+std::string getYezzeyRelationUrl(const char * relname, const char * external_storage_prefix, const char * fileName, int32_t segid) {
     std::string url = "";
     url += external_storage_prefix;
     url += "/";
@@ -27,24 +27,30 @@ std::string getYezzeyRelationUrl(char * relname, const char * external_storage_p
     size_t len = strlen(fileName);
 
     int64_t dboid = 0, tableoid = 0;
+    int64_t relation_segment = 0;
 
     for (size_t it = 0; it < len;) {
         if (!isdigit(fileName[it])) {
             ++it;
             continue;
         }
-        if (dboid && tableoid) {
+        if (dboid && tableoid && relation_segment) {
             break; //seg num follows
         }
-        if (dboid) {
+        if (dboid == 0) {
+            while (it < len && isdigit(fileName[it])) {
+                dboid *= 10;
+                dboid += fileName[it++] - '0';
+            }
+        } else if (tableoid == 0) {
             while (it < len && isdigit(fileName[it])) {
                 tableoid *= 10;
                 tableoid += fileName[it++] - '0';
             }
-        } else {
+        } else if (relation_segment == 0) { 
             while (it < len && isdigit(fileName[it])) {
-                dboid *= 10;
-                dboid += fileName[it++] - '0';
+                relation_segment *= 10;
+                relation_segment += fileName[it++] - '0';
             }
         }
     }
@@ -64,7 +70,7 @@ std::string getYezzeyRelationUrl(char * relname, const char * external_storage_p
         url += chunk[1];
     }
 
-    url += "_" + std::to_string(tableoid) + "_";
+    url += "_" + std::to_string(tableoid) + "_" + std::to_string(relation_segment) + "_";
 
     return url;
 }
@@ -85,7 +91,8 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
     size_t prev = 0;
 
     /* name[endindx] -> not digit */
-    for (size_t it = indx + 1; it <= endindx; ++ it) {
+    /* mc1_D_mc2_D_mc3_D_mc4 */
+    for (size_t it = indx; it <= endindx; ++ it) {
         if (!isdigit(name[it])) {
             if (prev) {
                 res.push_back(prev);
@@ -100,7 +107,7 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
     return res;
 }
 
-void * createReaderHandle(char * relname, char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid) {
+void * createReaderHandle(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid) {
     auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
 
     // add config path FIXME
@@ -141,9 +148,9 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
 }
 
 void * createWriterHandle(
-    char * rhandle_ptr,
-    char * relname, 
-    char * bucket, 
+    const char * rhandle_ptr,
+    const char * relname, 
+    const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, int32_t segid, int64_t modcount) {
     if (rhandle_ptr == NULL) {
@@ -186,22 +193,18 @@ bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
     return res;
 }
 
-int64_t yezzey_virtual_relation_size(int32_t segid, const char * fileName) {
-#if 0 /* TODO: fix */
-
-    auto prefix = getYezzeyRelationUrl(relname, bucket, external_storage_prefix, fileName, segid);
-    GPReader * reader = reader_init(prefix.c_str());
+int64_t yezzey_virtual_relation_size(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName,  int32_t segid) {
+	GPReader * rhandle = (GPReader * )createReaderHandle(relname, 
+		bucket/*bucket*/, external_storage_prefix /*prefix*/, fileName, segid);
     
     int64_t sz = 0;
-    auto content = reader->getKeyList().contents;
+    auto content = rhandle->getKeyList().contents;
     for (auto key : content) {
-        sz += reader->bucketReader.constructReaderParams(key).getKeySize();
+        sz += rhandle->bucketReader.constructReaderParams(key).getKeySize();
     }
 
-    reader_cleanup(&reader);
+    reader_cleanup(&rhandle);
     return sz;
-#endif
-    return 0;
 }
 
 bool yezzey_reader_empty(void * handle) {

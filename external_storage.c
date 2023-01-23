@@ -206,17 +206,10 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 	/*wtf*/
 	RelationDropStorageNoClose(aorel);
 	
-	virtual_sz = yezzey_virtual_relation_size(GpIdentity.segindex, local_path.data);
+	virtual_sz = yezzey_virtual_relation_size(aorel->rd_rel->relname.data,
+		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex);
 
-    appendStringInfo(&local_path, "_tmpbuf");
-    elog(yezzey_ao_log_level, "contructed path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
-
-	Assert(virtual_sz <= logicalEof);
-
-	if ((rc = offloadRelationSegmentPath(aorel->rd_rel->relname.data, local_path.data, modcount, logicalEof - virtual_sz)) < 0) {
-		pfree(local_path.data);
-		return rc;
-	}
+    elog(yezzey_ao_log_level, "yezzey: relation segment reached external storage path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
 
     pfree(local_path.data);
     return 0;
@@ -225,10 +218,13 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 
 
 int
-statRelationSpaceUsage(RelFileNode rnode, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, size_t *external_bytes) {
+statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, size_t *external_bytes) {
     StringInfoData local_path;
 	size_t virtual_sz;
+	RelFileNode rnode;
 	int vfd;
+
+	rnode = aorel->rd_node;
 
     initStringInfo(&local_path);
 	if (segno == 0) {
@@ -240,23 +236,19 @@ statRelationSpaceUsage(RelFileNode rnode, int segno, int64 modcount, int64 logic
     elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
 	
 	/* stat external storage usage */
-	virtual_sz = yezzey_virtual_relation_size(GpIdentity.segindex, local_path.data);
+	virtual_sz = yezzey_virtual_relation_size(aorel->rd_rel->relname.data, 
+		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex);
 	*external_bytes = virtual_sz;
 
+	/* No local storage cache logic for now */
 	*local_bytes = 0;
+
 	vfd = PathNameOpenFile(local_path.data, O_RDONLY, 0600);
 	if (vfd != -1) {
 		*local_bytes += FileSeek(vfd, 0, SEEK_END);
 		FileClose(vfd);
 	}
 
-    appendStringInfo(&local_path, "_tmpbuf");
-    elog(yezzey_ao_log_level, "contructed path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
-	vfd = PathNameOpenFile(local_path.data, O_RDONLY, 0600);
-	if (vfd != -1) {
-		*local_bytes += FileSeek(vfd, 0, SEEK_END);
-		FileClose(vfd);
-	}
 	Assert(virtual_sz <= logicalEof);
 	*local_commited_bytes = logicalEof - virtual_sz;
 

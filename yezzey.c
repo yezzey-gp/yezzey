@@ -32,11 +32,11 @@ char *storage_bucket = NULL;
 
 PG_MODULE_MAGIC;
 
-PG_FUNCTION_INFO_V1(offload_relation);
+PG_FUNCTION_INFO_V1(yezzey_offload_relation);
 PG_FUNCTION_INFO_V1(load_relation);
 PG_FUNCTION_INFO_V1(force_segment_offload);
-PG_FUNCTION_INFO_V1(yezzey_get_relation_offload_status);
-PG_FUNCTION_INFO_V1(yezzey_get_relation_offload_per_filesegment_status);
+PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_internal);
+PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_per_filesegment);
 
 void
 yezzey_log_smgroffload(RelFileNode *rnode);
@@ -66,7 +66,7 @@ yezzey_log_smgroffload(RelFileNode *rnode)
 
 
 
-int offload_relation_internal(Oid reloid) {
+int yezzey_offload_relation_internal(Oid reloid) {
  	Relation aorel;
 	int i;
 	int segno;
@@ -294,7 +294,7 @@ load_relation(PG_FUNCTION_ARGS) {
 
 
 Datum
-offload_relation(PG_FUNCTION_ARGS)
+yezzey_offload_relation(PG_FUNCTION_ARGS)
 {
 	/*
 	* Force table offloading to external storage
@@ -308,7 +308,7 @@ offload_relation(PG_FUNCTION_ARGS)
 
 	reloid = PG_GETARG_OID(0);
 
-	rc = offload_relation_internal(reloid);
+	rc = yezzey_offload_relation_internal(reloid);
 
 	PG_RETURN_VOID();
 }
@@ -320,7 +320,7 @@ force_segment_offload(PG_FUNCTION_ARGS) {
 
 
 Datum
-yezzey_get_relation_offload_per_filesegment_status(PG_FUNCTION_ARGS)
+yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS)
 {
 	Oid reloid;
 	Relation aorel;
@@ -367,7 +367,7 @@ yezzey_get_relation_offload_per_filesegment_status(PG_FUNCTION_ARGS)
 			/*
 			* Build a tuple descriptor for our result type
 			* The number and type of attributes have to match the definition of the
-			* view yezzey_get_relation_offload_status
+			* view yezzey_offload_relation_status_internal
 			*/
 #define NUM_USED_OFFLOAD_PER_SEGMENT_STATUS 6
 			funcctx->tuple_desc = CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
@@ -448,7 +448,7 @@ yezzey_get_relation_offload_per_filesegment_status(PG_FUNCTION_ARGS)
 		size_t curr_external_bytes = 0;
 		size_t curr_local_commited_bytes = 0;
 
-		if (statRelationSpaceUsage(aorel->rd_node, segno, modcount, logicalEof, &curr_local_bytes, &curr_local_commited_bytes, &curr_external_bytes) < 0) {
+		if (statRelationSpaceUsage(aorel, segno, modcount, logicalEof, &curr_local_bytes, &curr_local_commited_bytes, &curr_external_bytes) < 0) {
 			elog(ERROR, "failed to stat segment %d usage", segno);
 		}
 
@@ -483,7 +483,7 @@ yezzey_get_relation_offload_per_filesegment_status(PG_FUNCTION_ARGS)
 
 
 Datum
-yezzey_get_relation_offload_status(PG_FUNCTION_ARGS)
+yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS)
 {
 	Oid reloid;
 	Relation aorel;
@@ -522,13 +522,13 @@ yezzey_get_relation_offload_status(PG_FUNCTION_ARGS)
 			modcount = segfile_array[i]->modcount;
 			logicalEof = segfile_array[i]->eof;
 			
-			elog(yezzey_log_level, "stat segment no %d, modcount %ld with to logial eof %ld", segno, modcount, logicalEof);
+			elog(yezzey_log_level, "yezzey: stat segment no %d, modcount %ld with to logial eof %ld", segno, modcount, logicalEof);
 			size_t curr_local_bytes = 0;
 			size_t curr_external_bytes = 0;
 			size_t curr_local_commited_bytes = 0;
 
-			if (statRelationSpaceUsage(aorel->rd_node, segno, modcount, logicalEof, &curr_local_bytes, &curr_local_commited_bytes, &curr_external_bytes) < 0) {
-				elog(ERROR, "failed to stat segment %d usage", segno);
+			if (statRelationSpaceUsage(aorel, segno, modcount, logicalEof, &curr_local_bytes, &curr_local_commited_bytes, &curr_external_bytes) < 0) {
+				elog(ERROR, "yezzey: failed to stat segment %d usage", segno);
 			}
 
 			local_bytes += curr_local_bytes;
@@ -541,7 +541,7 @@ yezzey_get_relation_offload_status(PG_FUNCTION_ARGS)
 		/*
 		* Build a tuple descriptor for our result type
 		* The number and type of attributes have to match the definition of the
-		* view yezzey_get_relation_offload_status
+		* view yezzey_offload_relation_status_internal
 		*/
 #define NUM_USED_OFFLOAD_STATUS 5
 		TupleDesc tupdesc = CreateTemplateTupleDesc(NUM_USED_OFFLOAD_STATUS, false);

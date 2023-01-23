@@ -255,7 +255,7 @@ void processTables(void)
 		*/
 		tableOid = strtoll(tableOidRaw, NULL, 10);
 
-		if ((rc = offload_relation_internal(tableOid)) < 0) {
+		if ((rc = yezzey_offload_relation_internal(tableOid)) < 0) {
 			elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc, tableOid);
 		}
 	}
@@ -314,7 +314,7 @@ void processColdTables(void)
 		*/
 		tableOid = strtoll(tableOidRaw, NULL, 10);
 
-		if ((rc = offload_relation_internal(tableOid)) < 0) {
+		if ((rc = yezzey_offload_relation_internal(tableOid)) < 0) {
 			elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc, tableOid);
 		}
 	}
@@ -365,7 +365,7 @@ void offloadExpiredRelations(void)
 		*/
 		tableOid = strtoll(tableOidRaw, NULL, 10);
 
-		if ((rc = offload_relation_internal(tableOid)) < 0) {
+		if ((rc = yezzey_offload_relation_internal(tableOid)) < 0) {
 			elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc, tableOid);
 		} else {
 			elog(yezzey_log_level, "[YEZZEY_SMGR_BG] %s offloaded to external storage due expiration", tableOidRaw);
