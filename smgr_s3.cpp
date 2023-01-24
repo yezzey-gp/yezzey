@@ -140,8 +140,7 @@ void * createReaderHandle(const char * relname, const char * bucket, const char 
     std::sort(content.begin(), content.end(), [&cache, &prefix](const BucketContent & c1, const BucketContent & c2){
         auto v1 = cache[c1.getName()] = cache.count(c1.getName()) ? cache[c1.getName()] : parseModcounts(prefix, c1.getName());
         auto v2 = cache[c2.getName()] = cache.count(c2.getName()) ? cache[c2.getName()] : parseModcounts(prefix, c2.getName());
-
-        return v1 <= v2;
+        return v1 < v2;
     });
 
     return reader;
