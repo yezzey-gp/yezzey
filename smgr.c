@@ -448,10 +448,17 @@ File virtualEnsure(SMGRFile file) {
 
 int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
-	elog(yezzey_ao_log_level, "non virt file seek with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
+		elog(yezzey_ao_log_level, 
+			"yezzey_NonVirtualCurSeek: non virt file seek with yezzey fd %d and actual file in external storage, responding %ld", 
+			file,
+			yezzey_vfd_cache[file].offset);
 		return yezzey_vfd_cache[file].offset;
 	}
+	elog(yezzey_ao_log_level, 
+		"yezzey_NonVirtualCurSeek: non virt file seek with yezzey fd %d and actual %d", 
+		file, 
+		actual_fd);
 	return FileNonVirtualCurSeek(actual_fd);
 }
 
@@ -463,7 +470,7 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
 		yezzey_vfd_cache[file].offset = offset;
 		return offset; 
 	}
-	elog(yezzey_ao_log_level, "file seek with fd %d offset %ld actual %d", file, offset, actual_fd);
+	elog(yezzey_ao_log_level, "yezzey_FileSeek: file seek with yezzey fd %d offset %ld actual %d", file, offset, actual_fd);
 	return FileSeek(actual_fd, offset, whence);
 }
 
@@ -481,10 +488,10 @@ int	yezzey_FileSync(SMGRFile file) {
 SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
 	int yezzey_fd;
 	File internal_vfd;
-	elog(yezzey_ao_log_level, "path name open file %s", fileName);
+	elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */
-	for (yezzey_fd = 0; yezzey_fd < MAXVFD; ++yezzey_fd) {
+	for (yezzey_fd = YEZZEY_NOT_OPENED + 1; yezzey_fd < MAXVFD; ++yezzey_fd) {
 		if (yezzey_vfd_cache[yezzey_fd].y_vfd == YEZZEY_VANANT_VFD) {
 			yezzey_vfd_cache[yezzey_fd].filepath = strdup(fileName);
 			if (relname == NULL) {
@@ -533,9 +540,10 @@ SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlag
 				if (internal_vfd == -1) {
 					return -1;
 				}
-				elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
+				elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: yezzey virtual file descriptor for file %s become %d", fileName, internal_vfd);
 				yezzey_vfd_cache[yezzey_fd].y_vfd = internal_vfd;
 			}
+			elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: file %s yezzey descriptor become %d", fileName, yezzey_fd);
 			return yezzey_fd;
 		}
 	}
@@ -598,12 +606,14 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 		elog(ERROR, "external table modifications are not supported yet");
 #endif
 
+
 		rc = amount;
 		if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, &rc)) {
 			elog(WARNING, "failed to write to external storage");
 			return -1;
 		}
-
+		elog(yezzey_ao_log_level, "yezzey_FileWrite: write %d bytes, %d transfered, yezzey fd %d", amount, rc, file);
+		yezzey_vfd_cache[file].offset += rc;
 		return rc;
 	}
 	elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);

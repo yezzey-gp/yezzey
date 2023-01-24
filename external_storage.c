@@ -109,8 +109,9 @@ offloadFileToExternalStorage(
 			storage_bucket/*bucket*/, 
 			storage_prefix /*prefix*/, 
 			localPath, 
-			GpIdentity.segindex, 
-			modcount);
+			GpIdentity.segindex,
+			/* internal usage, modcount dump not commited */ 
+			modcount + 1);
 	
 	} else {
 
