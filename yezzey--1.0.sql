@@ -22,6 +22,29 @@ EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
 
 
+CREATE OR REPLACE FUNCTION yezzey_show_relation_external_path(
+    reloid OID,
+    segno INT
+) RETURNS TEXT
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION yezzey_show_relation_external_path(
+    offload_relname TEXT,
+    segno INT
+) RETURNS TEXT
+AS $$
+    SELECT * FROM yezzey_show_relation_external_path(
+        (SELECT OID FROM pg_class WHERE relname=offload_relname),
+        segno
+    )
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE SQL;
+
+
 CREATE OR REPLACE FUNCTION yezzey_define_relation_offload_policy_internal(reloid OID) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE

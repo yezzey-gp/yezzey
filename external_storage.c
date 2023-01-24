@@ -103,11 +103,22 @@ offloadFileToExternalStorage(
 		if (!rhandle) {
 			elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
 		}
-		whandle = createWriterHandle(rhandle, relname/*relname*/, 
-			storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex, modcount);
+		whandle = createWriterHandle(
+			rhandle, 
+			relname/*relname*/, 
+			storage_bucket/*bucket*/, 
+			storage_prefix /*prefix*/, 
+			localPath, 
+			GpIdentity.segindex, 
+			modcount);
 	
 	} else {
-		whandle = createWriterHandleToPath(external_storage_path, GpIdentity.segindex, modcount);
+		whandle = createWriterHandleToPath(
+			storage_bucket/*bucket*/, 
+			storage_prefix/*prefix*/,
+			external_storage_path, 
+			GpIdentity.segindex, 
+			modcount);
 	}
 
 	if (!whandle) {

@@ -25,6 +25,7 @@
 #include "utils/tqual.h"
 
 #include "external_storage.h"
+#include "smgr_s3.h"
 
 // For GpIdentity
 #include "c.h"
@@ -43,6 +44,7 @@ PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_per_filesegment);
 PG_FUNCTION_INFO_V1(yezzey_relation_describe_external_storage_structure_internal);
 PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_to_external_path);
+PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
 
 void
 yezzey_log_smgroffload(RelFileNode *rnode);
@@ -318,7 +320,6 @@ load_relation_internal(Oid reloid) {
 	return 0;
 }
 
-
 Datum
 load_relation(PG_FUNCTION_ARGS) {
 	/*
@@ -366,7 +367,6 @@ force_segment_offload(PG_FUNCTION_ARGS) {
 	PG_RETURN_VOID();
 }
 
-
 Datum
 yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS)
 {
@@ -389,6 +389,47 @@ yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS)
 	rc = yezzey_offload_relation_internal(reloid, remove_locally, external_path);
 
 	PG_RETURN_VOID();
+}
+
+
+Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
+	Oid reloid;
+	int rc;
+	Relation aorel;
+	StringInfoData local_path;
+	RelFileNode rnode;
+	int32 segno;
+	char * pgptr;
+
+	reloid = PG_GETARG_OID(0);
+	segno = PG_GETARG_OID(1);
+
+	aorel = relation_open(reloid, AccessShareLock);
+
+	rnode = aorel->rd_node;
+	
+    initStringInfo(&local_path);
+    appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
+
+
+	char * ptr;
+	getYezzeyExternalStoragePath(
+		aorel->rd_rel->relname.data, 
+		storage_bucket/*bucket*/, 
+		storage_prefix /*prefix*/, 
+		local_path.data, 
+		GpIdentity.segindex,
+		&ptr
+	);
+
+	pgptr = pstrdup(ptr);
+	free(ptr);
+
+
+	relation_close(aorel, AccessShareLock);
+	
+
+	PG_RETURN_TEXT_P(cstring_to_text(pgptr));
 }
 
 
