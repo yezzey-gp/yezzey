@@ -36,6 +36,7 @@
 
 char *storage_prefix = NULL;
 char *storage_bucket = NULL;
+char *storage_config = NULL;
 
 PG_MODULE_MAGIC;
 

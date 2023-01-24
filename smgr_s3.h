@@ -20,6 +20,7 @@ struct externalChunkMeta {
 // create external storage reading handle, able to 
 // read all files related to given relation
 EXTERNC void * createReaderHandle(
+	const char * config_path,
 	const char * relname, 
 	const char * bucket, 
 	const char * external_storage_prefix, 
@@ -30,6 +31,7 @@ EXTERNC void * createReaderHandle(
 // to transfer segment file of given AO/AOCS relation,
 // with operation modcound $modcount$
 EXTERNC void * createWriterHandle(
+	const char * config_path,
 	const char * rhandle_ptr, 
 	const char * relname, 
 	const char * bucket, 
@@ -39,6 +41,7 @@ EXTERNC void * createWriterHandle(
 	int64_t modcount);
 
 EXTERNC void * createWriterHandleToPath(
+	const char * config_path,
     const char * bucket,
 	const char * external_storage_prefix,
 	const char * path,
@@ -59,11 +62,25 @@ EXTERNC bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amoun
 
 EXTERNC bool yezzey_reader_empty(void *handle);
 
-EXTERNC int64_t yezzey_virtual_relation_size(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid);
+EXTERNC int64_t yezzey_virtual_relation_size(
+	const char * config_path,
+	const char * relname, 
+	const char * bucket, 
+	const char * external_storage_prefix, 
+	const char * fileName, 
+	int32_t segid);
 
 EXTERNC int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr);
 
-EXTERNC void * yezzey_list_relation_chunks(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName,  int32_t segid, size_t * cnt_chunks);
+EXTERNC void * yezzey_list_relation_chunks(
+	const char * config_path,
+	const char * relname,
+	const char * bucket,
+	const char * external_storage_prefix,
+	const char * fileName,
+	int32_t segid,
+	size_t * cnt_chunks);
+
 EXTERNC int64_t yezzey_copy_relation_chunks(void *rhandle_ptr, struct externalChunkMeta * chunks);
 
 EXTERNC int64_t yezzey_list_relation_chunks_cleanup(void *rhandle_ptr);
