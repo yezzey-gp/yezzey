@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include "catalog/dependency.h"
+#include "catalog/pg_extension.h"
+#include "commands/extension.h"
 #include <stdlib.h>
 
 #include "utils/builtins.h"
@@ -38,6 +41,8 @@ PG_FUNCTION_INFO_V1(force_segment_offload);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_internal);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_per_filesegment);
 PG_FUNCTION_INFO_V1(yezzey_relation_describe_external_storage_structure_internal);
+PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal);
+PG_FUNCTION_INFO_V1(yezzey_offload_relation_to_external_path);
 
 void
 yezzey_log_smgroffload(RelFileNode *rnode);
@@ -66,8 +71,42 @@ yezzey_log_smgroffload(RelFileNode *rnode)
 }
 
 
+Datum
+yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
+	Oid reloid;
+	Oid yezzey_ext_oid;
+	ObjectAddress relationAddr, extensionAddr;
 
-int yezzey_offload_relation_internal(Oid reloid) {
+	reloid = PG_GETARG_OID(0);
+
+	relationAddr.classId = RelationRelationId;
+	relationAddr.objectId = reloid;
+	relationAddr.objectSubId = 0;
+
+
+	yezzey_ext_oid = get_extension_oid("yezzey", false);
+
+	if (!yezzey_ext_oid) {
+		elog(ERROR, "failed to get yezzey extnsion oid");
+	}
+
+	extensionAddr.classId = ExtensionRelationId;
+	extensionAddr.objectId = yezzey_ext_oid;
+	extensionAddr.objectSubId = 0;
+
+	elog(yezzey_log_level, "recording dependency on yezzey for relation %d", reloid);
+
+	/*
+	* OK, add the dependency.
+	*/
+	// recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_EXTENSION);
+	recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_NORMAL);
+	// recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_INTERNAL);
+
+	PG_RETURN_VOID();
+}
+
+int yezzey_offload_relation_internal(Oid reloid, bool remove_locally, const char * external_storage_path) {
  	Relation aorel;
 	int i;
 	int segno;
@@ -108,10 +147,6 @@ int yezzey_offload_relation_internal(Oid reloid) {
 		/* Get information about all the file segments we need to scan */
 		segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		// rc = offloadRelationSegment(aorel->rd_node, 0, 0);
-		// if (rc < 0) {
-		// 	elog(ERROR, "failed to offload segment number %d", 0);
-		// }
 		for (i = 0; i < total_segfiles; i++)
 		{
 			segno = segfile_array[i]->segno;
@@ -120,7 +155,14 @@ int yezzey_offload_relation_internal(Oid reloid) {
 			
 			elog(yezzey_log_level, "offloading segment no %d, modcount %ld up to logial eof %ld", segno, modcount, logicalEof);
 
-			rc = offloadRelationSegment(aorel, aorel->rd_node, segno, modcount, logicalEof);
+			rc = offloadRelationSegment(
+				aorel, 
+				aorel->rd_node, 
+				segno, modcount, 
+				logicalEof, 
+				remove_locally, 
+				external_storage_path);
+
 			if (rc < 0) {
 				elog(ERROR, "failed to offload segment number %d, modcount %ld, up to %ld", segno, modcount, logicalEof);
 			}
@@ -137,11 +179,6 @@ int yezzey_offload_relation_internal(Oid reloid) {
 		segfile_array_cs = GetAllAOCSFileSegInfo(aorel,
 										  appendOnlyMetaDataSnapshot, &total_segfiles);
 
-		// rc = offloadRelationSegment(aorel->rd_node, 0, 0);
-		// if (rc < 0) {
-		// 	elog(ERROR, "failed to offload segment number %d", 0);
-		// }
-
 		for (inat = 0; inat < nvp; ++ inat) {
 			for (i = 0; i < total_segfiles; i++)
 			{
@@ -155,7 +192,15 @@ int yezzey_offload_relation_internal(Oid reloid) {
 				logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
 				elog(yezzey_ao_log_level, "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to eof %ld", segno, pseudosegno, modcount, logicalEof);
 
-				rc = offloadRelationSegment(aorel, aorel->rd_node, pseudosegno, modcount, logicalEof);
+				rc = offloadRelationSegment(
+					aorel, 
+					aorel->rd_node, 
+					pseudosegno, 
+					modcount, 
+					logicalEof, 
+					remove_locally,
+					external_storage_path);
+				
 				if (rc < 0) {
 					elog(ERROR, "failed to offload cs segment number %d, pseudosegno %d, up to %ld", segno, pseudosegno, logicalEof);
 				}
@@ -305,17 +350,44 @@ yezzey_offload_relation(PG_FUNCTION_ARGS)
 	* 3) go and offload each segment (XXX: enhancement: do offloading in parallel)
  	*/
 	Oid reloid;
+	bool remove_locally;
 	int rc;
 
 	reloid = PG_GETARG_OID(0);
+	remove_locally = PG_GETARG_BOOL(1);
 
-	rc = yezzey_offload_relation_internal(reloid);
+	rc = yezzey_offload_relation_internal(reloid, remove_locally, NULL);
 
 	PG_RETURN_VOID();
 }
 
 Datum
 force_segment_offload(PG_FUNCTION_ARGS) {
+	PG_RETURN_VOID();
+}
+
+
+Datum
+yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS)
+{
+	/*
+	* Force table offloading to external storage
+	* In order:
+	* 1) lock table in IN EXCLUSIVE MODE
+	* 2) check pg_aoseg.pg_aoseg_XXX table for all segments
+	* 3) go and offload each segment (XXX: enhancement: do offloading in parallel)
+ 	*/
+	Oid reloid;
+	bool remove_locally;
+	const char * external_path;
+	int rc;
+
+	reloid = PG_GETARG_OID(0);
+	remove_locally = PG_GETARG_BOOL(1);
+	external_path = PG_GETARG_CSTRING(2);
+
+	rc = yezzey_offload_relation_internal(reloid, remove_locally, external_path);
+
 	PG_RETURN_VOID();
 }
 

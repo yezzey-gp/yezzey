@@ -186,6 +186,19 @@ void * createWriterHandle(
     return writer_init(url.c_str());
 }
 
+
+void * createWriterHandleToPath(
+	const char * path,
+	int32_t segid, 
+	int64_t modcount) {
+    std::string url = "path=";
+    url += path;
+    // config path
+    url += " config=/home/reshke/s3test.conf region=us-east-1";
+
+    return writer_init(url.c_str());
+}
+
 bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
     int inner_amount = *amount;
     auto res = reader_transfer_data((GPReader*) handle, buffer, inner_amount);
@@ -204,6 +217,17 @@ int64_t yezzey_virtual_relation_size(const char * relname, const char * bucket, 
     }
 
     reader_cleanup(&rhandle);
+    return sz;
+}
+
+int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr) {
+	GPReader * rhandle = (GPReader * )rhandle_ptr;
+    
+    int64_t sz = 0;
+    auto content = rhandle->getKeyList().contents;
+    for (auto key : content) {
+        sz += rhandle->bucketReader.constructReaderParams(key).getKeySize();
+    }
     return sz;
 }
 
