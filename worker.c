@@ -775,6 +775,12 @@ _PG_init(void)
 				   "",PGC_USERSET,0,
 				   NULL, NULL, NULL);
 
+	DefineCustomStringVariable("yezzey.storage_config",
+				"Storage config for yezzey external storage.",
+				NULL, &storage_config,
+				"",PGC_USERSET,0,
+				NULL, NULL, NULL);
+
 	DefineCustomBoolVariable("yezzey.autooffload",
 				   "enable auto-offloading worker",
 				   NULL, &yezzey_autooffload,
@@ -792,6 +798,7 @@ _PG_init(void)
 				 NULL, &yezzey_ao_log_level,
 				 DEBUG1,loglevel_options,PGC_SUSET,
 				 0, NULL, NULL, NULL);
+
 
 	/* Allocate shared memory for yezzey workers */
 

@@ -167,6 +167,8 @@ gpstop -a -i && gpstart -a
 make destroy-demo-cluster && make create-demo-cluster && gpconfig -s shared_preload_libraries -v yezzey && gpstop -a -i && gpstart -a
 
 
+make destroy-demo-cluster && make create-demo-cluster
 gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005'
 gpconfig -c yezzey.storage_bucket -v 'loh228'
+gpconfig -c yezzey.storage_config -v /home/reshke/s3test.conf
 gpconfig -c shared_preload_libraries -v yezzey

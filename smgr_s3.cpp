@@ -18,6 +18,16 @@ std::string getYezzeyExtrenalStorageBucket(const char * bucket) {
     return url;
 }
 
+std::string yezzey_url_add_options(const std::string &s3path, const char * config_path) {
+    auto ret = s3path;
+
+    ret +=  " config=";
+    ret += config_path;
+    ret += " region=us-east-1";
+
+    return ret;
+}
+
 std::string getYezzeyRelationUrl(const char * relname, const char * external_storage_prefix, const char * fileName, int32_t segid) {
     std::string url = "";
     url += external_storage_prefix;
@@ -122,12 +132,18 @@ getYezzeyExternalStoragePath(
     return;
 }
 
-void * createReaderHandle(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid) {
+void * createReaderHandle(
+    const char * config_path,
+    const char * relname, 
+    const char * bucket, 
+    const char * external_storage_prefix, 
+    const char * fileName, 
+    int32_t segid) {
     auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
 
     // add config path FIXME
     auto reader = reader_init(
-        (getYezzeyExtrenalStorageBucket(bucket) + prefix +  " config=/home/reshke/s3test.conf region=us-east-1").c_str());
+        yezzey_url_add_options((getYezzeyExtrenalStorageBucket(bucket) + prefix), config_path).c_str());
 
     if (reader == NULL) {
         /* error while external storage initialization */
@@ -162,6 +178,7 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
 }
 
 void * createWriterHandle(
+    const char * config_path,
     const char * rhandle_ptr,
     const char * relname, 
     const char * bucket, 
@@ -178,7 +195,7 @@ void * createWriterHandle(
     auto content = reader->getKeyList().contents;
     if (content.size() == 0) {
         auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(bucket) + prefix, {modcount, modcount, modcount, modcount});
-        url += " config=/home/reshke/s3test.conf region=us-east-1";
+        url = yezzey_url_add_options(url, config_path);
         return writer_init(url.c_str());
     }
 
@@ -195,13 +212,14 @@ void * createWriterHandle(
         getYezzeyExtrenalStorageBucket(bucket) + prefix, largest);
 
     // config path
-    url += " config=/home/reshke/s3test.conf region=us-east-1";
+    url = yezzey_url_add_options(url, config_path);
 
     return writer_init(url.c_str());
 }
 
 
 void * createWriterHandleToPath(
+    const char * config_path,
     const char * bucket,
     const char * external_storage_prefix,
 	const char * path,
@@ -213,7 +231,7 @@ void * createWriterHandleToPath(
     url += path;
 
     // config path
-    url += " config=/home/reshke/s3test.conf region=us-east-1";
+    url = yezzey_url_add_options(url, config_path);
 
     return writer_init(url.c_str());
 }
@@ -225,8 +243,14 @@ bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
     return res;
 }
 
-int64_t yezzey_virtual_relation_size(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName,  int32_t segid) {
-	GPReader * rhandle = (GPReader * )createReaderHandle(relname, 
+int64_t yezzey_virtual_relation_size(
+    const char * config_path,
+    const char * relname, 
+    const char * bucket, 
+    const char * external_storage_prefix, 
+    const char * fileName, 
+    int32_t segid) {
+	GPReader * rhandle = (GPReader * )createReaderHandle(config_path, relname, 
 		bucket/*bucket*/, external_storage_prefix /*prefix*/, fileName, segid);
     
     int64_t sz = 0;
@@ -251,11 +275,23 @@ int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr) {
 }
 
 
-void * yezzey_list_relation_chunks(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName,  int32_t segid, size_t * cnt_chunks) {
-	GPReader * rhandle = (GPReader * )createReaderHandle(relname, 
-		bucket/*bucket*/, external_storage_prefix /*prefix*/, fileName, segid);
-    
-    int64_t sz = 0;
+void * yezzey_list_relation_chunks(
+    const char * config_path,
+    const char * relname, 
+    const char * bucket, 
+    const char * external_storage_prefix,
+    const char * fileName,
+    int32_t segid, 
+    size_t * cnt_chunks) 
+{
+	GPReader * rhandle = (GPReader * )createReaderHandle(
+        config_path, 
+        relname, 
+		bucket/*bucket*/, 
+        external_storage_prefix /*prefix*/, 
+        fileName, 
+        segid);
+
     auto content = rhandle->getKeyList().contents;
     *cnt_chunks = content.size();
     return rhandle;

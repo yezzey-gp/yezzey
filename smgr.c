@@ -349,8 +349,13 @@ int readprepare(SMGRFile file) {
 	}
 #endif
 
-	yezzey_vfd_cache[file].rhandle = createReaderHandle(yezzey_vfd_cache[file].relname,
-	 storage_bucket /*bucket*/, storage_prefix /*prefix*/, yezzey_vfd_cache[file].filepath,  GpIdentity.segindex);
+	yezzey_vfd_cache[file].rhandle = createReaderHandle(
+		storage_config,
+		yezzey_vfd_cache[file].relname,
+		storage_bucket /*bucket*/, 
+		storage_prefix /*prefix*/, 
+		yezzey_vfd_cache[file].filepath, 
+		GpIdentity.segindex);
 
 	if (yezzey_vfd_cache[file].rhandle == NULL) {
 		return -1;
@@ -385,12 +390,17 @@ int writeprepare(SMGRFile file) {
 		return -1;
 	}
 
-	yezzey_vfd_cache[file].whandle = createWriterHandle(yezzey_vfd_cache[file].rhandle, yezzey_vfd_cache[file].relname,
+	yezzey_vfd_cache[file].whandle = createWriterHandle(
+		storage_config,
+		yezzey_vfd_cache[file].rhandle,
+		yezzey_vfd_cache[file].relname,
 		storage_bucket/*bucket*/,
 		storage_prefix/*prefix*/,
 		yezzey_vfd_cache[file].filepath, 
 		GpIdentity.segindex,
 		1 /*because modcount will increase on write*/ + yezzey_vfd_cache[file].modcount);
+
+	elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld", yezzey_vfd_cache[file].modcount);
 	if (yezzey_vfd_cache[file].whandle  == NULL) {
 		return -1;
 	}
@@ -433,13 +443,23 @@ File virtualEnsure(SMGRFile file) {
 		/* Do we need this? */
 
 		internal_vfd = PathNameOpenFile(yezzey_vfd_cache[file].filepath,
-		 yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
+		yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
+
+		elog(
+			yezzey_ao_log_level, 
+			"virtualEnsure: yezzey virtual file descriptor for file %s become %d", 
+			yezzey_vfd_cache[file].filepath, 
+			internal_vfd);
+		
 		if (internal_vfd == -1) {
 			// error
-			elog(ERROR, "failed to proxy open file");
+			elog(ERROR, "virtualEnsure: failed to proxy open file %s for fd %d", yezzey_vfd_cache[file].filepath, file);
 		}
 		elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
-		yezzey_vfd_cache[file].y_vfd = internal_vfd;
+
+		yezzey_vfd_cache[file].y_vfd = internal_vfd; // -1 is ok
+
+		elog(yezzey_ao_log_level, "virtualEnsure: file %s yezzey descriptor become %d", yezzey_vfd_cache[file].filepath, file);
 		/* allocate handle struct */
 	}
 
@@ -487,7 +507,6 @@ int	yezzey_FileSync(SMGRFile file) {
 
 SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
 	int yezzey_fd;
-	File internal_vfd;
 	elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */
@@ -510,41 +529,40 @@ SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlag
 
 			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
 
-			if (!ensureFilepathLocal(yezzey_vfd_cache[yezzey_fd].filepath)) {
-				switch (fileFlags) {
-					case O_WRONLY:
-						/* allocate handle struct */						
-						if (writeprepare(yezzey_fd) == -1) {
-							return -1;
-						}
-						break;
-					case O_RDONLY:
-						/* allocate handle struct */
-						if (readprepare(yezzey_fd) == -1) {
-							return -1;
-						}
-						break;
-					case O_RDWR:
-						if (writeprepare(yezzey_fd) == -1) {
-							return -1;
-						}
-						break;
-					default:
-						break;
-					/* raise error */
-				}
-				// do s3 read
+			/* we dont need to interact with s3 while in recovery*/
+
+			if (RecoveryInProgress()) {
+				/* replicae */ 
+				return yezzey_fd;
 			} else {
-				internal_vfd = PathNameOpenFile(yezzey_vfd_cache[yezzey_fd].filepath,
-				yezzey_vfd_cache[yezzey_fd].fileFlags, yezzey_vfd_cache[yezzey_fd].fileMode);
-				if (internal_vfd == -1) {
-					return -1;
+				/* primary */
+				if (!ensureFilepathLocal(yezzey_vfd_cache[yezzey_fd].filepath)) {
+					switch (fileFlags) {
+						case O_WRONLY:
+							/* allocate handle struct */						
+							if (writeprepare(yezzey_fd) == -1) {
+								return -1;
+							}
+							break;
+						case O_RDONLY:
+							/* allocate handle struct */
+							if (readprepare(yezzey_fd) == -1) {
+								return -1;
+							}
+							break;
+						case O_RDWR:
+							if (writeprepare(yezzey_fd) == -1) {
+								return -1;
+							}
+							break;
+						default:
+							break;
+						/* raise error */
+					}
+					// do s3 read
 				}
-				elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: yezzey virtual file descriptor for file %s become %d", fileName, internal_vfd);
-				yezzey_vfd_cache[yezzey_fd].y_vfd = internal_vfd;
+				return yezzey_fd;
 			}
-			elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: file %s yezzey descriptor become %d", fileName, yezzey_fd);
-			return yezzey_fd;
 		}
 	}
 /* no match*/
@@ -590,9 +608,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 			elog(yezzey_ao_log_level, "read from external storage while read handler uninitialized");
 			return -1;
 		}
-
 #ifdef ALLOW_MODIFY_EXTERNAL_TABLE
-
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 		/*local writes*/
 		/* perform direct write to external storage */
@@ -605,8 +621,6 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 #else
 		elog(ERROR, "external table modifications are not supported yet");
 #endif
-
-
 		rc = amount;
 		if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, &rc)) {
 			elog(WARNING, "failed to write to external storage");
