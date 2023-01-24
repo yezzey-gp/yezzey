@@ -110,8 +110,8 @@ offloadFileToExternalStorage(
 			storage_prefix /*prefix*/, 
 			localPath, 
 			GpIdentity.segindex,
-			/* internal usage, modcount dump not commited */ 
-			modcount + 1);
+			/* internal usage, modcount dump commited, no need to bump */
+			modcount);
 	
 	} else {
 
@@ -121,6 +121,7 @@ offloadFileToExternalStorage(
 			storage_prefix/*prefix*/,
 			external_storage_path, 
 			GpIdentity.segindex, 
+			/* internal usage, modcount dump commited, no need to bump */ 
 			modcount);
 	}
 
