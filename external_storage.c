@@ -113,6 +113,8 @@ offloadFileToExternalStorage(
 			modcount);
 	
 	} else {
+
+		elog(WARNING, "yezzey: creating write handle to path %s", external_storage_path);
 		whandle = createWriterHandleToPath(
 			storage_bucket/*bucket*/, 
 			storage_prefix/*prefix*/,
