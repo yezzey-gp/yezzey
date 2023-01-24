@@ -31,6 +31,9 @@
 #include "c.h"
 #include "cdb/cdbvars.h"
 
+
+#define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
+
 char *storage_prefix = NULL;
 char *storage_bucket = NULL;
 
@@ -384,7 +387,7 @@ yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS)
 
 	reloid = PG_GETARG_OID(0);
 	remove_locally = PG_GETARG_BOOL(1);
-	external_path = PG_GETARG_CSTRING(2);
+	external_path = GET_STR(PG_GETARG_TEXT_P(2));
 
 	rc = yezzey_offload_relation_internal(reloid, remove_locally, external_path);
 
