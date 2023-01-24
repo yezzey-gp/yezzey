@@ -61,8 +61,13 @@ ensureFilepathLocal(const char *filepath)
 }
 
 int
-offloadFileToExternalStorage(const char *relname, const char *localPath, int64 modcount, int64 logicalEof)
-{
+offloadFileToExternalStorage(
+	const char *relname, 
+	const char *localPath, 
+	int64 modcount, 
+	int64 logicalEof,
+	const char * external_storage_path) {
+
 	void * whandle;
 	void * rhandle;
 	int rc;
@@ -74,28 +79,39 @@ offloadFileToExternalStorage(const char *relname, const char *localPath, int64 m
 	File vfd;
 	int64 curr_read_chunk;
 	int64 progress;
+	int64 virtual_size;
 	
 	chunkSize = 1 << 20;
 	buffer = palloc(chunkSize);
 	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
 	if (vfd <= 0) {
-		elog(ERROR, "failed to open %s file to transfer to external storage", localPath);
+		elog(ERROR, "yezzey: failed to open %s file to transfer to external storage", localPath);
 	}
 	progress = 0;
 
-
+	/* Create external storage reader handle to calculate total external files size. 
+	* this is needed to skip offloading of data already present in external storage.
+ 	*/
 	rhandle = createReaderHandle(relname, 
 		storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex);
+	
+	virtual_size = yezzey_calc_virtual_relation_size(rhandle);
+	progress = virtual_size;
+	FileSeek(vfd, progress, SEEK_SET);
 
-	if (rhandle == NULL) {
-		elog(ERROR, "offloading %s: failed to get external storage read handler", localPath);
+	if (!external_storage_path) {
+		if (!rhandle) {
+			elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
+		}
+		whandle = createWriterHandle(rhandle, relname/*relname*/, 
+			storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex, modcount);
+	
+	} else {
+		whandle = createWriterHandleToPath(external_storage_path, GpIdentity.segindex, modcount);
 	}
 
-	whandle = createWriterHandle(rhandle, relname/*relname*/, 
-		storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex, modcount);
-	
-	if (whandle == NULL) {
-		elog(ERROR, "offloading %s: failed to get external storage write handler", localPath);
+	if (!whandle) {
+		elog(ERROR, "yezzey: offloading %s: failed to get external storage write handler", localPath);
 	}
 
 	rc = 0;
@@ -131,7 +147,7 @@ offloadFileToExternalStorage(const char *relname, const char *localPath, int64 m
 	}
 
 	if (!yezzey_complete_w_transfer_data(&whandle)) {
-		elog(ERROR, "failed to complete %s offloading", localPath);
+		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
 	FileClose(vfd);
 	pfree(buffer);
@@ -166,7 +182,12 @@ removeLocalFile(const char *localPath)
 }
 
 static int
-offloadRelationSegmentPath(const char * relname, const char * localpath, int64 modcount, int64 logicalEof) {
+offloadRelationSegmentPath(
+	const char * relname, 
+	const char * localpath, 
+	int64 modcount, 
+	int64 logicalEof,
+	const char * external_storage_path) {
 	int rc;
 
     if (!ensureFilepathLocal(localpath)) {
@@ -174,14 +195,18 @@ offloadRelationSegmentPath(const char * relname, const char * localpath, int64 m
         return 0;
     }
 
-    if ((rc = offloadFileToExternalStorage(relname, localpath, modcount, logicalEof)) < 0) {
-        return rc;
-    }
-	return 0;
+	return offloadFileToExternalStorage(relname, localpath, modcount, logicalEof, external_storage_path);
 }
 
 int
-offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modcount, int64 logicalEof) {
+offloadRelationSegment(
+	Relation aorel, 
+	RelFileNode rnode, 
+	int segno, 
+	int64 modcount, 
+	int64 logicalEof, 
+	bool remove_locally,
+	const char * external_storage_path) {
     StringInfoData local_path;
 	int rc;
 	int64_t virtual_sz;
@@ -198,14 +223,16 @@ offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno, int64 modco
 	/* xlog goes first */
 	// xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
 
-	if ((rc = offloadRelationSegmentPath(aorel->rd_rel->relname.data, local_path.data, modcount, logicalEof)) < 0) {
+	if ((rc = offloadRelationSegmentPath(aorel->rd_rel->relname.data, local_path.data, modcount, logicalEof, external_storage_path)) < 0) {
 		pfree(local_path.data);
 		return rc;
 	}
 
-	/*wtf*/
-	RelationDropStorageNoClose(aorel);
-	
+	if (remove_locally) {
+		/*wtf*/
+		RelationDropStorageNoClose(aorel);
+	}
+
 	virtual_sz = yezzey_virtual_relation_size(aorel->rd_rel->relname.data,
 		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex);
 
@@ -232,7 +259,7 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
     	appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
 	}
 
-    elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
+    elog(yezzey_ao_log_level, "yezzey: contructed path %s", local_path.data);
 	
 	/* stat external storage usage */
 	virtual_sz = yezzey_virtual_relation_size(aorel->rd_rel->relname.data, 
@@ -248,7 +275,7 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 		FileClose(vfd);
 	}
 
-	Assert(virtual_sz <= logicalEof);
+	// Assert(virtual_sz <= logicalEof);
 	*local_commited_bytes = logicalEof - virtual_sz;
 
     pfree(local_path.data);

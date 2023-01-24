@@ -5,11 +5,29 @@
 
 CREATE SCHEMA yezzey;
 
-CREATE OR REPLACE FUNCTION yezzey_offload_relation(reloid OID) RETURNS void
+CREATE OR REPLACE FUNCTION yezzey_offload_relation(reloid OID, remove_locally BOOLEAN) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_to_external_path(
+    reloid OID, 
+    remove_locally BOOLEAN, 
+    external_storage_path TEXT
+) RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
+
+
+CREATE OR REPLACE FUNCTION yezzey_define_relation_offload_policy_internal(reloid OID) RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON MASTER
+LANGUAGE C STRICT;
+
 
 CREATE TYPE offload_policy AS ENUM ('local', 'remote_always', 'cron');
 
@@ -33,17 +51,21 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'relation % is not found in pg_class', offload_relname;
     END IF;
+    PERFORM yezzey_define_relation_offload_policy_internal(
+        offload_relname::regclass::oid
+    );
     INSERT INTO yezzey.offload_metadata VALUES(offload_relname, policy, NULL, NOW());
     -- get xid before executing offload realtion func
     PERFORM yezzey_offload_relation(
-        (SELECT oid FROM pg_catalog.pg_class WHERE relname=offload_relname)
+        offload_relname::regclass::oid,
+        TRUE
     );
 END;
 $$
 LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION
-yezzey_offload_relation(offload_relname TEXT)
+yezzey_offload_relation(offload_relname TEXT, remove_locally BOOLEAN DEFAULT TRUE)
 RETURNS VOID
 AS $$
 DECLARE
@@ -55,7 +77,35 @@ BEGIN
     END IF;
     UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
     PERFORM yezzey_offload_relation(
-        (SELECT OID FROM pg_class WHERE relname=offload_relname)
+        (SELECT OID FROM pg_class WHERE relname=offload_relname),
+        remove_locally
+    );
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
+END;
+$$
+LANGUAGE PLPGSQL;
+
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_offload_relation_to_external_path(
+    offload_relname TEXT, 
+    remove_locally BOOLEAN DEFAULT TRUE, 
+    external_storage_path TEXT DEFAULT NULL)
+RETURNS VOID
+AS $$
+DECLARE
+    v_tmp_relname yezzey.offload_metadata%rowtype;
+BEGIN
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = offload_relname;
+    IF NOT FOUND THEN
+        RAISE WARNING'relation % is not in offload metadata table', offload_relname;
+    END IF;
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
+    PERFORM yezzey_offload_relation_to_external_path(
+        (SELECT OID FROM pg_class WHERE relname=offload_relname),
+        remove_locally,
+        external_storage_path
     );
     UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
 END;
