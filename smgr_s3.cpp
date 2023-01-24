@@ -21,9 +21,7 @@ std::string getYezzeyExtrenalStorageBucket(const char * bucket) {
 std::string getYezzeyRelationUrl(const char * relname, const char * external_storage_prefix, const char * fileName, int32_t segid) {
     std::string url = "";
     url += external_storage_prefix;
-    url += "/";
-    url += "seg" + std::to_string(segid);
-    url += "/basebackups_005/aosegments/";
+    url += "/seg" + std::to_string(segid) + "/basebackups_005/aosegments/";
     size_t len = strlen(fileName);
 
     int64_t dboid = 0, tableoid = 0;
@@ -107,6 +105,23 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
     return res;
 }
 
+void
+getYezzeyExternalStoragePath(
+    const char * relname, 
+    const char * bucket, 
+    const char * external_storage_prefix, 
+    const char * fileName, 
+    int32_t segid,
+    char ** dest
+) {
+    auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
+    auto path = getYezzeyExtrenalStorageBucket(bucket) + prefix;
+
+    *dest = (char*)malloc(sizeof(char) * path.size());
+    strcpy(*dest, path.c_str());
+    return;
+}
+
 void * createReaderHandle(const char * relname, const char * bucket, const char * external_storage_prefix, const char * fileName, int32_t segid) {
     auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
 
@@ -188,11 +203,16 @@ void * createWriterHandle(
 
 
 void * createWriterHandleToPath(
+    const char * bucket,
+    const char * external_storage_prefix,
 	const char * path,
 	int32_t segid, 
 	int64_t modcount) {
-    std::string url = "path=";
+    std::string url = getYezzeyExtrenalStorageBucket(bucket) ;
+    url += external_storage_prefix;
+    url += "/seg" + std::to_string(segid) + "/basebackups_005/aosegments/";
     url += path;
+
     // config path
     url += " config=/home/reshke/s3test.conf region=us-east-1";
 
