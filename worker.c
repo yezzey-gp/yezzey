@@ -146,7 +146,6 @@ static const struct config_enum_entry loglevel_options[] = {
         {NULL, 0, false}
 };
 
-int yezzey_bgworker_bootstrap(void);
 void offloadExpiredRelations(void);
 
 void
@@ -488,89 +487,9 @@ yezzey_offload_databases() {
 }
 
 
-/*
-* we use relocate table, witch is created like this:
-*  CREATE TABLE yezzey.relocate_table(relNode OID, segno INT, last_access_time TIMESTAMP)
-* to track last modification time for each logical segment in offloading tables
-*/
-
-int 
-yezzey_bgworker_bootstrap(void) {
-    int ret;
-    StringInfoData buf;
-
-	/* start transaction */
-	yezzey_prepare();
-	/* 
-	* CREATE relocate table if not yet
-	*/
-    initStringInfo(&buf);
-    appendStringInfo(&buf, ""
-	"SELECT * FROM pg_catalog.pg_tables "
-            "WHERE schemaname = '%s' AND tablename = '%s'", yezzeyBoostrapSchemaName, yezzeyRelocateTableName);
-
-    pgstat_report_activity(STATE_RUNNING, buf.data);
-    ret = SPI_execute(buf.data, true, 1);
-    if (ret != SPI_OK_SELECT) {
-        elog(FATAL, "Error while yezzey relocate table lookup");
-	}
-
-	/* reinitialize for reuse  */
-	pfree(buf.data);
-    initStringInfo(&buf);
-
-    if (!SPI_processed) {
-		/* 
-		* we got 0 rows from catalog lookup, meaning there is no
-		* relocate table exists;
-		*/
-		/* 
-		* XXX: we create this auxiliar table on each
-		* greenplum QE, which is not indended 
-		* bgworker behaviour in greenplum
-		*/
-		/* XXX: do we need index on this? */
-
-
-        appendStringInfo(&buf, ""
-		"CREATE SCHEMA %s", yezzeyBoostrapSchemaName);
-
-        pgstat_report_activity(STATE_RUNNING, buf.data);
-        ret = SPI_execute(buf.data, false, 0);
-
-        if (ret != SPI_OK_UTILITY) {
-            elog(FATAL, "Error while creating yezzey relocate table");
-		}
-		/*  */
-		pfree(buf.data);
-        initStringInfo(&buf);
-
-        appendStringInfo(&buf, ""
-		"CREATE TABLE "
-			"%s.%s("
-				"relNode OID, "
-				"expiration_date DATE);", yezzeyBoostrapSchemaName, yezzeyRelocateTableName);
-
-        pgstat_report_activity(STATE_RUNNING, buf.data);
-        ret = SPI_execute(buf.data, false, 0);
-
-        if (ret != SPI_OK_UTILITY) {
-            elog(FATAL, "Error while creating yezzey relocate table");
-		}
-    }
-
-
-	pfree(buf.data);
-	/* commit transaction, release transaction snapshot */
-	yezzey_finish();
-
-	return 0;
-}
-
 void yezzey_ProcessConfigFile() {
 	
 }
-
 
 
 static void yezzey_detach_shmem(int code, Datum arg);
@@ -653,9 +572,6 @@ yezzey_main(Datum main_arg)
 	BackgroundWorkerInitializeConnection("postgres", NULL, 0);
 #endif
 
-	/* boostrap: create work table if needed. */
-	// yezzey_bgworker_bootstrap();
-	
 	while (!got_sigterm)
 	{
 		int rc;
@@ -761,7 +677,6 @@ static bool yezzey_autooffload = true; /* start yezzey worker? */
 void
 _PG_init(void)
 {
-	/* XXX: yezzey naptime interval should be here */
 
 	DefineCustomStringVariable("yezzey.storage_prefix",
 				   "segment name prefix",
@@ -776,7 +691,7 @@ _PG_init(void)
 				   NULL, NULL, NULL);
 
 	DefineCustomStringVariable("yezzey.storage_config",
-				"Storage config for yezzey external storage.",
+				"Storage config path for yezzey external storage.",
 				NULL, &storage_config,
 				"",PGC_USERSET,0,
 				NULL, NULL, NULL);
@@ -798,6 +713,10 @@ _PG_init(void)
 				 NULL, &yezzey_ao_log_level,
 				 DEBUG1,loglevel_options,PGC_SUSET,
 				 0, NULL, NULL, NULL);
+
+	DefineCustomIntVariable("yezzey.oflload_worker_naptime",
+				"Auto-offloading worker naptime", NULL, &yezzey_naptime, 
+				10000, 500, INT_MAX, PGC_SUSET, 0, NULL, NULL, NULL);
 
 
 	/* Allocate shared memory for yezzey workers */
