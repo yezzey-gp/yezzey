@@ -349,8 +349,13 @@ int readprepare(SMGRFile file) {
 	}
 #endif
 
-	yezzey_vfd_cache[file].rhandle = createReaderHandle(yezzey_vfd_cache[file].relname,
-	 storage_bucket /*bucket*/, storage_prefix /*prefix*/, yezzey_vfd_cache[file].filepath,  GpIdentity.segindex);
+	yezzey_vfd_cache[file].rhandle = createReaderHandle(
+		storage_config,
+		yezzey_vfd_cache[file].relname,
+		storage_bucket /*bucket*/, 
+		storage_prefix /*prefix*/, 
+		yezzey_vfd_cache[file].filepath, 
+		GpIdentity.segindex);
 
 	if (yezzey_vfd_cache[file].rhandle == NULL) {
 		return -1;
@@ -385,14 +390,17 @@ int writeprepare(SMGRFile file) {
 		return -1;
 	}
 
-	yezzey_vfd_cache[file].whandle = createWriterHandle(yezzey_vfd_cache[file].rhandle, yezzey_vfd_cache[file].relname,
+	yezzey_vfd_cache[file].whandle = createWriterHandle(
+		storage_config,
+		yezzey_vfd_cache[file].rhandle,
+		yezzey_vfd_cache[file].relname,
 		storage_bucket/*bucket*/,
 		storage_prefix/*prefix*/,
 		yezzey_vfd_cache[file].filepath, 
 		GpIdentity.segindex,
 		1 /*because modcount will increase on write*/ + yezzey_vfd_cache[file].modcount);
 
-	elog(yezzey_ao_log_level, "prepared writer handle for modcount %d", yezzey_vfd_cache[file].modcount);
+	elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld", yezzey_vfd_cache[file].modcount);
 	if (yezzey_vfd_cache[file].whandle  == NULL) {
 		return -1;
 	}
@@ -499,7 +507,6 @@ int	yezzey_FileSync(SMGRFile file) {
 
 SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
 	int yezzey_fd;
-	File internal_vfd;
 	elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */

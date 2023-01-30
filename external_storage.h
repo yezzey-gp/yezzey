@@ -8,6 +8,7 @@
 
 extern char *storage_prefix;
 extern char *storage_bucket;
+extern char *storage_config;
 
 
 typedef  struct yezzeyChunkMeta {
