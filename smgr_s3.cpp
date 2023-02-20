@@ -1,4 +1,17 @@
 
+/**
+ * @file smgr_s3.cpp
+ * 
+ * @author your name (you@domain.com)
+ * @brief 
+ * @version 0.1
+ * @date 2023-02-20
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ */
+
+
 #include "gpreader.h"
 #include "gpwriter.h"
 #include <string>
@@ -10,8 +23,10 @@
 #define DEFAULTTABLESPACE_OID 1663 /* FIXME */
 
 
-std::string getYezzeyExtrenalStorageBucket(const char * bucket) {
-    std::string url = "s3://storage.yandexcloud.net/";
+std::string getYezzeyExtrenalStorageBucket(const char * host, const char * bucket) {
+    std::string url = "s3://";
+    url += host;
+    url += "/";
     url += bucket;
     url += "/";
 
@@ -118,6 +133,7 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
 void
 getYezzeyExternalStoragePath(
     const char * relname, 
+    const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, 
@@ -125,7 +141,7 @@ getYezzeyExternalStoragePath(
     char ** dest
 ) {
     auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
-    auto path = getYezzeyExtrenalStorageBucket(bucket) + prefix;
+    auto path = getYezzeyExtrenalStorageBucket(host, bucket) + prefix;
 
     *dest = (char*)malloc(sizeof(char) * path.size());
     strcpy(*dest, path.c_str());
@@ -135,6 +151,7 @@ getYezzeyExternalStoragePath(
 void * createReaderHandle(
     const char * config_path,
     const char * relname, 
+    const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, 
@@ -143,7 +160,7 @@ void * createReaderHandle(
 
     // add config path FIXME
     auto reader = reader_init(
-        yezzey_url_add_options((getYezzeyExtrenalStorageBucket(bucket) + prefix), config_path).c_str());
+        yezzey_url_add_options((getYezzeyExtrenalStorageBucket(host, bucket) + prefix), config_path).c_str());
 
     if (reader == NULL) {
         /* error while external storage initialization */
@@ -181,6 +198,7 @@ void * createWriterHandle(
     const char * config_path,
     const char * rhandle_ptr,
     const char * relname, 
+    const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, int32_t segid, int64_t modcount) {
@@ -194,7 +212,7 @@ void * createWriterHandle(
 
     auto content = reader->getKeyList().contents;
     if (content.size() == 0) {
-        auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(bucket) + prefix, {modcount, modcount, modcount, modcount});
+        auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(host, bucket) + prefix, {modcount, modcount, modcount, modcount});
         url = yezzey_url_add_options(url, config_path);
         return writer_init(url.c_str());
     }
@@ -209,7 +227,7 @@ void * createWriterHandle(
     }
 
     auto url = make_yezzey_url(
-        getYezzeyExtrenalStorageBucket(bucket) + prefix, largest);
+        getYezzeyExtrenalStorageBucket(host, bucket) + prefix, largest);
 
     // config path
     url = yezzey_url_add_options(url, config_path);
@@ -220,12 +238,13 @@ void * createWriterHandle(
 
 void * createWriterHandleToPath(
     const char * config_path,
+    const char * host,
     const char * bucket,
     const char * external_storage_prefix,
 	const char * path,
 	int32_t segid, 
 	int64_t modcount) {
-    std::string url = getYezzeyExtrenalStorageBucket(bucket) ;
+    std::string url = getYezzeyExtrenalStorageBucket(host, bucket) ;
     url += external_storage_prefix;
     url += "/seg" + std::to_string(segid) + "/basebackups_005/aosegments/";
     url += path;
@@ -246,11 +265,12 @@ bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
 int64_t yezzey_virtual_relation_size(
     const char * config_path,
     const char * relname, 
+    const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, 
     int32_t segid) {
-	GPReader * rhandle = (GPReader * )createReaderHandle(config_path, relname, 
+	GPReader * rhandle = (GPReader * )createReaderHandle(config_path, relname, host /*host*/,
 		bucket/*bucket*/, external_storage_prefix /*prefix*/, fileName, segid);
     
     int64_t sz = 0;
@@ -278,6 +298,7 @@ int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr) {
 void * yezzey_list_relation_chunks(
     const char * config_path,
     const char * relname, 
+    const char * host,
     const char * bucket, 
     const char * external_storage_prefix,
     const char * fileName,
@@ -287,6 +308,7 @@ void * yezzey_list_relation_chunks(
 	GPReader * rhandle = (GPReader * )createReaderHandle(
         config_path, 
         relname, 
+        host /*host*/,
 		bucket/*bucket*/, 
         external_storage_prefix /*prefix*/, 
         fileName, 

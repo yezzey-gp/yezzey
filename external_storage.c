@@ -92,21 +92,29 @@ offloadFileToExternalStorage(
 	/* Create external storage reader handle to calculate total external files size. 
 	* this is needed to skip offloading of data already present in external storage.
  	*/
-	rhandle = createReaderHandle(storage_config, relname, 
-		storage_bucket/*bucket*/, storage_prefix /*prefix*/, localPath, GpIdentity.segindex);
+	rhandle = createReaderHandle(
+		storage_config, 
+		relname, 
+		storage_host /* host */,
+		storage_bucket/*bucket*/, 
+		storage_prefix /*prefix*/, 
+		localPath,
+		GpIdentity.segindex);
+
+	if (!rhandle) {
+		elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
+	}
 	
 	virtual_size = yezzey_calc_virtual_relation_size(rhandle);
 	progress = virtual_size;
 	FileSeek(vfd, progress, SEEK_SET);
 
 	if (!external_storage_path) {
-		if (!rhandle) {
-			elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
-		}
 		whandle = createWriterHandle(
 			storage_config,
 			rhandle, 
 			relname/*relname*/, 
+			storage_host /*host*/,
 			storage_bucket/*bucket*/, 
 			storage_prefix /*prefix*/, 
 			localPath, 
@@ -115,10 +123,10 @@ offloadFileToExternalStorage(
 			modcount);
 	
 	} else {
-
 		elog(WARNING, "yezzey: creating write handle to path %s", external_storage_path);
 		whandle = createWriterHandleToPath(
-			storage_config,
+			storage_config, 
+			storage_host /*host*/,
 			storage_bucket/*bucket*/, 
 			storage_prefix/*prefix*/,
 			external_storage_path, 
@@ -250,8 +258,14 @@ offloadRelationSegment(
 		RelationDropStorageNoClose(aorel);
 	}
 
-	virtual_sz = yezzey_virtual_relation_size(storage_config, aorel->rd_rel->relname.data,
-		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex);
+	virtual_sz = yezzey_virtual_relation_size(
+		storage_config, 
+		aorel->rd_rel->relname.data,
+		storage_host /*host*/,
+		storage_bucket/*bucket*/, 
+		storage_prefix /*prefix*/, 
+		local_path.data,
+		 GpIdentity.segindex);
 
     elog(yezzey_ao_log_level, "yezzey: relation segment reached external storage path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
 
@@ -279,8 +293,15 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
     elog(yezzey_ao_log_level, "yezzey: contructed path %s", local_path.data);
 	
 	/* stat external storage usage */
-	virtual_sz = yezzey_virtual_relation_size(storage_config, aorel->rd_rel->relname.data, 
-		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex);
+	virtual_sz = yezzey_virtual_relation_size(
+		storage_config, 
+		aorel->rd_rel->relname.data, 
+		storage_host /*host*/,
+		storage_bucket/*bucket*/, 
+		storage_prefix /*prefix*/, 
+		local_path.data, 
+		GpIdentity.segindex);
+
 	*external_bytes = virtual_sz;
 
 	/* No local storage cache logic for now */
@@ -319,8 +340,15 @@ statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno, int64 modcount
     elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
 	
 	/* stat external storage usage */
-	rhanlde = yezzey_list_relation_chunks(storage_config, aorel->rd_rel->relname.data, 
-		storage_bucket/*bucket*/, storage_prefix /*prefix*/, local_path.data, GpIdentity.segindex, cnt_chunks);
+	rhanlde = yezzey_list_relation_chunks(
+		storage_config, 
+		aorel->rd_rel->relname.data, 
+		storage_host /*host*/,
+		storage_bucket/*bucket*/, 
+		storage_prefix /*prefix*/, 
+		local_path.data, 
+		GpIdentity.segindex, 
+		cnt_chunks);
 
 	Assert((*cnt_chunks) >= 0);
 	meta = palloc(sizeof(struct externalChunkMeta) * (*cnt_chunks));

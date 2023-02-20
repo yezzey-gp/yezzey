@@ -37,6 +37,7 @@
 char *storage_prefix = NULL;
 char *storage_bucket = NULL;
 char *storage_config = NULL;
+char *storage_host = NULL;
 
 PG_MODULE_MAGIC;
 
@@ -132,7 +133,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally, const char
 	* because we are going to delete relation from local storage
 	*/
 	aorel = relation_open(reloid, AccessExclusiveLock);
-	aorel->rd_smgr = smgropen(aorel->rd_node, InvalidBackendId);
+	RelationOpenSmgr(aorel);
 	nvp = aorel->rd_att->natts;
 
 	/*
@@ -419,6 +420,7 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
 	char * ptr;
 	getYezzeyExternalStoragePath(
 		aorel->rd_rel->relname.data, 
+		storage_host /*host*/, 
 		storage_bucket/*bucket*/, 
 		storage_prefix /*prefix*/, 
 		local_path.data, 
