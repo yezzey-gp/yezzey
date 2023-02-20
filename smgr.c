@@ -296,7 +296,7 @@ typedef struct f_smgr_ao {
 	int64       (*smgr_NonVirtualCurSeek) (SMGRFile file);
 	int64 		(*smgr_FileSeek) (SMGRFile file, int64 offset, int whence);
 	void 		(*smgr_FileClose)(SMGRFile file);
-	SMGRFile    (*smgr_AORelOpenSegFile) (char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount);
+	SMGRFile    (*smgr_AORelOpenSegFile) (char * nspname, char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount);
 	int         (*smgr_FileWrite)(SMGRFile file, char *buffer, int amount);
     int         (*smgr_FileRead)(SMGRFile file, char *buffer, int amount);
 } f_smgr_ao;
@@ -307,7 +307,7 @@ int64 yezzey_NonVirtualCurSeek (SMGRFile file);
 void yezzey_FileClose(SMGRFile file);
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence);
 int yezzey_FileSync(SMGRFile file);
-SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount);
+SMGRFile yezzey_AORelOpenSegFile(char * nspname, char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount);
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount);
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount);
 int yezzey_FileTruncate(SMGRFile file, int offset);
@@ -317,6 +317,7 @@ typedef struct yezzey_vfd {
 	int y_vfd; /* Either YEZZEY_* preserved fd or pg internal fd >= 9 */
 	int localTmpVfd; /* for writing files */
 	char * filepath;
+	char * nspname;
 	char * relname;
 	int fileFlags; 
 	int fileMode;
@@ -351,6 +352,7 @@ int readprepare(SMGRFile file) {
 
 	yezzey_vfd_cache[file].rhandle = createReaderHandle(
 		storage_config,
+		yezzey_vfd_cache[file].nspname,
 		yezzey_vfd_cache[file].relname,
 		storage_host /*host*/,
 		storage_bucket /*bucket*/, 
@@ -394,6 +396,7 @@ int writeprepare(SMGRFile file) {
 	yezzey_vfd_cache[file].whandle = createWriterHandle(
 		storage_config,
 		yezzey_vfd_cache[file].rhandle,
+		yezzey_vfd_cache[file].nspname,
 		yezzey_vfd_cache[file].relname,
 		storage_host /*host*/,
 		storage_bucket/*bucket*/,
@@ -507,19 +510,25 @@ int	yezzey_FileSync(SMGRFile file) {
 	return FileSync(actual_fd);
 }
 
-SMGRFile yezzey_AORelOpenSegFile(char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
+SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
 	int yezzey_fd;
 	elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */
 	for (yezzey_fd = YEZZEY_NOT_OPENED + 1; yezzey_fd < MAXVFD; ++yezzey_fd) {
 		if (yezzey_vfd_cache[yezzey_fd].y_vfd == YEZZEY_VANANT_VFD) {
-			yezzey_vfd_cache[yezzey_fd].filepath = strdup(fileName);
+			yezzey_vfd_cache[yezzey_fd].filepath = pstrdup(fileName);
 			if (relname == NULL) {
 				/* Should be possible only in recovery */
 				Assert(RecoveryInProgress());
 			} else {
-				yezzey_vfd_cache[yezzey_fd].relname = strdup(relname);
+				yezzey_vfd_cache[yezzey_fd].relname = pstrdup(relname);
+			}
+			if (nspname == NULL) {
+				/* Should be possible only in recovery */
+				Assert(RecoveryInProgress());
+			} else {
+				yezzey_vfd_cache[yezzey_fd].nspname = pstrdup(nspname);
 			}
 			yezzey_vfd_cache[yezzey_fd].fileFlags = fileFlags;
 			yezzey_vfd_cache[yezzey_fd].fileMode = fileMode;
@@ -586,7 +595,15 @@ void yezzey_FileClose(SMGRFile file) {
 		FileClose(yezzey_vfd_cache[file].localTmpVfd);
 	}
 #endif
-
+	if (yezzey_vfd_cache[file].filepath) {
+		pfree(yezzey_vfd_cache[file].filepath);
+	}
+	if (yezzey_vfd_cache[file].relname) {
+		pfree(yezzey_vfd_cache[file].relname);
+	}
+	if (yezzey_vfd_cache[file].nspname) {
+		pfree(yezzey_vfd_cache[file].nspname);
+	}
 	memset(&yezzey_vfd_cache[file], 0, sizeof(yezzey_vfd));
 }
 

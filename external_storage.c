@@ -31,7 +31,9 @@
 #include "catalog/storage.h"
 #include "catalog/storage_xlog.h"
 #include "storage/smgr.h"
-
+#include "catalog/pg_namespace.h"
+#include "utils/catcache.h"
+#include "utils/syscache.h"
 
 // For GpIdentity
 #include "c.h"
@@ -62,6 +64,7 @@ ensureFilepathLocal(const char *filepath)
 
 int
 offloadFileToExternalStorage(
+	const char * nspname,
 	const char *relname, 
 	const char *localPath, 
 	int64 modcount, 
@@ -80,7 +83,7 @@ offloadFileToExternalStorage(
 	int64 curr_read_chunk;
 	int64 progress;
 	int64 virtual_size;
-	
+
 	chunkSize = 1 << 20;
 	buffer = palloc(chunkSize);
 	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
@@ -93,8 +96,9 @@ offloadFileToExternalStorage(
 	* this is needed to skip offloading of data already present in external storage.
  	*/
 	rhandle = createReaderHandle(
-		storage_config, 
-		relname, 
+		storage_config,
+		nspname,
+		relname,
 		storage_host /* host */,
 		storage_bucket/*bucket*/, 
 		storage_prefix /*prefix*/, 
@@ -113,6 +117,7 @@ offloadFileToExternalStorage(
 		whandle = createWriterHandle(
 			storage_config,
 			rhandle, 
+			nspname,
 			relname/*relname*/, 
 			storage_host /*host*/,
 			storage_bucket/*bucket*/, 
@@ -208,6 +213,7 @@ removeLocalFile(const char *localPath)
 
 static int
 offloadRelationSegmentPath(
+	const char * nspname,
 	const char * relname, 
 	const char * localpath, 
 	int64 modcount, 
@@ -220,7 +226,7 @@ offloadRelationSegmentPath(
         return 0;
     }
 
-	return offloadFileToExternalStorage(relname, localpath, modcount, logicalEof, external_storage_path);
+	return offloadFileToExternalStorage(nspname, relname, localpath, modcount, logicalEof, external_storage_path);
 }
 
 int
@@ -235,6 +241,8 @@ offloadRelationSegment(
     StringInfoData local_path;
 	int rc;
 	int64_t virtual_sz;
+ 	char * nspname;
+	HeapTuple	tp;
 
     initStringInfo(&local_path);
 	if (segno == 0) {
@@ -248,7 +256,18 @@ offloadRelationSegment(
 	/* xlog goes first */
 	// xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
 
-	if ((rc = offloadRelationSegmentPath(aorel->rd_rel->relname.data, local_path.data, modcount, logicalEof, external_storage_path)) < 0) {
+	tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_namespace nsptup = (Form_pg_namespace) GETSTRUCT(tp);
+		nspname = pstrdup(NameStr(nsptup->nspname));
+		ReleaseSysCache(tp);
+	} else {
+		elog(ERROR, "yezzey: failed to get namescape name of relation %s", aorel->rd_rel->relname.data);
+	}
+
+	if ((rc = offloadRelationSegmentPath(nspname, aorel->rd_rel->relname.data, local_path.data, modcount, logicalEof, external_storage_path)) < 0) {
 		pfree(local_path.data);
 		return rc;
 	}
@@ -259,7 +278,8 @@ offloadRelationSegment(
 	}
 
 	virtual_sz = yezzey_virtual_relation_size(
-		storage_config, 
+		storage_config,
+		nspname,
 		aorel->rd_rel->relname.data,
 		storage_host /*host*/,
 		storage_bucket/*bucket*/, 
@@ -269,6 +289,7 @@ offloadRelationSegment(
 
     elog(yezzey_ao_log_level, "yezzey: relation segment reached external storage path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
 
+	pfree(nspname);
     pfree(local_path.data);
     return 0;
 }
@@ -279,9 +300,24 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
     StringInfoData local_path;
 	size_t virtual_sz;
 	RelFileNode rnode;
+	HeapTuple	tp;
 	int vfd;
+ 	char * nspname;
 
 	rnode = aorel->rd_node;
+
+
+	tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_namespace nsptup = (Form_pg_namespace) GETSTRUCT(tp);
+		nspname = pstrdup(NameStr(nsptup->nspname));
+		ReleaseSysCache(tp);
+	} else {
+		elog(ERROR, "yezzey: failed to get namescape name of relation %s", aorel->rd_rel->relname.data);
+	}
+
 
     initStringInfo(&local_path);
 	if (segno == 0) {
@@ -295,6 +331,7 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 	/* stat external storage usage */
 	virtual_sz = yezzey_virtual_relation_size(
 		storage_config, 
+		nspname,
 		aorel->rd_rel->relname.data, 
 		storage_host /*host*/,
 		storage_bucket/*bucket*/, 
@@ -316,17 +353,29 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 	// Assert(virtual_sz <= logicalEof);
 	*local_commited_bytes = logicalEof - virtual_sz;
 
+	pfree(nspname);
     pfree(local_path.data);
     return 0;
 }
 
 int
-statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno, int64 modcount, int64 logicalEof, size_t *local_bytes, size_t *local_commited_bytes, yezzeyChunkMeta **list, size_t *cnt_chunks) {
-    StringInfoData local_path;
+statRelationSpaceUsagePerExternalChunk(
+	Relation aorel, 
+	int segno,
+	int64 modcount,
+	int64 logicalEof,
+	size_t *local_bytes,
+	size_t *local_commited_bytes,
+	yezzeyChunkMeta **list,
+	size_t *cnt_chunks) {
+    
+	StringInfoData local_path;
 	RelFileNode rnode;
 	int vfd;
 	void *rhanlde;
 	struct externalChunkMeta * meta;
+	HeapTuple tp;
+	char * nspname;
 
 	rnode = aorel->rd_node;
 	
@@ -339,9 +388,22 @@ statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno, int64 modcount
 
     elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
 	
+
+	
+	tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+	
+	if (HeapTupleIsValid(tp)) {
+		Form_pg_namespace nsptup = (Form_pg_namespace) GETSTRUCT(tp);
+		nspname = pstrdup(NameStr(nsptup->nspname));
+		ReleaseSysCache(tp);
+	} else {
+		elog(ERROR, "yezzey: failed to get namescape name of relation %s", aorel->rd_rel->relname.data);
+    }
+
 	/* stat external storage usage */
 	rhanlde = yezzey_list_relation_chunks(
-		storage_config, 
+		storage_config,
+		nspname,
 		aorel->rd_rel->relname.data, 
 		storage_host /*host*/,
 		storage_bucket/*bucket*/, 
@@ -349,6 +411,8 @@ statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno, int64 modcount
 		local_path.data, 
 		GpIdentity.segindex, 
 		cnt_chunks);
+
+	pfree(nspname);
 
 	Assert((*cnt_chunks) >= 0);
 	meta = palloc(sizeof(struct externalChunkMeta) * (*cnt_chunks));

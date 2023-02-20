@@ -43,7 +43,13 @@ std::string yezzey_url_add_options(const std::string &s3path, const char * confi
     return ret;
 }
 
-std::string getYezzeyRelationUrl(const char * relname, const char * external_storage_prefix, const char * fileName, int32_t segid) {
+std::string getYezzeyRelationUrl(
+    const char * nspname,
+    const char * relname,
+    const char * external_storage_prefix,
+    const char * fileName,
+    int32_t segid) {
+
     std::string url = "";
     url += external_storage_prefix;
     url += "/seg" + std::to_string(segid) + "/basebackups_005/aosegments/";
@@ -83,8 +89,12 @@ std::string getYezzeyRelationUrl(const char * relname, const char * external_sto
 
     url += std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(dboid) + "_";
 
+    std::string full_name = "";
+    full_name += nspname;
+    full_name += ".";
+    full_name += relname;
     /* compute AO/AOCS relation name, just like walg does*/
-    (void)MD5((const unsigned char*)relname, strlen(relname), md);
+    (void)MD5((const unsigned char *)full_name.c_str(), full_name.size(), md);
 
     for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i) {
         char chunk[3];
@@ -132,7 +142,8 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
 
 void
 getYezzeyExternalStoragePath(
-    const char * relname, 
+    const char * nspname,
+    const char * relname,
     const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
@@ -140,7 +151,7 @@ getYezzeyExternalStoragePath(
     int32_t segid,
     char ** dest
 ) {
-    auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
+    auto prefix = getYezzeyRelationUrl(nspname, relname, external_storage_prefix, fileName, segid);
     auto path = getYezzeyExtrenalStorageBucket(host, bucket) + prefix;
 
     *dest = (char*)malloc(sizeof(char) * path.size());
@@ -150,13 +161,15 @@ getYezzeyExternalStoragePath(
 
 void * createReaderHandle(
     const char * config_path,
-    const char * relname, 
+    const char * nspname,
+    const char * relname,
     const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, 
     int32_t segid) {
-    auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
+
+    auto prefix = getYezzeyRelationUrl(nspname, relname, external_storage_prefix, fileName, segid);
 
     // add config path FIXME
     auto reader = reader_init(
@@ -197,7 +210,8 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
 void * createWriterHandle(
     const char * config_path,
     const char * rhandle_ptr,
-    const char * relname, 
+    const char * nspname,
+    const char * relname,
     const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
@@ -206,7 +220,7 @@ void * createWriterHandle(
         return NULL;
     }
 
-    auto prefix = getYezzeyRelationUrl(relname, external_storage_prefix, fileName, segid);
+    auto prefix = getYezzeyRelationUrl(nspname, relname, external_storage_prefix, fileName, segid);
 
     GPReader * reader = (GPReader *) rhandle_ptr;
 
@@ -264,14 +278,27 @@ bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
 
 int64_t yezzey_virtual_relation_size(
     const char * config_path,
+    const char * nspname,
     const char * relname, 
     const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, 
     int32_t segid) {
-	GPReader * rhandle = (GPReader * )createReaderHandle(config_path, relname, host /*host*/,
-		bucket/*bucket*/, external_storage_prefix /*prefix*/, fileName, segid);
+
+	GPReader * rhandle = (GPReader * )createReaderHandle(
+        config_path,
+        nspname,
+        relname, 
+        host /*host*/,
+		bucket/*bucket*/, 
+        external_storage_prefix /*prefix*/,
+        fileName,
+        segid);
+
+    if (!rhandle) {
+        return -1;
+    }
     
     int64_t sz = 0;
     auto content = rhandle->getKeyList().contents;
@@ -297,6 +324,7 @@ int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr) {
 
 void * yezzey_list_relation_chunks(
     const char * config_path,
+    const char * nspname,
     const char * relname, 
     const char * host,
     const char * bucket, 
@@ -306,7 +334,8 @@ void * yezzey_list_relation_chunks(
     size_t * cnt_chunks) 
 {
 	GPReader * rhandle = (GPReader * )createReaderHandle(
-        config_path, 
+        config_path,
+        nspname,
         relname, 
         host /*host*/,
 		bucket/*bucket*/, 
@@ -319,7 +348,9 @@ void * yezzey_list_relation_chunks(
     return rhandle;
 }
 
-int64_t yezzey_copy_relation_chunks(void *rhandle_ptr, externalChunkMeta * chunks){
+int64_t yezzey_copy_relation_chunks(
+    void *rhandle_ptr, 
+    externalChunkMeta * chunks){
 	GPReader * rhandle = (GPReader * )rhandle_ptr;
     
     auto content = rhandle->getKeyList().contents;
