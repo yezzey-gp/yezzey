@@ -20,6 +20,7 @@ typedef  struct yezzeyChunkMeta {
 
 int
 offloadFileToExternalStorage(
+    const char * nspname,
     const char *relname, 
     const char *localPath, 
     int64 modcount, 

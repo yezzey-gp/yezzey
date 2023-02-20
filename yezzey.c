@@ -30,6 +30,9 @@
 // For GpIdentity
 #include "c.h"
 #include "cdb/cdbvars.h"
+#include "catalog/pg_namespace.h"
+#include "utils/catcache.h"
+#include "utils/syscache.h"
 
 
 #define GET_STR(textp) DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
@@ -405,6 +408,9 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
 	RelFileNode rnode;
 	int32 segno;
 	char * pgptr;
+	char * ptr;
+	HeapTuple tp;
+	char *nspname;
 
 	reloid = PG_GETARG_OID(0);
 	segno = PG_GETARG_OID(1);
@@ -417,8 +423,19 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
     appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode, segno);
 
 
-	char * ptr;
+	tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_namespace nsptup = (Form_pg_namespace) GETSTRUCT(tp);
+		nspname = pstrdup(NameStr(nsptup->nspname));
+		ReleaseSysCache(tp);
+	} else {
+		elog(ERROR, "yezzey: failed to get namescape name of relation %s", aorel->rd_rel->relname.data);
+	}
+
 	getYezzeyExternalStoragePath(
+		nspname,
 		aorel->rd_rel->relname.data, 
 		storage_host /*host*/, 
 		storage_bucket/*bucket*/, 
@@ -430,11 +447,10 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
 
 	pgptr = pstrdup(ptr);
 	free(ptr);
-
+	pfree(nspname);
 
 	relation_close(aorel, AccessShareLock);
 	
-
 	PG_RETURN_TEXT_P(cstring_to_text(pgptr));
 }
 
