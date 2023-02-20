@@ -21,6 +21,7 @@ struct externalChunkMeta {
 // read all files related to given relation
 EXTERNC void * createReaderHandle(
 	const char * config_path,
+	const char * host,
 	const char * relname, 
 	const char * bucket, 
 	const char * external_storage_prefix, 
@@ -34,6 +35,7 @@ EXTERNC void * createWriterHandle(
 	const char * config_path,
 	const char * rhandle_ptr, 
 	const char * relname, 
+    const char * host,
 	const char * bucket, 
 	const char * external_storage_prefix, 
 	const char * fileName, 
@@ -42,6 +44,7 @@ EXTERNC void * createWriterHandle(
 
 EXTERNC void * createWriterHandleToPath(
 	const char * config_path,
+	const char * host,
     const char * bucket,
 	const char * external_storage_prefix,
 	const char * path,
@@ -50,6 +53,7 @@ EXTERNC void * createWriterHandleToPath(
 
 EXTERNC void getYezzeyExternalStoragePath(
     const char * relname, 
+	const char * host,
     const char * bucket, 
     const char * external_storage_prefix, 
     const char * fileName, 
@@ -65,6 +69,7 @@ EXTERNC bool yezzey_reader_empty(void *handle);
 EXTERNC int64_t yezzey_virtual_relation_size(
 	const char * config_path,
 	const char * relname, 
+	const char * host,
 	const char * bucket, 
 	const char * external_storage_prefix, 
 	const char * fileName, 
@@ -75,6 +80,7 @@ EXTERNC int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr);
 EXTERNC void * yezzey_list_relation_chunks(
 	const char * config_path,
 	const char * relname,
+	const char * host,
 	const char * bucket,
 	const char * external_storage_prefix,
 	const char * fileName,
