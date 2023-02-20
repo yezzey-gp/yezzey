@@ -352,6 +352,7 @@ int readprepare(SMGRFile file) {
 	yezzey_vfd_cache[file].rhandle = createReaderHandle(
 		storage_config,
 		yezzey_vfd_cache[file].relname,
+		storage_host /*host*/,
 		storage_bucket /*bucket*/, 
 		storage_prefix /*prefix*/, 
 		yezzey_vfd_cache[file].filepath, 
@@ -394,6 +395,7 @@ int writeprepare(SMGRFile file) {
 		storage_config,
 		yezzey_vfd_cache[file].rhandle,
 		yezzey_vfd_cache[file].relname,
+		storage_host /*host*/,
 		storage_bucket/*bucket*/,
 		storage_prefix/*prefix*/,
 		yezzey_vfd_cache[file].filepath, 

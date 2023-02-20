@@ -681,20 +681,26 @@ _PG_init(void)
 	DefineCustomStringVariable("yezzey.storage_prefix",
 				   "segment name prefix",
 				   NULL, &storage_prefix,
-				   "",PGC_USERSET,0,
+				   "",PGC_SUSET,0,
 				   NULL, NULL, NULL);
 
 	DefineCustomStringVariable("yezzey.storage_bucket",
 				   "segment name prefix",
 				   NULL, &storage_bucket,
-				   "",PGC_USERSET,0,
+				   "",PGC_SUSET,0,
 				   NULL, NULL, NULL);
 
 	DefineCustomStringVariable("yezzey.storage_config",
 				"Storage config path for yezzey external storage.",
 				NULL, &storage_config,
-				"",PGC_USERSET,0,
+				"",PGC_SUSET,0,
 				NULL, NULL, NULL);
+
+	DefineCustomStringVariable("yezzey.storage_host",
+				   "segment name prefix",
+				   NULL, &storage_host,
+				   "",PGC_SUSET,0,
+				   NULL, NULL, NULL);
 
 	DefineCustomBoolVariable("yezzey.autooffload",
 				   "enable auto-offloading worker",
