@@ -34,7 +34,7 @@ EXTERNC void * createReaderHandle(
 // with operation modcound $modcount$
 EXTERNC void * createWriterHandle(
 	const char * config_path,
-	const char * rhandle_ptr,
+	void * rhandle_ptr,
     const char * nspname,
 	const char * relname, 
     const char * host,
