@@ -79,6 +79,13 @@ extern Datum yezzey_stat_get_external_storage_usage(PG_FUNCTION_ARGS);
 extern int yezzey_log_level;
 extern int yezzey_ao_log_level;
 
+
+/* ----- GPG ------ */
+extern char *gpg_key_id;
+extern char *gpg_engine_path;
+
+
+/* ----- STORAGE -----  */
 extern char *storage_prefix;
 extern char *storage_bucket;
 extern char *storage_config;

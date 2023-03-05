@@ -1,5 +1,10 @@
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -24,10 +29,6 @@
 #include "access/aosegfiles.h"
 #include "utils/tqual.h"
 
-#include "external_storage.h"
-#include "smgr_s3.h"
-
-
 #include "catalog/storage.h"
 #include "catalog/storage_xlog.h"
 #include "storage/smgr.h"
@@ -39,6 +40,16 @@
 #include "c.h"
 #include "cdb/cdbvars.h"
 
+#ifdef __cplusplus
+}
+#endif
+
+
+#include "external_storage.h"
+#include "smgr_s3.h"
+
+#include "gpreader.h"
+#include "gpwriter.h"
 
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
@@ -71,8 +82,8 @@ offloadFileToExternalStorage(
 	int64 logicalEof,
 	const char * external_storage_path) {
 
-	void * whandle;
-	void * rhandle;
+	GPWriter * whandle;
+	GPReader * rhandle;
 	int rc;
 	int tot;
 	int currptrtot;
@@ -92,49 +103,41 @@ offloadFileToExternalStorage(
 	}
 	progress = 0;
 
-	/* Create external storage reader handle to calculate total external files size. 
-	* this is needed to skip offloading of data already present in external storage.
- 	*/
-	rhandle = createReaderHandle(
+	auto iohandler = yezzey_io_handler_allocate(
+		gpg_engine_path,
+		gpg_key_id,
 		storage_config,
 		nspname,
 		relname,
 		storage_host /* host */,
 		storage_bucket/*bucket*/, 
 		storage_prefix /*prefix*/, 
-		localPath,
-		GpIdentity.segindex);
+		localPath
+	);
+
+	/* Create external storage reader handle to calculate total external files size. 
+	* this is needed to skip offloading of data already present in external storage.
+ 	*/
+	rhandle = (GPReader*) createReaderHandle(iohandler, GpIdentity.segindex);
 
 	if (!rhandle) {
 		elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
 	}
 	
-	virtual_size = yezzey_calc_virtual_relation_size(rhandle);
+	virtual_size = yezzey_calc_virtual_relation_size(iohandler);
 	progress = virtual_size;
 	FileSeek(vfd, progress, SEEK_SET);
 
 	if (!external_storage_path) {
-		whandle = createWriterHandle(
-			storage_config,
-			rhandle, 
-			nspname,
-			relname/*relname*/, 
-			storage_host /*host*/,
-			storage_bucket/*bucket*/, 
-			storage_prefix /*prefix*/, 
-			localPath, 
+		whandle = (GPWriter*)createWriterHandle(iohandler,
 			GpIdentity.segindex,
 			/* internal usage, modcount dump commited, no need to bump */
 			modcount);
 	
 	} else {
 		elog(WARNING, "yezzey: creating write handle to path %s", external_storage_path);
-		whandle = createWriterHandleToPath(
-			storage_config, 
-			storage_host /*host*/,
-			storage_bucket/*bucket*/, 
-			storage_prefix/*prefix*/,
-			external_storage_path, 
+		whandle = (GPWriter*)createWriterHandleToPath(
+			iohandler, 
 			GpIdentity.segindex, 
 			/* internal usage, modcount dump commited, no need to bump */ 
 			modcount);
@@ -165,7 +168,7 @@ offloadFileToExternalStorage(
 
 		while (tot < rc) {
 			currptrtot = rc - tot;
-			if (!yezzey_writer_transfer_data(whandle, bptr, &currptrtot)) {
+			if (!yezzey_writer_transfer_data(iohandler, bptr, &currptrtot)) {
 				return -1;
 			}
 
@@ -176,9 +179,13 @@ offloadFileToExternalStorage(
 		progress += rc;
 	}
 
-	if (!yezzey_complete_w_transfer_data(&whandle)) {
+	if (!yezzey_complete_r_transfer_data((void **)&rhandle)) {
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
+	if (!yezzey_complete_w_transfer_data((void **)&whandle)) {
+		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
+	}
+	yezzey_io_free(iohandler);
 	FileClose(vfd);
 	free(buffer);
 
@@ -277,20 +284,26 @@ offloadRelationSegment(
 		RelationDropStorageNoClose(aorel);
 	}
 
-	virtual_sz = yezzey_virtual_relation_size(
+
+	auto iohandler = yezzey_io_handler_allocate(
+		gpg_engine_path,
+		gpg_key_id,
 		storage_config,
 		nspname,
 		aorel->rd_rel->relname.data,
 		storage_host /*host*/,
 		storage_bucket/*bucket*/, 
 		storage_prefix /*prefix*/, 
-		local_path.data,
-		 GpIdentity.segindex);
+		local_path.data
+	);
+
+	virtual_sz = yezzey_virtual_relation_size(iohandler, GpIdentity.segindex);
 
     elog(yezzey_ao_log_level, "yezzey: relation segment reached external storage path %s, virtual size %ld, logical eof %ld", local_path.data, virtual_sz, logicalEof);
 
 	pfree(nspname);
     pfree(local_path.data);
+	yezzey_io_free(iohandler);
     return 0;
 }
 
@@ -328,16 +341,20 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 
     elog(yezzey_ao_log_level, "yezzey: contructed path %s", local_path.data);
 	
-	/* stat external storage usage */
-	virtual_sz = yezzey_virtual_relation_size(
+	auto iohandler = yezzey_io_handler_allocate(
+		gpg_engine_path,
+		gpg_key_id,
 		storage_config, 
 		nspname,
 		aorel->rd_rel->relname.data, 
 		storage_host /*host*/,
 		storage_bucket/*bucket*/, 
 		storage_prefix /*prefix*/, 
-		local_path.data, 
-		GpIdentity.segindex);
+		local_path.data
+	);
+
+	/* stat external storage usage */
+	virtual_sz = yezzey_virtual_relation_size(iohandler, GpIdentity.segindex);
 
 	*external_bytes = virtual_sz;
 
@@ -355,6 +372,7 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 
 	pfree(nspname);
     pfree(local_path.data);
+	yezzey_io_free(iohandler);
     return 0;
 }
 
@@ -400,24 +418,28 @@ statRelationSpaceUsagePerExternalChunk(
 		elog(ERROR, "yezzey: failed to get namescape name of relation %s", aorel->rd_rel->relname.data);
     }
 
-	/* stat external storage usage */
-	rhanlde = yezzey_list_relation_chunks(
+	auto iohandler = yezzey_io_handler_allocate(
+		gpg_engine_path,
+		gpg_key_id,
 		storage_config,
 		nspname,
 		aorel->rd_rel->relname.data, 
 		storage_host /*host*/,
 		storage_bucket/*bucket*/, 
 		storage_prefix /*prefix*/, 
-		local_path.data, 
-		GpIdentity.segindex, 
-		cnt_chunks);
+		local_path.data
+	);
+
+	/* stat external storage usage */
+	yezzey_list_relation_chunks(
+		iohandler, GpIdentity.segindex, cnt_chunks);
 
 	pfree(nspname);
 
 	Assert((*cnt_chunks) >= 0);
 	meta = (struct externalChunkMeta*) malloc(sizeof(struct externalChunkMeta) * (*cnt_chunks));
 
-	yezzey_copy_relation_chunks(rhanlde, meta);
+	yezzey_copy_relation_chunks(iohandler, meta);
 
 	// do copy;
 	// list will be allocated in current PostgreSQL mempry context
@@ -429,7 +451,7 @@ statRelationSpaceUsagePerExternalChunk(
 		free((void*)meta[i].chunkName);
 	}
 
-	yezzey_list_relation_chunks_cleanup(rhanlde);
+	yezzey_list_relation_chunks_cleanup(iohandler);
 	free(meta);
 	/* No local storage cache logic for now */
 	*local_bytes = 0;
@@ -443,6 +465,7 @@ statRelationSpaceUsagePerExternalChunk(
 	*local_commited_bytes = 0;
 
     pfree(local_path.data);
+	yezzey_io_free(iohandler);
     return 0;
 }
 

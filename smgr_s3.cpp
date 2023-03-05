@@ -11,17 +11,21 @@
  * 
  */
 
+#include "smgr_s3.h"
 
-#include "gpreader.h"
-#include "gpwriter.h"
 #include <string>
 #include <vector>
 #include <map>
-#include "smgr_s3.h"
-#include <openssl/md5.h>
+
+#include "gpreader.h"
+#include "gpwriter.h"
+
+#include "io_adv.h"
+
 
 #define DEFAULTTABLESPACE_OID 1663 /* FIXME */
 
+const char * basebackupsPath = "/basebackups_005/aosegments/";
 
 std::string getYezzeyExtrenalStorageBucket(const char * host, const char * bucket) {
     std::string url = "s3://";
@@ -52,7 +56,7 @@ std::string getYezzeyRelationUrl(
 
     std::string url = "";
     url += external_storage_prefix;
-    url += "/seg" + std::to_string(segid) + "/basebackups_005/aosegments/";
+    url += "/seg" + std::to_string(segid) + basebackupsPath;
     size_t len = strlen(fileName);
 
     int64_t dboid = 0, tableoid = 0;
@@ -86,7 +90,6 @@ std::string getYezzeyRelationUrl(
 
     unsigned char md[MD5_DIGEST_LENGTH];
 
-
     url += std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(dboid) + "_";
 
     std::string full_name = "";
@@ -107,6 +110,27 @@ std::string getYezzeyRelationUrl(
 
     return url;
 }
+
+
+void
+getYezzeyExternalStoragePath(
+    const char * nspname, 
+    const char * relname,
+    const char * host,
+    const char * bucket,
+    const char * storage_prefix,
+    const char * filename,
+    int32_t segid,
+    char ** dest
+) {
+    auto prefix = getYezzeyRelationUrl(nspname, relname, storage_prefix, filename, segid);
+    auto path = getYezzeyExtrenalStorageBucket(host, bucket) + prefix;
+
+    *dest = (char*)malloc(sizeof(char) * path.size());
+    strcpy(*dest, path.c_str());
+    return;
+}
+
 
 /*
 * fileName is in form 'base=DEFAULTTABLESPACE_OID/<dboid>/<tableoid>.<seg>'
@@ -140,40 +164,15 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
     return res;
 }
 
-void
-getYezzeyExternalStoragePath(
-    const char * nspname,
-    const char * relname,
-    const char * host,
-    const char * bucket, 
-    const char * external_storage_prefix, 
-    const char * fileName, 
-    int32_t segid,
-    char ** dest
-) {
-    auto prefix = getYezzeyRelationUrl(nspname, relname, external_storage_prefix, fileName, segid);
-    auto path = getYezzeyExtrenalStorageBucket(host, bucket) + prefix;
-
-    *dest = (char*)malloc(sizeof(char) * path.size());
-    strcpy(*dest, path.c_str());
-    return;
-}
-
 void * createReaderHandle(
-    const char * config_path,
-    const char * nspname,
-    const char * relname,
-    const char * host,
-    const char * bucket, 
-    const char * external_storage_prefix, 
-    const char * fileName, 
+	yezzey_io_handler * handler,
     int32_t segid) {
 
-    auto prefix = getYezzeyRelationUrl(nspname, relname, external_storage_prefix, fileName, segid);
+    auto prefix = getYezzeyRelationUrl(handler->nspname, handler->relname, handler->external_storage_prefix, handler->fileName, segid);
 
     // add config path FIXME
     auto reader = reader_init(
-        yezzey_url_add_options((getYezzeyExtrenalStorageBucket(host, bucket) + prefix), config_path).c_str());
+        yezzey_url_add_options((getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix), handler->config_path).c_str());
 
     if (reader == NULL) {
         /* error while external storage initialization */
@@ -189,7 +188,7 @@ void * createReaderHandle(
         return v1 < v2;
     });
 
-    return reader;
+    return handler->read_ptr = reader;
 }
 
 std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t> & modcounts) {
@@ -208,30 +207,23 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
 }
 
 void * createWriterHandle(
-    const char * config_path,
-    void * rhandle_ptr,
-    const char * nspname,
-    const char * relname,
-    const char * host,
-    const char * bucket, 
-    const char * external_storage_prefix, 
-    const char * fileName, int32_t segid, int64_t modcount) {
-    if (rhandle_ptr == NULL) {
+	yezzey_io_handler * handler, int32_t segid, int64_t modcount) {
+    if (handler->read_ptr == NULL) {
         return NULL;
     }
 
-    auto prefix = getYezzeyRelationUrl(nspname, relname, external_storage_prefix, fileName, segid);
+    auto prefix = getYezzeyRelationUrl(handler->nspname, handler->relname, handler->external_storage_prefix, handler->fileName, segid);
 
-    GPReader * reader = (GPReader *) rhandle_ptr;
+    GPReader * reader = (GPReader *)handler->read_ptr;
 
     auto content = reader->getKeyList().contents;
     if (content.size() == 0) {
-        auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(host, bucket) + prefix, {modcount, modcount, modcount, modcount});
-        url = yezzey_url_add_options(url, config_path);
+        auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix, {modcount, modcount, modcount, modcount});
+        url = yezzey_url_add_options(url, handler->config_path);
         return writer_init(url.c_str());
     }
 
-    auto largest = parseModcounts(prefix, content.back().getName());
+    auto largest = parseModcounts(handler->external_storage_prefix, content.back().getName());
     if (largest.size() <= 3) {
         largest.push_back(modcount);
     } else if (largest.size() == 4) {
@@ -241,62 +233,44 @@ void * createWriterHandle(
     }
 
     auto url = make_yezzey_url(
-        getYezzeyExtrenalStorageBucket(host, bucket) + prefix, largest);
+        getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + handler->external_storage_prefix, largest);
 
     // config path
-    url = yezzey_url_add_options(url, config_path);
+    url = yezzey_url_add_options(url, handler->config_path);
 
-    return writer_init(url.c_str());
+    return handler->write_ptr = writer_init(url.c_str());
 }
-
 
 void * createWriterHandleToPath(
-    const char * config_path,
-    const char * host,
-    const char * bucket,
-    const char * external_storage_prefix,
-	const char * path,
+	yezzey_io_handler * handler,
 	int32_t segid, 
 	int64_t modcount) {
-    std::string url = getYezzeyExtrenalStorageBucket(host, bucket) ;
-    url += external_storage_prefix;
-    url += "/seg" + std::to_string(segid) + "/basebackups_005/aosegments/";
-    url += path;
+    std::string url = getYezzeyExtrenalStorageBucket(handler->host, handler->bucket);
+    
+    url += handler->external_storage_prefix;
+    url += "/seg" + std::to_string(segid) + basebackupsPath;
+    url += handler->fileName;
 
     // config path
-    url = yezzey_url_add_options(url, config_path);
+    url = yezzey_url_add_options(url, handler->config_path);
 
-    return writer_init(url.c_str());
+    return handler->write_ptr = writer_init(url.c_str());
 }
 
-bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount) {
+bool yezzey_reader_transfer_data(yezzey_io_handler * handler, char *buffer, int *amount) {
     int inner_amount = *amount;
-    auto res = reader_transfer_data((GPReader*) handle, buffer, inner_amount);
+    auto res = reader_transfer_data((GPReader*)handler->read_ptr, buffer, inner_amount);
     *amount = inner_amount;
     return res;
 }
 
 int64_t yezzey_virtual_relation_size(
-    const char * config_path,
-    const char * nspname,
-    const char * relname, 
-    const char * host,
-    const char * bucket, 
-    const char * external_storage_prefix, 
-    const char * fileName, 
+	yezzey_io_handler * handler,
     int32_t segid) {
 
-	GPReader * rhandle = (GPReader * )createReaderHandle(
-        config_path,
-        nspname,
-        relname, 
-        host /*host*/,
-		bucket/*bucket*/, 
-        external_storage_prefix /*prefix*/,
-        fileName,
-        segid);
+	GPReader * rhandle = (GPReader * )createReaderHandle(handler, segid);
 
-    if (!rhandle) {
+    if (!handler->read_ptr) {
         return -1;
     }
     
@@ -310,8 +284,8 @@ int64_t yezzey_virtual_relation_size(
     return sz;
 }
 
-int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr) {
-	GPReader * rhandle = (GPReader * )rhandle_ptr;
+int64_t yezzey_calc_virtual_relation_size(yezzey_io_handler * handler) {
+	GPReader * rhandle = (GPReader * )handler->read_ptr;
     
     int64_t sz = 0;
     auto content = rhandle->getKeyList().contents;
@@ -322,36 +296,26 @@ int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr) {
 }
 
 
-void * yezzey_list_relation_chunks(
-    const char * config_path,
-    const char * nspname,
-    const char * relname, 
-    const char * host,
-    const char * bucket, 
-    const char * external_storage_prefix,
-    const char * fileName,
+void yezzey_list_relation_chunks(
+	yezzey_io_handler * handler,
     int32_t segid, 
     size_t * cnt_chunks) 
 {
-	GPReader * rhandle = (GPReader * )createReaderHandle(
-        config_path,
-        nspname,
-        relname, 
-        host /*host*/,
-		bucket/*bucket*/, 
-        external_storage_prefix /*prefix*/, 
-        fileName, 
-        segid);
+	GPReader * rhandle = (GPReader * )createReaderHandle(handler, segid);
+    
+    if (rhandle == NULL) {
+        return;
+    }
 
     auto content = rhandle->getKeyList().contents;
     *cnt_chunks = content.size();
-    return rhandle;
+    return void(handler->read_ptr = rhandle);
 }
 
 int64_t yezzey_copy_relation_chunks(
-    void *rhandle_ptr, 
+    yezzey_io_handler * handler, 
     externalChunkMeta * chunks){
-	GPReader * rhandle = (GPReader * )rhandle_ptr;
+	GPReader * rhandle = (GPReader * )handler->read_ptr;
     
     auto content = rhandle->getKeyList().contents;
     for (size_t i = 0; i < content.size(); ++ i) {
@@ -363,19 +327,19 @@ int64_t yezzey_copy_relation_chunks(
 }
 
 
-int64_t yezzey_list_relation_chunks_cleanup(void *rhandle_ptr) {
-    auto reader = (GPReader*) rhandle_ptr;
+int64_t yezzey_list_relation_chunks_cleanup(yezzey_io_handler * handler) {
+    auto reader = (GPReader*) handler->read_ptr;
     reader_cleanup(&reader);
     return 0;
 }
 
-bool yezzey_reader_empty(void * handle) {
-    return reader_empty((GPReader*) handle);
+bool yezzey_reader_empty(yezzey_io_handler * handler) {
+    return reader_empty((GPReader*) (handler->read_ptr));
 }
 
-bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amount) {
+bool yezzey_writer_transfer_data(yezzey_io_handler * handler, char *buffer, int *amount) {
     int inner_amount = *amount;
-    auto res =  writer_transfer_data((GPWriter*) handle, buffer, inner_amount);
+    auto res =  writer_transfer_data((GPWriter*) (handler->write_ptr), buffer, inner_amount);
     *amount = inner_amount;
     return res; 
 }

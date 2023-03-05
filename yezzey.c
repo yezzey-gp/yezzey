@@ -27,6 +27,8 @@
 #include "external_storage.h"
 #include "smgr_s3.h"
 
+// #include "smgr_s3_frontend.h"
+
 // For GpIdentity
 #include "c.h"
 #include "cdb/cdbvars.h"
@@ -41,6 +43,10 @@ char *storage_prefix = NULL;
 char *storage_bucket = NULL;
 char *storage_config = NULL;
 char *storage_host = NULL;
+
+char * gpg_engine_path = NULL;
+char * gpg_key_id = NULL;
+
 
 PG_MODULE_MAGIC;
 
