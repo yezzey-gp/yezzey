@@ -209,7 +209,7 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
 
 void * createWriterHandle(
     const char * config_path,
-    const char * rhandle_ptr,
+    void * rhandle_ptr,
     const char * nspname,
     const char * relname,
     const char * host,
