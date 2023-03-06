@@ -2,31 +2,53 @@
 
 #include "proxy.h"
 
+#include "gpreader.h"
+#include "gpwriter.h"
+
+#include "unordered_map"
 
 typedef struct yezzey_vfd {
 	int y_vfd; /* Either YEZZEY_* preserved fd or pg internal fd >= 9 */
-	int localTmpVfd; /* for writing files */
+
+	int localTmpVfd; /* for writing cache files */
+	
+	/* s3-related params */
 	char * filepath;
 	char * nspname;
 	char * relname;
+
+	/* gpg-related params */
+	
+
+	/* open args */ 
 	int fileFlags; 
 	int fileMode;
+	
+	
 	int64 offset;
 	int64 virtualSize;
 	int64 modcount;
-	void * rhandle;
-	void * whandle;
+	
+	GPReader * rhandle;
+	GPWriter * whandle;
+
+
+	yezzey_vfd() : y_vfd(0), localTmpVfd(0), filepath(NULL), nspname(NULL),
+	relname(NULL), fileFlags(0), fileMode(0), offset(0), virtualSize(0), modcount(0),
+	rhandle(NULL), whandle(NULL)  {
+
+	}
 } yezzey_vfd;
 
-#define YEZZEY_VANANT_VFD 0
+#define YEZZEY_VANANT_VFD 0 /* not used */
 #define YEZZEY_NOT_OPENED 1
 #define YEZZEY_OPENED 2
 #define YEZZEY_MIN_VFD 3
-#define MAXVFD 100
 
 File virtualEnsure(SMGRFile file);
 
-yezzey_vfd yezzey_vfd_cache[MAXVFD];
+// be unordered map
+std::unordered_map<SMGRFile, yezzey_vfd> yezzey_vfd_cache;
 
 File s3ext = -2;
 
@@ -40,7 +62,7 @@ int readprepare(SMGRFile file) {
 	}
 #endif
 
-	yezzey_vfd_cache[file].rhandle = createReaderHandle(
+	yezzey_vfd_cache[file].rhandle = (GPReader*)createReaderHandle(
 		storage_config,
 		yezzey_vfd_cache[file].nspname,
 		yezzey_vfd_cache[file].relname,
@@ -83,7 +105,7 @@ int writeprepare(SMGRFile file) {
 		return -1;
 	}
 
-	yezzey_vfd_cache[file].whandle = createWriterHandle(
+	yezzey_vfd_cache[file].whandle = (GPWriter *) createWriterHandle(
 		storage_config,
 		yezzey_vfd_cache[file].rhandle,
 		yezzey_vfd_cache[file].nspname,
@@ -205,20 +227,22 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileNam
 	elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */
-	for (yezzey_fd = YEZZEY_NOT_OPENED + 1; yezzey_fd < MAXVFD; ++yezzey_fd) {
-		if (yezzey_vfd_cache[yezzey_fd].y_vfd == YEZZEY_VANANT_VFD) {
-			yezzey_vfd_cache[yezzey_fd].filepath = pstrdup(fileName);
+	for (yezzey_fd = YEZZEY_NOT_OPENED + 1;; ++yezzey_fd) {
+		if (!yezzey_vfd_cache.count(yezzey_fd)) {
+			yezzey_vfd_cache[yezzey_fd] = yezzey_vfd();
+			// memset(&yezzey_vfd_cache[file], 0, sizeof(yezzey_vfd));
+			yezzey_vfd_cache[yezzey_fd].filepath = strdup(fileName);
 			if (relname == NULL) {
 				/* Should be possible only in recovery */
 				Assert(RecoveryInProgress());
 			} else {
-				yezzey_vfd_cache[yezzey_fd].relname = pstrdup(relname);
+				yezzey_vfd_cache[yezzey_fd].relname = strdup(relname);
 			}
 			if (nspname == NULL) {
 				/* Should be possible only in recovery */
 				Assert(RecoveryInProgress());
 			} else {
-				yezzey_vfd_cache[yezzey_fd].nspname = pstrdup(nspname);
+				yezzey_vfd_cache[yezzey_fd].nspname = strdup(nspname);
 			}
 			yezzey_vfd_cache[yezzey_fd].fileFlags = fileFlags;
 			yezzey_vfd_cache[yezzey_fd].fileMode = fileMode;
@@ -274,8 +298,8 @@ void yezzey_FileClose(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
 	elog(yezzey_ao_log_level, "file close with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
-		yezzey_complete_r_transfer_data(&yezzey_vfd_cache[file].rhandle);
-		yezzey_complete_w_transfer_data(&yezzey_vfd_cache[file].whandle);
+		yezzey_complete_r_transfer_data((void**) &yezzey_vfd_cache[file].rhandle);
+		yezzey_complete_w_transfer_data((void**) &yezzey_vfd_cache[file].whandle);
 	} else {
 		FileClose(actual_fd);
 	}
@@ -286,15 +310,15 @@ void yezzey_FileClose(SMGRFile file) {
 	}
 #endif
 	if (yezzey_vfd_cache[file].filepath) {
-		pfree(yezzey_vfd_cache[file].filepath);
+		free(yezzey_vfd_cache[file].filepath);
 	}
 	if (yezzey_vfd_cache[file].relname) {
-		pfree(yezzey_vfd_cache[file].relname);
+		free(yezzey_vfd_cache[file].relname);
 	}
 	if (yezzey_vfd_cache[file].nspname) {
-		pfree(yezzey_vfd_cache[file].nspname);
+		free(yezzey_vfd_cache[file].nspname);
 	}
-	memset(&yezzey_vfd_cache[file], 0, sizeof(yezzey_vfd));
+	yezzey_vfd_cache.erase(file);
 }
 
 #define ALLOW_MODIFY_EXTERNAL_TABLE
