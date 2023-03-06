@@ -17,7 +17,7 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	smgr.o worker.o yezzey.o external_storage.o proxy.o smgr_s3.o io.o  ../gpcloud_modified_for_yezzey/src/gpcloud.o ../gpcloud_modified_for_yezzey/lib/http_parser.o ../gpcloud_modified_for_yezzey/lib/ini.o $(addprefix ../gpcloud_modified_for_yezzey/src/,$(COMMON_OBJS))
+	smgr.o worker.o yezzey.o external_storage.o proxy.o external_storage_smgr.o io.o crypto.o  ../gpcloud_modified_for_yezzey/src/gpcloud.o ../gpcloud_modified_for_yezzey/lib/http_parser.o ../gpcloud_modified_for_yezzey/lib/ini.o $(addprefix ../gpcloud_modified_for_yezzey/src/,$(COMMON_OBJS))
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql

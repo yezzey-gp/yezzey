@@ -44,8 +44,8 @@ void * createWriterHandleToPath(
 	int64_t modcount);
 
 
-bool yezzey_reader_transfer_data(yezzey_io_handler * handle, char *buffer, int *amount);
-bool yezzey_writer_transfer_data(yezzey_io_handler * handle, char *buffer, int *amount);
+bool yezzey_reader_transfer_data(yezzey_io_handler * handle, char *buffer, size_t *amount);
+bool yezzey_writer_transfer_data(yezzey_io_handler * handle, const char *buffer, size_t *amount);
 
 bool yezzey_reader_empty(yezzey_io_handler * handler);
 
@@ -62,8 +62,8 @@ void yezzey_list_relation_chunks(
 
 int64_t yezzey_list_relation_chunks_cleanup(yezzey_io_handler * handler);
 
-bool yezzey_complete_r_transfer_data(void ** handle);
-bool yezzey_complete_w_transfer_data(void ** handle);
+bool yezzey_complete_r_transfer_data(yezzey_io_handler * handler);
+bool yezzey_complete_w_transfer_data(yezzey_io_handler * handler);
 
 int64_t yezzey_copy_relation_chunks(yezzey_io_handler * handler, struct externalChunkMeta * chunks);
 

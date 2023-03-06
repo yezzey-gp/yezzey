@@ -44,9 +44,8 @@ extern "C"
 }
 #endif
 
-
+#include "external_storage_smgr.h"
 #include "external_storage.h"
-#include "smgr_s3.h"
 
 #include "gpreader.h"
 #include "gpwriter.h"
@@ -82,11 +81,8 @@ offloadFileToExternalStorage(
 	int64 logicalEof,
 	const char * external_storage_path) {
 
-	GPWriter * whandle;
-	GPReader * rhandle;
 	int rc;
 	int tot;
-	int currptrtot;
 	char * buffer;
 	char * bptr;
 	size_t chunkSize;
@@ -118,9 +114,9 @@ offloadFileToExternalStorage(
 	/* Create external storage reader handle to calculate total external files size. 
 	* this is needed to skip offloading of data already present in external storage.
  	*/
-	rhandle = (GPReader*) createReaderHandle(iohandler, GpIdentity.segindex);
+	(void)createReaderHandle(iohandler, GpIdentity.segindex);
 
-	if (!rhandle) {
+	if (!iohandler->read_ptr) {
 		elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
 	}
 	
@@ -129,21 +125,21 @@ offloadFileToExternalStorage(
 	FileSeek(vfd, progress, SEEK_SET);
 
 	if (!external_storage_path) {
-		whandle = (GPWriter*)createWriterHandle(iohandler,
+		(void)createWriterHandle(iohandler,
 			GpIdentity.segindex,
 			/* internal usage, modcount dump commited, no need to bump */
 			modcount);
 	
 	} else {
 		elog(WARNING, "yezzey: creating write handle to path %s", external_storage_path);
-		whandle = (GPWriter*)createWriterHandleToPath(
+		(void)createWriterHandleToPath(
 			iohandler, 
 			GpIdentity.segindex, 
 			/* internal usage, modcount dump commited, no need to bump */ 
 			modcount);
 	}
 
-	if (!whandle) {
+	if (!iohandler->write_ptr) {
 		elog(ERROR, "yezzey: offloading %s: failed to get external storage write handler", localPath);
 	}
 
@@ -167,7 +163,7 @@ offloadFileToExternalStorage(
 		bptr = buffer;
 
 		while (tot < rc) {
-			currptrtot = rc - tot;
+			size_t currptrtot = rc - tot;
 			if (!yezzey_writer_transfer_data(iohandler, bptr, &currptrtot)) {
 				return -1;
 			}
@@ -179,10 +175,10 @@ offloadFileToExternalStorage(
 		progress += rc;
 	}
 
-	if (!yezzey_complete_r_transfer_data((void **)&rhandle)) {
+	if (!yezzey_complete_r_transfer_data(iohandler)) {
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
-	if (!yezzey_complete_w_transfer_data((void **)&whandle)) {
+	if (!yezzey_complete_w_transfer_data(iohandler)) {
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
 	yezzey_io_free(iohandler);
@@ -226,13 +222,10 @@ offloadRelationSegmentPath(
 	int64 modcount, 
 	int64 logicalEof,
 	const char * external_storage_path) {
-	int rc;
-
     if (!ensureFilepathLocal(localpath)) {
         // nothing to do
         return 0;
     }
-
 	return offloadFileToExternalStorage(nspname, relname, localpath, modcount, logicalEof, external_storage_path);
 }
 
@@ -390,7 +383,6 @@ statRelationSpaceUsagePerExternalChunk(
 	StringInfoData local_path;
 	RelFileNode rnode;
 	int vfd;
-	void *rhanlde;
 	struct externalChunkMeta * meta;
 	HeapTuple tp;
 	char * nspname;
@@ -405,8 +397,6 @@ statRelationSpaceUsagePerExternalChunk(
 	}
 
     elog(yezzey_ao_log_level, "contructed path %s", local_path.data);
-	
-
 	
 	tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 	
@@ -472,8 +462,6 @@ statRelationSpaceUsagePerExternalChunk(
 int
 loadRelationSegment(RelFileNode rnode, int segno) {
     StringInfoData path;
-	int rc;
-
     if (segno == 0) {
         /* should never happen */
         return 0;
