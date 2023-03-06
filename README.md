@@ -173,6 +173,12 @@ gpconfig -c yezzey.storage_bucket -v 'loh228'
 gpconfig -c yezzey.storage_config -v '/home/reshke/s3test.conf'
 gpconfig -c yezzey.storage_host -v 'storage.yandexcloud.net'
 
+
+
+gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbtvdnna6t7oqaioeaj/6/segments_005'
+gpconfig -c yezzey.storage_bucket -v 'yandexcloud-dbaas-mdbtvdnna6t7oqaioeaj'
+
+gpconfig -c yezzey.storage_host -v 's3.mds.yandex.net'
+gpconfig -c yezzey.storage_config -v '/home/gpadmin/yezzey_conf/yezzey_s3.conf'
+
 gpconfig -c shared_preload_libraries -v yezzey
-gpconfig -c yezzey.storage_host -v "'s3.mds.yandex.net'"
-gpconfig -c yezzey.storage_config -v "'/home/reshke/s3test2.conf'"

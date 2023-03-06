@@ -1,10 +1,9 @@
 
-#ifndef SMGR_S3_H
-#define SMGR_S3_H
+#ifndef YEZZEY_SMGR_S3_H
+#define YEZZEY_SMGR_S3_H
 
 //#include "storage/smgr.h"
-
-
+#include <openssl/md5.h>
 
 struct externalChunkMeta {
 	int64_t chunkSize;
@@ -17,88 +16,71 @@ struct externalChunkMeta {
 #define EXTERNC
 #endif
 
+extern const char * basebackupsPath;
+
+
+#ifdef __cplusplus
+
+#include "io_adv.h"
+#include "io.h"
+
 // create external storage reading handle, able to 
 // read all files related to given relation
-EXTERNC void * createReaderHandle(
-	const char * config_path,
-    const char * nspname,
-	const char * relname, 
-	const char * host,
-	const char * bucket, 
-	const char * external_storage_prefix, 
-	const char * fileName, 
+void * createReaderHandle(
+	yezzey_io_handler * handler,
 	int32_t segid);
 
 // create external storage write handle, 
 // to transfer segment file of given AO/AOCS relation,
 // with operation modcound $modcount$
-EXTERNC void * createWriterHandle(
-	const char * config_path,
-	void * rhandle_ptr,
-    const char * nspname,
-	const char * relname, 
-    const char * host,
-	const char * bucket, 
-	const char * external_storage_prefix, 
-	const char * fileName, 
+void * createWriterHandle(
+	yezzey_io_handler * handler,
 	int32_t segid, 
 	int64_t modcount);
 
-EXTERNC void * createWriterHandleToPath(
-	const char * config_path,
-	const char * host,
-    const char * bucket,
-	const char * external_storage_prefix,
-	const char * path,
+void * createWriterHandleToPath(
+	yezzey_io_handler * handler,
 	int32_t segid, 
 	int64_t modcount);
+
+
+bool yezzey_reader_transfer_data(yezzey_io_handler * handle, char *buffer, int *amount);
+bool yezzey_writer_transfer_data(yezzey_io_handler * handle, char *buffer, int *amount);
+
+bool yezzey_reader_empty(yezzey_io_handler * handler);
+
+int64_t yezzey_virtual_relation_size(
+	yezzey_io_handler * handler,
+	int32_t segid);
+
+int64_t yezzey_calc_virtual_relation_size(yezzey_io_handler * handler);
+
+void yezzey_list_relation_chunks(
+	yezzey_io_handler * handler,
+	int32_t segid,
+	size_t * cnt_chunks);
+
+int64_t yezzey_list_relation_chunks_cleanup(yezzey_io_handler * handler);
+
+bool yezzey_complete_r_transfer_data(void ** handle);
+bool yezzey_complete_w_transfer_data(void ** handle);
+
+int64_t yezzey_copy_relation_chunks(yezzey_io_handler * handler, struct externalChunkMeta * chunks);
+
+#endif
 
 EXTERNC void getYezzeyExternalStoragePath(
-    const char * nspname,
-    const char * relname, 
-	const char * host,
-    const char * bucket, 
-    const char * external_storage_prefix, 
-    const char * fileName, 
+    const char * nspname, 
+    const char * relationName,
+    const char * host,
+    const char * bukcet,
+    const char * prefix,
+    const char * filename,
     int32_t segid,
 	char ** dest
 );
 
-EXTERNC bool yezzey_reader_transfer_data(void * handle, char *buffer, int *amount);
-EXTERNC bool yezzey_writer_transfer_data(void * handle, char *buffer, int *amount);
-
-EXTERNC bool yezzey_reader_empty(void *handle);
-
-EXTERNC int64_t yezzey_virtual_relation_size(
-	const char * config_path,
-    const char * nspname,
-	const char * relname,
-	const char * host,
-	const char * bucket, 
-	const char * external_storage_prefix, 
-	const char * fileName, 
-	int32_t segid);
-
-EXTERNC int64_t yezzey_calc_virtual_relation_size(void * rhandle_ptr);
-
-EXTERNC void * yezzey_list_relation_chunks(
-	const char * config_path,
-    const char * nspname,
-	const char * relname,
-	const char * host,
-	const char * bucket,
-	const char * external_storage_prefix,
-	const char * fileName,
-	int32_t segid,
-	size_t * cnt_chunks);
-
-EXTERNC int64_t yezzey_copy_relation_chunks(void *rhandle_ptr, struct externalChunkMeta * chunks);
-
-EXTERNC int64_t yezzey_list_relation_chunks_cleanup(void *rhandle_ptr);
-
-EXTERNC bool yezzey_complete_r_transfer_data(void ** handle);
-EXTERNC bool yezzey_complete_w_transfer_data(void ** handle);
 
 #undef EXTERNC
 
-#endif /* SMGR_S3_H */
+#endif /* YEZZEY_SMGR_S3_H */

@@ -7,6 +7,11 @@
 
 #include "unordered_map"
 
+#include "smgr_s3.h"
+
+#include "io.h"
+#include "io_adv.h"
+
 typedef struct yezzey_vfd {
 	int y_vfd; /* Either YEZZEY_* preserved fd or pg internal fd >= 9 */
 
@@ -16,6 +21,8 @@ typedef struct yezzey_vfd {
 	char * filepath;
 	char * nspname;
 	char * relname;
+
+	yezzey_io_handler * handler;
 
 	/* gpg-related params */
 	
@@ -63,13 +70,7 @@ int readprepare(SMGRFile file) {
 #endif
 
 	yezzey_vfd_cache[file].rhandle = (GPReader*)createReaderHandle(
-		storage_config,
-		yezzey_vfd_cache[file].nspname,
-		yezzey_vfd_cache[file].relname,
-		storage_host /*host*/,
-		storage_bucket /*bucket*/, 
-		storage_prefix /*prefix*/, 
-		yezzey_vfd_cache[file].filepath, 
+		yezzey_vfd_cache[file].handler,
 		GpIdentity.segindex);
 
 	if (yezzey_vfd_cache[file].rhandle == NULL) {
@@ -106,14 +107,7 @@ int writeprepare(SMGRFile file) {
 	}
 
 	yezzey_vfd_cache[file].whandle = (GPWriter *) createWriterHandle(
-		storage_config,
-		yezzey_vfd_cache[file].rhandle,
-		yezzey_vfd_cache[file].nspname,
-		yezzey_vfd_cache[file].relname,
-		storage_host /*host*/,
-		storage_bucket/*bucket*/,
-		storage_prefix/*prefix*/,
-		yezzey_vfd_cache[file].filepath, 
+		yezzey_vfd_cache[file].handler, 
 		GpIdentity.segindex,
 		1 /*because modcount will increase on write*/ + yezzey_vfd_cache[file].modcount);
 
@@ -223,11 +217,10 @@ int	yezzey_FileSync(SMGRFile file) {
 }
 
 SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileName, int fileFlags, int fileMode, int64 modcount) {
-	int yezzey_fd;
 	elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s", fileName);
 
 	/* lookup for virtual file desc entry */
-	for (yezzey_fd = YEZZEY_NOT_OPENED + 1;; ++yezzey_fd) {
+	for (SMGRFile yezzey_fd = YEZZEY_NOT_OPENED + 1;; ++yezzey_fd) {
 		if (!yezzey_vfd_cache.count(yezzey_fd)) {
 			yezzey_vfd_cache[yezzey_fd] = yezzey_vfd();
 			// memset(&yezzey_vfd_cache[file], 0, sizeof(yezzey_vfd));
@@ -253,6 +246,18 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileNam
 			}
 
 			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
+		
+			yezzey_vfd_cache[yezzey_fd].handler = yezzey_io_handler_allocate(
+				gpg_engine_path,
+				gpg_key_id,
+				storage_config,
+				yezzey_vfd_cache[yezzey_fd].nspname,
+				yezzey_vfd_cache[yezzey_fd].relname,
+				storage_host /*host*/,
+				storage_bucket/*bucket*/,
+				storage_prefix/*prefix*/,
+				yezzey_vfd_cache[yezzey_fd].filepath
+			);
 
 			/* we dont need to interact with s3 while in recovery*/
 
@@ -318,6 +323,7 @@ void yezzey_FileClose(SMGRFile file) {
 	if (yezzey_vfd_cache[file].nspname) {
 		free(yezzey_vfd_cache[file].nspname);
 	}
+	yezzey_io_free(yezzey_vfd_cache[file].handler);
 	yezzey_vfd_cache.erase(file);
 }
 
@@ -355,7 +361,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 		elog(ERROR, "external table modifications are not supported yet");
 #endif
 		rc = amount;
-		if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].whandle, buffer, &rc)) {
+		if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].handler, buffer, &rc)) {
 			elog(WARNING, "failed to write to external storage");
 			return -1;
 		}
@@ -380,7 +386,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 			elog(yezzey_ao_log_level, "read from external storage while read handler uninitialized");
 			return -1;
 		}
-		if (yezzey_reader_empty(yezzey_vfd_cache[file].rhandle)) {
+		if (yezzey_reader_empty(yezzey_vfd_cache[file].handler)) {
 			if (yezzey_vfd_cache[file].localTmpVfd <= 0) {
 				return 0;
 			}
@@ -391,7 +397,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 			elog(yezzey_ao_log_level, "read from proxy file %d", curr);
 #endif
 		} else {
-			if (!yezzey_reader_transfer_data(yezzey_vfd_cache[file].rhandle, buffer, &curr)) {
+			if (!yezzey_reader_transfer_data(yezzey_vfd_cache[file].handler, buffer, &curr)) {
 				elog(yezzey_ao_log_level, "problem while direct read from s3 read with %d curr: %d", file, curr);
 				return -1;
 			}
