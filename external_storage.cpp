@@ -85,8 +85,8 @@ offloadFileToExternalStorage(
 	int64 virtual_size;
 
 	chunkSize = 1 << 20;
-	buffer = palloc(chunkSize);
-	vfd = PathNameOpenFile(localPath, O_RDONLY, 0600);
+	buffer = (char*)malloc(chunkSize);
+	vfd = PathNameOpenFile((FileName)localPath, O_RDONLY, 0600);
 	if (vfd <= 0) {
 		elog(ERROR, "yezzey: failed to open %s file to transfer to external storage", localPath);
 	}
@@ -180,7 +180,7 @@ offloadFileToExternalStorage(
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
 	FileClose(vfd);
-	pfree(buffer);
+	free(buffer);
 
 	return rc;
 }
@@ -415,21 +415,22 @@ statRelationSpaceUsagePerExternalChunk(
 	pfree(nspname);
 
 	Assert((*cnt_chunks) >= 0);
-	meta = palloc(sizeof(struct externalChunkMeta) * (*cnt_chunks));
+	meta = (struct externalChunkMeta*) malloc(sizeof(struct externalChunkMeta) * (*cnt_chunks));
 
 	yezzey_copy_relation_chunks(rhanlde, meta);
 
 	// do copy;
-	*list = palloc(sizeof(struct yezzeyChunkMeta) * (*cnt_chunks));
+	// list will be allocated in current PostgreSQL mempry context
+	*list = (struct yezzeyChunkMeta*)palloc(sizeof(struct yezzeyChunkMeta) * (*cnt_chunks));
 
 	for (size_t i = 0; i < *cnt_chunks; ++i){
 		(*list)[i].chunkSize = meta[i].chunkSize;
 		(*list)[i].chunkName = pstrdup(meta[i].chunkName);
-		free(meta[i].chunkName);
+		free((void*)meta[i].chunkName);
 	}
 
 	yezzey_list_relation_chunks_cleanup(rhanlde);
-	pfree(meta);
+	free(meta);
 	/* No local storage cache logic for now */
 	*local_bytes = 0;
 

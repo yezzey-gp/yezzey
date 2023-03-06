@@ -92,12 +92,13 @@ EXTERNC void * yezzey_list_relation_chunks(
 	int32_t segid,
 	size_t * cnt_chunks);
 
-EXTERNC int64_t yezzey_copy_relation_chunks(void *rhandle_ptr, struct externalChunkMeta * chunks);
 
 EXTERNC int64_t yezzey_list_relation_chunks_cleanup(void *rhandle_ptr);
 
 EXTERNC bool yezzey_complete_r_transfer_data(void ** handle);
 EXTERNC bool yezzey_complete_w_transfer_data(void ** handle);
+
+int64_t yezzey_copy_relation_chunks(void *rhandle_ptr, struct externalChunkMeta * chunks);
 
 #undef EXTERNC
 

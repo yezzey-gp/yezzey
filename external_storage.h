@@ -5,11 +5,12 @@
 
 // XXX: todo proder interface for external storage offloading
 
+#ifdef __cplusplus
+#define EXTERNC extern "C"
+#else
+#define EXTERNC
+#endif
 
-extern char *storage_prefix;
-extern char *storage_bucket;
-extern char *storage_config;
-extern char *storage_host;
 
 
 typedef  struct yezzeyChunkMeta {
@@ -18,7 +19,7 @@ typedef  struct yezzeyChunkMeta {
 } yezzeyChunkMeta;
 
 
-int
+EXTERNC int
 offloadFileToExternalStorage(
     const char * nspname,
     const char *relname, 
@@ -27,7 +28,7 @@ offloadFileToExternalStorage(
     int64 logicalEof,
     const char * external_storage_path);
 
-int
+EXTERNC int
 offloadRelationSegment(
     Relation aorel, 
     RelFileNode rnode, 
@@ -37,15 +38,15 @@ offloadRelationSegment(
     bool remove_locally,
     const char * external_storage_path);
 
-int
+EXTERNC int
 loadRelationSegment(RelFileNode rnode, int segno);
 
-bool
+EXTERNC bool
 ensureFilepathLocal(const char *filepath);
-bool
+EXTERNC bool
 ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum, BlockNumber blkno);
 
-int
+EXTERNC int
 statRelationSpaceUsage(
 	Relation aorel, 
     int segno, 
@@ -56,7 +57,7 @@ statRelationSpaceUsage(
     size_t *external_bytes);
 
 
-int
+EXTERNC int
 statRelationSpaceUsagePerExternalChunk(
     Relation aorel, 
     int segno, 

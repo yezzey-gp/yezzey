@@ -79,6 +79,11 @@ extern Datum yezzey_stat_get_external_storage_usage(PG_FUNCTION_ARGS);
 extern int yezzey_log_level;
 extern int yezzey_ao_log_level;
 
+extern char *storage_prefix;
+extern char *storage_bucket;
+extern char *storage_config;
+extern char *storage_host;
+
 void _PG_init(void);
 
 #endif /* YEZZEY_H */
