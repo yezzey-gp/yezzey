@@ -22,7 +22,7 @@ typedef struct yezzey_vfd {
 	char * nspname;
 	char * relname;
 
-	yezzey_io_handler * handler;
+	yezzey_io_handler handler;
 
 	/* gpg-related params */
 	
@@ -37,8 +37,12 @@ typedef struct yezzey_vfd {
 	int64 modcount;
 
 	yezzey_vfd() : y_vfd(0), localTmpVfd(0), filepath(NULL), nspname(NULL),
-	relname(NULL), fileFlags(0), fileMode(0), offset(0), virtualSize(0), modcount(0)  {
+	relname(NULL), fileFlags(0), fileMode(0), offset(0), virtualSize(0), modcount(0), handler(yezzey_io_handler()) {
 
+	}
+	yezzey_vfd& operator=(yezzey_vfd&& vfd) {
+		handler = vfd.handler;
+		return *this;
 	}
 } yezzey_vfd;
 
@@ -63,16 +67,15 @@ int readprepare(SMGRFile file) {
 	(void)createReaderHandle(yezzey_vfd_cache[file].handler,
 		GpIdentity.segindex);
 
-	if (yezzey_vfd_cache[file].handler->read_ptr == NULL) {
+	if (yezzey_vfd_cache[file].handler.read_ptr == NULL) {
 		return -1;
 	}
 
-	Assert(yezzey_vfd_cache[file].handler->read_ptr != NULL);
+	Assert(yezzey_vfd_cache[file].handler.read_ptr != NULL);
 
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
-
 	return 0;
 }
 
@@ -89,11 +92,11 @@ int writeprepare(SMGRFile file) {
 		1 /*because modcount will increase on write*/ + yezzey_vfd_cache[file].modcount);
 
 	elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld", yezzey_vfd_cache[file].modcount);
-	if (yezzey_vfd_cache[file].handler->write_ptr  == NULL) {
+	if (yezzey_vfd_cache[file].handler.write_ptr  == NULL) {
 		return -1;
 	}
 
-	Assert(yezzey_vfd_cache[file].handler->write_ptr != NULL);
+	Assert(yezzey_vfd_cache[file].handler.write_ptr != NULL);
 
 
 #ifdef CACHE_LOCAL_WRITES_FEATURE
@@ -211,7 +214,7 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileNam
 
 			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
 		
-			yezzey_vfd_cache[yezzey_fd].handler = yezzey_io_handler_allocate(
+			yezzey_vfd_cache[yezzey_fd].handler = yezzey_io_handler(
 				gpg_engine_path,
 				gpg_key_id,
 				use_gpg_crypto,
@@ -308,7 +311,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 			return amount;
 		}
 
-		if (yezzey_vfd_cache[file].handler->write_ptr == NULL) {
+		if (yezzey_vfd_cache[file].handler.write_ptr == NULL) {
 			elog(yezzey_ao_log_level, "read from external storage while read handler uninitialized");
 			return -1;
 		}
@@ -341,7 +344,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 	size_t curr = amount;
 
 	if (actual_fd == s3ext) {
-		if (yezzey_vfd_cache[file].handler->read_ptr == NULL) {
+		if (yezzey_vfd_cache[file].handler.read_ptr == NULL) {
 			elog(yezzey_ao_log_level, "read from external storage while read handler uninitialized");
 			return -1;
 		}

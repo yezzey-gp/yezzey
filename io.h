@@ -10,6 +10,10 @@
 #include "gpreader.h"
 #include "gpwriter.h"
 
+#include <vector>
+#include <memory>
+
+
 struct yezzey_io_handler {
 
 // 
@@ -19,24 +23,24 @@ struct yezzey_io_handler {
 
 //  GPG - related
     /* "/usr/bin/gpg" or something */
-    const char * engine_path; 
-    const char * gpg_key_id;
+    std::string engine_path; 
+    std::string gpg_key_id;
 
 //  storage + WAL-G related
 
-	const char * config_path;
+	std::string config_path;
      // schema name for relation
-    const char * nspname;
+    std::string nspname;
     // relation name itself
-	const char * relname;
+	std::string relname;
     // s3 host
-	const char * host;
+	std::string host;
     // s3 bucked
-	const char * bucket;
+	std::string bucket;
     // wal-g specific prefix
-	const char * external_storage_prefix;
+	std::string external_storage_prefix;
     // base/5/12345.1
-	const char * fileName;
+	std::string fileName;
 
     bool use_gpg_crypto;
 
@@ -51,9 +55,32 @@ struct yezzey_io_handler {
 //  S3 + WAL-G - related structs
 
     GPReader * read_ptr;
+    bool read_initialized_;
     GPWriter * write_ptr;
+    bool write_initialized_;
     // handler thread
-    std::thread wt;
+    std::unique_ptr<std::thread> wt;
+
+    // construcor
+    yezzey_io_handler(
+        const char * engine_path,
+        const char * gpg_key_id,
+        bool         use_gpg_crypto,
+        const char * config_path,
+        const char * nspname,
+        const char * relname,
+        const char * host,
+        const char * bucket,
+        const char * external_storage_prefix,
+        const char * fileName
+    );
+    // copyable
+    yezzey_io_handler(const yezzey_io_handler& buf);
+    yezzey_io_handler& operator=(const yezzey_io_handler&);
+
+    yezzey_io_handler();
+
+    ~yezzey_io_handler();
 };
 
 
@@ -70,15 +97,15 @@ yezzey_io_handler * yezzey_io_handler_allocate(
 	const char * fileName
 );
 
-int yezzey_io_free(yezzey_io_handler * handle);
+int yezzey_io_free(yezzey_io_handler &handle);
 
-bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, size_t *amount);
+bool yezzey_io_read(yezzey_io_handler &handle, char *buffer, size_t *amount);
 
-bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, size_t *amount);
+bool yezzey_io_write(yezzey_io_handler &handle, char *buffer, size_t *amount);
 
-bool yezzey_io_close(yezzey_io_handler * handle);
+bool yezzey_io_close(yezzey_io_handler &handle);
 
-void yezzey_io_read_prepare(yezzey_io_handler * handle);
-void yezzey_io_write_prepare(yezzey_io_handler * handle);
+int yezzey_io_read_prepare(yezzey_io_handler &handle);
+int yezzey_io_write_prepare(yezzey_io_handler &handle);
 
 #endif /* YEZZEY_IO_H */

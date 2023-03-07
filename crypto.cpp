@@ -1,15 +1,33 @@
 
 
 #include "crypto.h"
-
+#include <iostream>
 #include "external_storage_smgr.h"
-
+#include <memory>
 
 // decrypt operation
 
 // first arg should be (expected to be) yezzey_io_handler * 
 ssize_t
-yezzey_crypto_stream_read(void *handler, void *buffer, size_t size) {
+yezzey_crypto_stream_dec_read(void *handler, void *buffer, size_t size) {
+    auto y_handler = (yezzey_io_handler *) handler;
+    int inner_amount = size;
+    (void)reader_transfer_data((GPReader*) y_handler->read_ptr, (char*)buffer, inner_amount);
+
+    return inner_amount;
+}
+
+// first arg should be (expected to be) yezzey_io_handler * 
+ssize_t
+yezzey_crypto_stream_dec_write(void *handler, const void *buffer, size_t size) {
+    auto y_handler = (yezzey_io_handler *) handler;
+    auto ret = y_handler->buf.write((const char *)buffer, size);
+    return ret;
+}
+
+// first arg should be (expected to be) yezzey_io_handler * 
+ssize_t
+yezzey_crypto_stream_enc_read(void *handler, void *buffer, size_t size) {
     auto y_handler = (yezzey_io_handler *) handler;
     auto ret = y_handler->buf.read((char *)buffer, size);
     return ret;
@@ -18,11 +36,14 @@ yezzey_crypto_stream_read(void *handler, void *buffer, size_t size) {
 
 // first arg should be (expected to be) yezzey_io_handler * 
 ssize_t
-yezzey_crypto_stream_write(void *handler, const void *buffer, size_t size) {
+yezzey_crypto_stream_enc_write(void *handler, const void *buffer, size_t size) {
     auto y_handler = (yezzey_io_handler *) handler;
-    auto ret = y_handler->buf.write((const char *)buffer, size);
-    return ret;
+
+    int inner_amount = size;
+    (void)writer_transfer_data((GPWriter*) y_handler->write_ptr, (char*)buffer, inner_amount);
+    return inner_amount; 
 }
+
 
 void
 yezzey_crypto_stream_free(void *handler)
@@ -33,70 +54,100 @@ yezzey_crypto_stream_free(void *handler)
 }
 
 
+void
+init_gpgme (gpgme_protocol_t proto)
+{
+    gpgme_error_t err;
+
+    gpgme_check_version (NULL);
+    setlocale (LC_ALL, "");
+    gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
+
+    err = gpgme_engine_check_version (proto);
+}
+
 
 int
-yezzey_io_prepare_crypt(yezzey_io_handler * ptr) {
+yezzey_io_prepare_crypt(yezzey_io_handler &ptr, bool dec) {
     gpgme_error_t err;
     gpgme_genkey_result_t gen_result;
     gpgme_encrypt_result_t enc_result;
     gpgme_decrypt_result_t dec_result;
     gpgme_encrypt_result_t en_result;
 
-    // char *agent_info;
-    // agent_info = getenv("GPG_AGENT_INFO");
+    char *agent_info;
+    agent_info = getenv("GPG_AGENT_INFO");
 
-    // init_gpgme (GPGME_PROTOCOL_OpenPGP);
+    init_gpgme (GPGME_PROTOCOL_OpenPGP);
 
-    err = gpgme_new (&ptr->crypto_ctx);
+    err = gpgme_new (&ptr.crypto_ctx);
     if (err) {
+        auto errstr = gpgme_strerror(err);
+        std::cerr << errstr << "\n";
         return -1;
     }
 
     // ste ACSII armor to true
-    gpgme_set_armor (ptr->crypto_ctx, 1);
+    gpgme_set_armor (ptr.crypto_ctx, 1);
     
 //   fail_if_err (err);
     /* Might want to comment gpgme_ctx_set_engine_info() below. */
-    err = gpgme_ctx_set_engine_info(ptr->crypto_ctx, GPGME_PROTOCOL_OpenPGP, ptr->engine_path, NULL);
+    err = gpgme_ctx_set_engine_info(ptr.crypto_ctx, GPGME_PROTOCOL_OpenPGP, ptr.engine_path.c_str(), NULL);
     if (err) {
+        auto errstr = gpgme_strerror(err);
+        std::cerr << errstr << "\n";
         return -1;
     }
     /* Search key for encryption. */
     gpgme_key_t key;
-    err = gpgme_get_key (ptr->crypto_ctx,  ptr->gpg_key_id, &key, 1);
+    err = gpgme_get_key (ptr.crypto_ctx,  ptr.gpg_key_id.c_str(), &key, 1);
     if (err) {
+        auto errstr = gpgme_strerror(err);
+        std::cerr << errstr << "\n";
         return -1;
     }
     /* Initialize output buffer. */
-    err = gpgme_data_new (&ptr->crypto_out);
+    err = gpgme_data_new (&ptr.crypto_out);
     if (err) {
+        auto errstr = gpgme_strerror(err);
+        std::cerr << errstr << "\n";
         return -1;
     }
 
     // fail_if_err (err);
 
-    /* Initialize input buffer. */
-    err = gpgme_data_new_from_cbs(&ptr->crypto_in, &yezzey_crypto_cbs, ptr);
-    // fail_if_err (err);
+    if (dec) {
+        /* Initialize input buffer. */
+        err = gpgme_data_new_from_cbs(&ptr.crypto_in, &yezzey_crypto_dec_cbs, &ptr);
+        // fail_if_err (err);
 
-    err = gpgme_data_new_from_cbs(&ptr->crypto_out, &yezzey_crypto_cbs, ptr);
+        err = gpgme_data_new_from_cbs(&ptr.crypto_out, &yezzey_crypto_dec_cbs, &ptr);
+    } else {
+        /* Initialize input buffer. */
+        err = gpgme_data_new_from_cbs(&ptr.crypto_in, &yezzey_crypto_enc_cbs, &ptr);
+        // fail_if_err (err);
+
+        err = gpgme_data_new_from_cbs(&ptr.crypto_out, &yezzey_crypto_enc_cbs, &ptr);
+    }
 
     /* Encrypt data. */
-    ptr->keys[0] = key;
+    ptr.keys[0] = key;
 
     /* Decrypt data. */
 
-    fprintf (stderr, "start\n");
+    //fprintf (stderr, "start\n");
     return 0;
 }
 
 
 void
 yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr) {
-    ptr->wt = std::move(std::thread([&](){
+    ptr->wt =std::unique_ptr<std::thread>(new std::thread([&](){
         gpgme_error_t err;
         err = gpgme_op_encrypt(ptr->crypto_ctx, ptr->keys, GPGME_ENCRYPT_ALWAYS_TRUST, ptr->crypto_in, ptr->crypto_out);
         if (err) {
+            auto errstr = gpgme_strerror(err);
+            std::cerr << errstr << "\n";
             return;
             // bad
         }
@@ -106,7 +157,7 @@ yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr) {
 
 void
 yezzey_io_dispatch_decrypt(yezzey_io_handler * ptr) {
-    ptr->wt = std::move(std::thread([&](){
+    ptr->wt = std::unique_ptr<std::thread>(new std::thread([&](){
         gpgme_error_t err;
         err = gpgme_op_decrypt(ptr->crypto_ctx, ptr->crypto_in, ptr->crypto_out);
         if (err) {

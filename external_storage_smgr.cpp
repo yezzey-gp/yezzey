@@ -165,14 +165,20 @@ std::vector<int64_t> parseModcounts(const std::string &prefix, std::string name)
 }
 
 void * createReaderHandle(
-	yezzey_io_handler * handler,
+	yezzey_io_handler &handler,
     int32_t segid) {
 
-    auto prefix = getYezzeyRelationUrl(handler->nspname, handler->relname, handler->external_storage_prefix, handler->fileName, segid);
+    auto prefix = getYezzeyRelationUrl(
+        handler.nspname.c_str(), 
+        handler.relname.c_str(),
+        handler.external_storage_prefix.c_str(),
+        handler.fileName.c_str(), segid);
 
     // add config path FIXME
     auto reader = reader_init(
-        yezzey_url_add_options((getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix), handler->config_path).c_str());
+        yezzey_url_add_options(
+            (getYezzeyExtrenalStorageBucket(handler.host.c_str(), 
+            handler.bucket.c_str()) + prefix), handler.config_path.c_str()).c_str());
 
     if (reader == NULL) {
         /* error while external storage initialization */
@@ -188,10 +194,11 @@ void * createReaderHandle(
         return v1 < v2;
     });
 
-    return handler->read_ptr = reader;
+    handler.read_ptr = reader;
+    return handler.read_ptr;
 }
 
-std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t> & modcounts) {
+std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t> &modcounts) {
     auto ret = prefix;
 
     for (size_t i = 0; i < modcounts.size(); ++ i) {
@@ -207,28 +214,36 @@ std::string make_yezzey_url(const std::string &prefix, const std::vector<int64_t
 }
 
 void * createWriterHandle(
-	yezzey_io_handler * handler, int32_t segid, int64_t modcount) {
-    if (handler->read_ptr == NULL) {
+	yezzey_io_handler &handler, int32_t segid, int64_t modcount) {
+    if (handler.read_ptr == NULL) {
         return NULL;
     }
     
 
-    /* Graft url in format
+    /* Craft url in format
     *  handler->external_storage_prefix + seg_{segid} + ...
     * example:
     * wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
     *
      */
 
-    auto prefix = getYezzeyRelationUrl(handler->nspname, handler->relname, handler->external_storage_prefix, handler->fileName, segid);
+    auto prefix = getYezzeyRelationUrl(
+        handler.nspname.c_str(),
+        handler.relname.c_str(),
+        handler.external_storage_prefix.c_str(),
+        handler.fileName.c_str(), segid);
 
-    GPReader * reader = (GPReader *)handler->read_ptr;
+    GPReader * reader = (GPReader *)handler.read_ptr;
 
     auto content = reader->getKeyList().contents;
     if (content.size() == 0) {
-        auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix, {modcount, modcount, modcount, modcount});
-        url = yezzey_url_add_options(url, handler->config_path);
-        return handler->write_ptr = writer_init(url.c_str());
+        auto url = make_yezzey_url(
+            getYezzeyExtrenalStorageBucket(handler.host.c_str(), 
+            handler.bucket.c_str()) + prefix, {modcount, modcount, modcount, modcount});
+        
+        url = yezzey_url_add_options(url, handler.config_path.c_str());
+        handler.write_ptr = writer_init(url.c_str());
+        return handler.write_ptr;
     }
     /* skip first len(prefix) bytes and parse modcounts */
     auto largest = parseModcounts(prefix, content.back().getName());
@@ -241,44 +256,46 @@ void * createWriterHandle(
     }
 
     auto url = make_yezzey_url(
-        getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix, largest);
+        getYezzeyExtrenalStorageBucket(handler.host.c_str(), handler.bucket.c_str()) + prefix, largest);
 
     // config path
-    url = yezzey_url_add_options(url, handler->config_path);
+    url = yezzey_url_add_options(url, handler.config_path.c_str());
 
-    return handler->write_ptr = writer_init(url.c_str());
+    handler.write_ptr = writer_init(url.c_str());
+    return handler.write_ptr;
 }
 
 void * createWriterHandleToPath(
-	yezzey_io_handler * handler,
+	yezzey_io_handler &handler,
 	int32_t segid, 
 	int64_t modcount) {
-    std::string url = getYezzeyExtrenalStorageBucket(handler->host, handler->bucket);
+    std::string url = getYezzeyExtrenalStorageBucket(handler.host.c_str(), handler.bucket.c_str());
     
-    url += handler->external_storage_prefix;
+    url += handler.external_storage_prefix;
     url += "/seg" + std::to_string(segid) + basebackupsPath;
-    url += handler->fileName;
+    url += handler.fileName;
 
     // config path
-    url = yezzey_url_add_options(url, handler->config_path);
+    url = yezzey_url_add_options(url, handler.config_path.c_str());
 
-    return handler->write_ptr = writer_init(url.c_str());
+    handler.write_ptr = writer_init(url.c_str());
+    return handler.write_ptr;
 }
 
-bool yezzey_reader_transfer_data(yezzey_io_handler * handler, char *buffer, size_t *amount) {
+bool yezzey_reader_transfer_data(yezzey_io_handler &handler, char *buffer, size_t *amount) {
     int inner_amount = *amount;
-    auto res = reader_transfer_data(handler->read_ptr, buffer, inner_amount);
+    auto res = reader_transfer_data(handler.read_ptr, buffer, inner_amount);
     *amount = inner_amount;
     return res;
 }
 
 int64_t yezzey_virtual_relation_size(
-	yezzey_io_handler * handler,
+	yezzey_io_handler & handler,
     int32_t segid) {
 
 	GPReader * rhandle = (GPReader * )createReaderHandle(handler, segid);
 
-    if (!handler->read_ptr) {
+    if (!handler.read_ptr) {
         return -1;
     }
     
@@ -292,18 +309,18 @@ int64_t yezzey_virtual_relation_size(
     return sz;
 }
 
-int64_t yezzey_calc_virtual_relation_size(yezzey_io_handler * handler) {
+int64_t yezzey_calc_virtual_relation_size(yezzey_io_handler &handler) {
     int64_t sz = 0;
-    auto content = handler->read_ptr->getKeyList().contents;
+    auto content = handler.read_ptr->getKeyList().contents;
     for (auto key : content) {
-        sz += handler->read_ptr->bucketReader.constructReaderParams(key).getKeySize();
+        sz += handler.read_ptr->bucketReader.constructReaderParams(key).getKeySize();
     }
     return sz;
 }
 
 
 void yezzey_list_relation_chunks(
-	yezzey_io_handler * handler,
+	yezzey_io_handler &handler,
     int32_t segid, 
     size_t * cnt_chunks) 
 {
@@ -315,15 +332,14 @@ void yezzey_list_relation_chunks(
 
     auto content = rhandle->getKeyList().contents;
     *cnt_chunks = content.size();
-    return void(handler->read_ptr = rhandle);
+    return void(handler.read_ptr = rhandle);
 }
 
 int64_t yezzey_copy_relation_chunks(
-    yezzey_io_handler * handler, 
+    yezzey_io_handler &handler, 
     externalChunkMeta * chunks){
-	GPReader * rhandle = (GPReader * )handler->read_ptr;
     
-    auto content = rhandle->getKeyList().contents;
+    auto content = handler.read_ptr->getKeyList().contents;
     for (size_t i = 0; i < content.size(); ++ i) {
         auto key = content[i];
         chunks[i].chunkName = strdup(key.getName().c_str());
@@ -332,38 +348,35 @@ int64_t yezzey_copy_relation_chunks(
     return 0;
 }
 
-
-int64_t yezzey_list_relation_chunks_cleanup(yezzey_io_handler * handler) {
-    auto reader = (GPReader*) handler->read_ptr;
+int64_t yezzey_list_relation_chunks_cleanup(yezzey_io_handler &handler) {
+    auto reader = (GPReader*) handler.read_ptr;
     reader_cleanup(&reader);
     return 0;
 }
 
-bool yezzey_reader_empty(yezzey_io_handler * handler) {
-    return reader_empty((GPReader*) (handler->read_ptr));
+bool yezzey_reader_empty(yezzey_io_handler &handler) {
+    return reader_empty((GPReader*) (handler.read_ptr));
 }
 
-bool yezzey_writer_transfer_data(yezzey_io_handler * handler, const char *buffer, size_t *amount) {
+bool yezzey_writer_transfer_data(yezzey_io_handler &handler, const char *buffer, size_t *amount) {
     auto inner_amount = *amount;
-    auto res =  writer_transfer_data(handler->write_ptr, (char *)buffer, inner_amount);
+    auto res =  writer_transfer_data(handler.write_ptr, (char *)buffer, inner_amount);
     *amount = inner_amount;
     return res; 
 }
 
 /*XXX: fix cleanup*/
 
-bool yezzey_complete_r_transfer_data(yezzey_io_handler * handler) {
-    if (handler == NULL) return true;
-    if (handler->read_ptr == NULL) return true;
-    auto res = reader_cleanup((GPReader**) &handler->read_ptr);
-    handler->read_ptr = NULL;
+bool yezzey_complete_r_transfer_data(yezzey_io_handler &handler) {
+    if (handler.read_ptr == NULL) return true;
+    auto res = reader_cleanup((GPReader**) &handler.read_ptr);
+    handler.read_ptr = NULL;
     return res;
 }
 
-bool yezzey_complete_w_transfer_data(yezzey_io_handler * handler) {
-    if (handler == NULL) return true;
-    if (handler->write_ptr == NULL) return true;
-    auto res = writer_cleanup((GPWriter**) &handler->write_ptr);
-    handler->write_ptr = NULL;
+bool yezzey_complete_w_transfer_data(yezzey_io_handler &handler) {
+    if (handler.write_ptr == NULL) return true;
+    auto res = writer_cleanup((GPWriter**) &handler.write_ptr);
+    handler.write_ptr = NULL;
     return res;
 }
