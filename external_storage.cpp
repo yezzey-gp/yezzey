@@ -102,6 +102,7 @@ offloadFileToExternalStorage(
 	auto iohandler = yezzey_io_handler_allocate(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config,
 		nspname,
 		relname,
@@ -279,6 +280,7 @@ offloadRelationSegment(
 	auto iohandler = yezzey_io_handler_allocate(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config,
 		nspname,
 		aorel->rd_rel->relname.data,
@@ -335,6 +337,7 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 	auto iohandler = yezzey_io_handler_allocate(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config, 
 		nspname,
 		aorel->rd_rel->relname.data, 
@@ -409,6 +412,7 @@ statRelationSpaceUsagePerExternalChunk(
 	auto iohandler = yezzey_io_handler_allocate(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config,
 		nspname,
 		aorel->rd_rel->relname.data, 

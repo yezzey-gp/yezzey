@@ -9,10 +9,13 @@
 
 #include "external_storage_smgr.h"
 
+#include "crypto.h"
+
 
 yezzey_io_handler * yezzey_io_handler_allocate(
     const char * engine_path,
     const char * gpg_key_id,
+    bool         use_gpg_crypto,
     const char * config_path,
     const char * nspname,
 	const char * relname,
@@ -33,6 +36,8 @@ yezzey_io_handler * yezzey_io_handler_allocate(
     ptr->bucket = strdup(bucket);
     ptr->external_storage_prefix = strdup(external_storage_prefix);
     ptr->fileName = strdup(fileName);
+
+    ptr->use_gpg_crypto = use_gpg_crypto;
 
     return ptr;
 }
@@ -61,6 +66,14 @@ yezzey_io_free(yezzey_io_handler * ptr) {
 
 
 bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, size_t *amount) {
+    if (handle->use_gpg_crypto) {
+        // 
+        auto y_handler = (yezzey_io_handler *) handle;
+        auto ret = y_handler->buf.read((char *)buffer, *amount);
+        *amount = ret;
+        return ret > 0;
+    }
+
     int inner_amount = *amount;
     auto res = reader_transfer_data((GPReader*) handle->read_ptr, buffer, inner_amount);
     *amount = inner_amount;
@@ -69,6 +82,14 @@ bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, size_t *amount) {
 
 
 bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, size_t *amount) {
+    if (handle->use_gpg_crypto) {
+        // 
+        auto y_handler = (yezzey_io_handler *) handle;
+        auto ret = y_handler->buf.write((const char *)buffer, *amount);
+        *amount = ret;
+        return ret > 0;
+    }
+
     int inner_amount = *amount;
     auto res =  writer_transfer_data((GPWriter*) handle->write_ptr, buffer, inner_amount);
     *amount = inner_amount;
@@ -79,4 +100,13 @@ bool yezzey_io_close(yezzey_io_handler * handle) {
     auto read_res = yezzey_complete_r_transfer_data(handle);
     auto write_res = yezzey_complete_w_transfer_data(handle);
     return read_res & write_res;
+}
+
+
+void yezzey_io_read_prepare(yezzey_io_handler * handle) {
+    yezzey_io_dispatch_decrypt(handle);
+}
+
+void yezzey_io_write_prepare(yezzey_io_handler * handle) {
+    yezzey_io_dispatch_encrypt(handle);
 }

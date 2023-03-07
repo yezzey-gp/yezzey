@@ -214,6 +214,7 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileNam
 			yezzey_vfd_cache[yezzey_fd].handler = yezzey_io_handler_allocate(
 				gpg_engine_path,
 				gpg_key_id,
+				use_gpg_crypto,
 				storage_config,
 				yezzey_vfd_cache[yezzey_fd].nspname,
 				yezzey_vfd_cache[yezzey_fd].relname,
@@ -267,8 +268,11 @@ void yezzey_FileClose(SMGRFile file) {
 	File actual_fd = virtualEnsure(file);
 	elog(yezzey_ao_log_level, "file close with %d actual %d", file, actual_fd);
 	if (actual_fd == s3ext) {
-		yezzey_complete_r_transfer_data(yezzey_vfd_cache[file].handler);
-		yezzey_complete_w_transfer_data(yezzey_vfd_cache[file].handler);
+		if (!yezzey_io_close(yezzey_vfd_cache[file].handler)) {
+			// very bad 
+
+			elog(ERROR, "failed to complete external storage interfacrtion: fd %d", file);
+		}
 	} else {
 		FileClose(actual_fd);
 	}

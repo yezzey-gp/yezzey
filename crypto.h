@@ -16,9 +16,7 @@ yezzey_crypto_stream_write(void *handler, const void *buffer, size_t size);
 
 
 // yezzey_io_handler
-void
-yezzey_crypto_stream_free(void *handler);
-
+void yezzey_crypto_stream_free(void *handler);
 
 static struct gpgme_data_cbs yezzey_crypto_cbs = {
     yezzey_crypto_stream_read,
@@ -27,13 +25,10 @@ static struct gpgme_data_cbs yezzey_crypto_cbs = {
     yezzey_crypto_stream_free,
 };
 
-
 int yezzey_io_prepare_crypt(yezzey_io_handler * ptr);
 
-void
-yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr);
+void yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr);
 
-void
-yezzey_io_dispatch_decrypt(yezzey_io_handler * ptr);
+void yezzey_io_dispatch_decrypt(yezzey_io_handler * ptr);
 
 #endif /* YEZZEY_CRYPTO_H */

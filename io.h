@@ -38,6 +38,8 @@ struct yezzey_io_handler {
     // base/5/12345.1
 	const char * fileName;
 
+    bool use_gpg_crypto;
+
 //
 //  GPG - related structs
     gpgme_data_t crypto_in;
@@ -58,6 +60,7 @@ struct yezzey_io_handler {
 yezzey_io_handler * yezzey_io_handler_allocate(
     const char * engine_path,
     const char * gpg_key_id,
+    bool         use_gpg_crypto,
     const char * config_path,
     const char * nspname,
 	const char * relname,
@@ -74,5 +77,8 @@ bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, size_t *amount);
 bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, size_t *amount);
 
 bool yezzey_io_close(yezzey_io_handler * handle);
+
+void yezzey_io_read_prepare(yezzey_io_handler * handle);
+void yezzey_io_write_prepare(yezzey_io_handler * handle);
 
 #endif /* YEZZEY_IO_H */

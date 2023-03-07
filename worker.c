@@ -708,6 +708,12 @@ _PG_init(void)
 				   "",PGC_SUSET,0,
 				   NULL, NULL, NULL);
 
+	DefineCustomBoolVariable("yezzey.use_gpg_crypto",
+				   "use gpg crypto",
+				   NULL, &use_gpg_crypto,
+				   true,PGC_SUSET,0,
+				   NULL, NULL, NULL);
+
 	DefineCustomStringVariable("yezzey.gpg_engine_path",
 				   "gpg engine path",
 				   NULL, &gpg_engine_path,
