@@ -11,9 +11,6 @@
 #include "utils/snapmgr.h"
 #include "miscadmin.h"
 
-#include "smgr_s3.h"
-
-#include "external_storage.h"
 
 #if PG_VERSION_NUM >= 130000
 #include "postmaster/interrupt.h"

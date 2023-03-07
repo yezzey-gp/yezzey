@@ -685,7 +685,7 @@ _PG_init(void)
 				   NULL, NULL, NULL);
 
 	DefineCustomStringVariable("yezzey.storage_bucket",
-				   "segment name prefix",
+				   "external storage bucket",
 				   NULL, &storage_bucket,
 				   "",PGC_SUSET,0,
 				   NULL, NULL, NULL);
@@ -697,8 +697,20 @@ _PG_init(void)
 				NULL, NULL, NULL);
 
 	DefineCustomStringVariable("yezzey.storage_host",
-				   "segment name prefix",
+				   "external storage host",
 				   NULL, &storage_host,
+				   "",PGC_SUSET,0,
+				   NULL, NULL, NULL);
+
+	DefineCustomStringVariable("yezzey.gpg_key_id",
+				   "gpg key id",
+				   NULL, &gpg_key_id,
+				   "",PGC_SUSET,0,
+				   NULL, NULL, NULL);
+
+	DefineCustomStringVariable("yezzey.gpg_engine_path",
+				   "gpg engine path",
+				   NULL, &gpg_engine_path,
 				   "",PGC_SUSET,0,
 				   NULL, NULL, NULL);
 

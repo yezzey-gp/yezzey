@@ -17,8 +17,6 @@ extern "C"
 #include "utils/snapmgr.h"
 #include "miscadmin.h"
 
-#include "smgr_s3.h"
-
 #include "external_storage.h"
 
 #if PG_VERSION_NUM >= 130000
@@ -58,8 +56,6 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
-
-
 
 #ifdef __cplusplus
 #define EXTERNC extern "C"
