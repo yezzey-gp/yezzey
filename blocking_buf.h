@@ -20,13 +20,20 @@ class BlockingBuffer {
     bool closed_;
 
 public:
-    // Non-copyable
-    BlockingBuffer(const BlockingBuffer&) = delete;
-    BlockingBuffer& operator=(const BlockingBuffer&) = delete;
+    // // Non-copyable
+    BlockingBuffer(const BlockingBuffer& buf) {
+        sz_ = buf.sz_;
+        buffer_ = new char[sz_];
+    };
 
+    BlockingBuffer& operator=(const BlockingBuffer& buf) {
+        this->sz_ = buf.sz_;
+        this->buffer_ = new char[sz_];
+        return *this;
+    }
+    // BlockingBuffer& operator=(const BlockingBuffer&) = delete;
 
-
-    BlockingBuffer(size_t sz) : sz_(sz), offset_(0), closed_(false) {
+    explicit BlockingBuffer(size_t sz) : sz_(sz), offset_(0), closed_(false) {
         buffer_ = (char*)malloc(sizeof(char) * sz_);
     }
 
@@ -82,7 +89,7 @@ public:
     }
 
     ~BlockingBuffer() {
-        free(buffer_);
+        delete []buffer_;
     }
 };
 

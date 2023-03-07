@@ -84,6 +84,8 @@ extern int yezzey_ao_log_level;
 extern char *gpg_key_id;
 extern char *gpg_engine_path;
 
+extern bool use_gpg_crypto;
+
 
 /* ----- STORAGE -----  */
 extern char *storage_prefix;

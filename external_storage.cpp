@@ -99,9 +99,10 @@ offloadFileToExternalStorage(
 	}
 	progress = 0;
 
-	auto iohandler = yezzey_io_handler_allocate(
+	auto iohandler = yezzey_io_handler(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config,
 		nspname,
 		relname,
@@ -116,7 +117,7 @@ offloadFileToExternalStorage(
  	*/
 	(void)createReaderHandle(iohandler, GpIdentity.segindex);
 
-	if (!iohandler->read_ptr) {
+	if (!iohandler.read_ptr) {
 		elog(ERROR, "yezzey: offloading %s: failed to get external storage read handler", localPath);
 	}
 	
@@ -139,7 +140,7 @@ offloadFileToExternalStorage(
 			modcount);
 	}
 
-	if (!iohandler->write_ptr) {
+	if (!iohandler.write_ptr) {
 		elog(ERROR, "yezzey: offloading %s: failed to get external storage write handler", localPath);
 	}
 
@@ -164,7 +165,7 @@ offloadFileToExternalStorage(
 
 		while (tot < rc) {
 			size_t currptrtot = rc - tot;
-			if (!yezzey_writer_transfer_data(iohandler, bptr, &currptrtot)) {
+			if (!yezzey_io_write(iohandler, bptr, &currptrtot)) {
 				return -1;
 			}
 
@@ -175,13 +176,10 @@ offloadFileToExternalStorage(
 		progress += rc;
 	}
 
-	if (!yezzey_complete_r_transfer_data(iohandler)) {
+	if (!yezzey_io_close(iohandler)) {
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
-	if (!yezzey_complete_w_transfer_data(iohandler)) {
-		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
-	}
-	yezzey_io_free(iohandler);
+
 	FileClose(vfd);
 	free(buffer);
 
@@ -278,9 +276,10 @@ offloadRelationSegment(
 	}
 
 
-	auto iohandler = yezzey_io_handler_allocate(
+	auto iohandler = yezzey_io_handler(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config,
 		nspname,
 		aorel->rd_rel->relname.data,
@@ -296,7 +295,6 @@ offloadRelationSegment(
 
 	pfree(nspname);
     pfree(local_path.data);
-	yezzey_io_free(iohandler);
     return 0;
 }
 
@@ -334,9 +332,10 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 
     elog(yezzey_ao_log_level, "yezzey: contructed path %s", local_path.data);
 	
-	auto iohandler = yezzey_io_handler_allocate(
+	auto iohandler = yezzey_io_handler(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config, 
 		nspname,
 		aorel->rd_rel->relname.data, 
@@ -365,7 +364,6 @@ statRelationSpaceUsage(Relation aorel, int segno, int64 modcount, int64 logicalE
 
 	pfree(nspname);
     pfree(local_path.data);
-	yezzey_io_free(iohandler);
     return 0;
 }
 
@@ -408,9 +406,10 @@ statRelationSpaceUsagePerExternalChunk(
 		elog(ERROR, "yezzey: failed to get namescape name of relation %s", aorel->rd_rel->relname.data);
     }
 
-	auto iohandler = yezzey_io_handler_allocate(
+	auto iohandler = yezzey_io_handler(
 		gpg_engine_path,
 		gpg_key_id,
+		use_gpg_crypto,
 		storage_config,
 		nspname,
 		aorel->rd_rel->relname.data, 
@@ -455,7 +454,6 @@ statRelationSpaceUsagePerExternalChunk(
 	*local_commited_bytes = 0;
 
     pfree(local_path.data);
-	yezzey_io_free(iohandler);
     return 0;
 }
 
