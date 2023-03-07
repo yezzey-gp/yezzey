@@ -67,12 +67,12 @@ yezzey_io_handler * yezzey_io_handler_allocate(
 	const char * fileName
 );
 
-int yezzey_io_free(yezzey_io_handler * ptr);
+int yezzey_io_free(yezzey_io_handler * handle);
 
-bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, int *amount);
+bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, size_t *amount);
 
-bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, int *amount);
+bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, size_t *amount);
 
-
+bool yezzey_io_close(yezzey_io_handler * handle);
 
 #endif /* YEZZEY_IO_H */

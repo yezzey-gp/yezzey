@@ -112,6 +112,7 @@ yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr) {
         gpgme_error_t err;
         err = gpgme_op_encrypt(ptr->crypto_ctx, ptr->keys, GPGME_ENCRYPT_ALWAYS_TRUST, ptr->crypto_in, ptr->crypto_out);
         if (err) {
+            return;
             // bad
         }
         // fail_if_err (err);
@@ -124,6 +125,7 @@ yezzey_io_dispatch_decrypt(yezzey_io_handler * ptr) {
         gpgme_error_t err;
         err = gpgme_op_decrypt(ptr->crypto_ctx, ptr->crypto_in, ptr->crypto_out);
         if (err) {
+            return;
             // bad
         }
         // fail_if_err (err);

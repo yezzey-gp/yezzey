@@ -7,6 +7,9 @@
 
 #include "io_adv.h"
 
+#include "external_storage_smgr.h"
+
+
 yezzey_io_handler * yezzey_io_handler_allocate(
     const char * engine_path,
     const char * gpg_key_id,
@@ -57,7 +60,7 @@ yezzey_io_free(yezzey_io_handler * ptr) {
 }
 
 
-bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, int *amount) {
+bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, size_t *amount) {
     int inner_amount = *amount;
     auto res = reader_transfer_data((GPReader*) handle->read_ptr, buffer, inner_amount);
     *amount = inner_amount;
@@ -65,9 +68,15 @@ bool yezzey_io_read(yezzey_io_handler * handle, char *buffer, int *amount) {
 }
 
 
-bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, int *amount) {
+bool yezzey_io_write(yezzey_io_handler * handle, char *buffer, size_t *amount) {
     int inner_amount = *amount;
     auto res =  writer_transfer_data((GPWriter*) handle->write_ptr, buffer, inner_amount);
     *amount = inner_amount;
     return res; 
+}
+
+bool yezzey_io_close(yezzey_io_handler * handle) {
+    auto read_res = yezzey_complete_r_transfer_data(handle);
+    auto write_res = yezzey_complete_w_transfer_data(handle);
+    return read_res & write_res;
 }

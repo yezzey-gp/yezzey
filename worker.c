@@ -711,7 +711,7 @@ _PG_init(void)
 	DefineCustomStringVariable("yezzey.gpg_engine_path",
 				   "gpg engine path",
 				   NULL, &gpg_engine_path,
-				   "",PGC_SUSET,0,
+				   "/usr/bin/gpg",PGC_SUSET,0,
 				   NULL, NULL, NULL);
 
 	DefineCustomBoolVariable("yezzey.autooffload",

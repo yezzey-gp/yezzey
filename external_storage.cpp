@@ -164,7 +164,7 @@ offloadFileToExternalStorage(
 
 		while (tot < rc) {
 			size_t currptrtot = rc - tot;
-			if (!yezzey_writer_transfer_data(iohandler, bptr, &currptrtot)) {
+			if (!yezzey_io_write(iohandler, bptr, &currptrtot)) {
 				return -1;
 			}
 
@@ -175,12 +175,10 @@ offloadFileToExternalStorage(
 		progress += rc;
 	}
 
-	if (!yezzey_complete_r_transfer_data(iohandler)) {
+	if (!yezzey_io_close(iohandler)) {
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}
-	if (!yezzey_complete_w_transfer_data(iohandler)) {
-		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
-	}
+
 	yezzey_io_free(iohandler);
 	FileClose(vfd);
 	free(buffer);

@@ -316,7 +316,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 		elog(ERROR, "external table modifications are not supported yet");
 #endif
 		size_t rc = amount;
-		if (!yezzey_writer_transfer_data(yezzey_vfd_cache[file].handler, buffer, &rc)) {
+		if (!yezzey_io_write(yezzey_vfd_cache[file].handler, buffer, &rc)) {
 			elog(WARNING, "failed to write to external storage");
 			return -1;
 		}
@@ -349,7 +349,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
 		} else {
-			if (!yezzey_reader_transfer_data(yezzey_vfd_cache[file].handler, buffer, &curr)) {
+			if (!yezzey_io_read(yezzey_vfd_cache[file].handler, buffer, &curr)) {
 				elog(yezzey_ao_log_level, "problem while direct read from s3 read with %d curr: %ld", file, curr);
 				return -1;
 			}
