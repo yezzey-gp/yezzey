@@ -211,6 +211,14 @@ void * createWriterHandle(
     if (handler->read_ptr == NULL) {
         return NULL;
     }
+    
+
+    /* Graft url in format
+    *  handler->external_storage_prefix + seg_{segid} + ...
+    * example:
+    * wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
+    *
+     */
 
     auto prefix = getYezzeyRelationUrl(handler->nspname, handler->relname, handler->external_storage_prefix, handler->fileName, segid);
 
@@ -222,8 +230,8 @@ void * createWriterHandle(
         url = yezzey_url_add_options(url, handler->config_path);
         return handler->write_ptr = writer_init(url.c_str());
     }
-
-    auto largest = parseModcounts(handler->external_storage_prefix, content.back().getName());
+    /* skip first len(prefix) bytes and parse modcounts */
+    auto largest = parseModcounts(prefix, content.back().getName());
     if (largest.size() <= 3) {
         largest.push_back(modcount);
     } else if (largest.size() == 4) {
@@ -233,7 +241,7 @@ void * createWriterHandle(
     }
 
     auto url = make_yezzey_url(
-        getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + handler->external_storage_prefix, largest);
+        getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix, largest);
 
     // config path
     url = yezzey_url_add_options(url, handler->config_path);
@@ -257,7 +265,7 @@ void * createWriterHandleToPath(
     return handler->write_ptr = writer_init(url.c_str());
 }
 
-bool yezzey_reader_transfer_data(yezzey_io_handler * handler, char *buffer, int *amount) {
+bool yezzey_reader_transfer_data(yezzey_io_handler * handler, char *buffer, size_t *amount) {
     int inner_amount = *amount;
     auto res = reader_transfer_data(handler->read_ptr, buffer, inner_amount);
     *amount = inner_amount;
@@ -335,7 +343,7 @@ bool yezzey_reader_empty(yezzey_io_handler * handler) {
     return reader_empty((GPReader*) (handler->read_ptr));
 }
 
-bool yezzey_writer_transfer_data(yezzey_io_handler * handler, const char *buffer, int *amount) {
+bool yezzey_writer_transfer_data(yezzey_io_handler * handler, const char *buffer, size_t *amount) {
     auto inner_amount = *amount;
     auto res =  writer_transfer_data(handler->write_ptr, (char *)buffer, inner_amount);
     *amount = inner_amount;

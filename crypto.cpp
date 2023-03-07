@@ -13,7 +13,7 @@ yezzey_crypto_stream_read(void *handler, void *buffer, size_t size) {
     auto y_handler = (yezzey_io_handler *) handler;
 
     size_t inner_amount = size;
-    auto res = yezzey_reader_transfer_data(y_handler, (char *) buffer, &inner_amount);
+    (void)yezzey_reader_transfer_data(y_handler, (char *) buffer, &inner_amount);
 
     size_t tot_offset_ = 0;
     for (;tot_offset_ < inner_amount;) {
@@ -33,7 +33,7 @@ yezzey_crypto_stream_write(void *handler, const void *buffer, size_t size) {
     auto y_handler = (yezzey_io_handler *) handler;
 
     size_t inner_amount = size;
-    auto res = yezzey_writer_transfer_data(y_handler, (const char *) buffer, &inner_amount);
+    (void)yezzey_writer_transfer_data(y_handler, (const char *) buffer, &inner_amount);
 
 
     return inner_amount;
