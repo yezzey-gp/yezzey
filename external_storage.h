@@ -13,7 +13,7 @@
 
 
 
-typedef  struct yezzeyChunkMeta {
+typedef struct yezzeyChunkMeta {
 	const char * chunkName;
 	size_t chunkSize;
 } yezzeyChunkMeta;

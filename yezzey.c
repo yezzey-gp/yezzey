@@ -25,7 +25,7 @@
 #include "utils/tqual.h"
 
 #include "external_storage.h"
-#include "smgr_s3.h"
+#include "external_storage_smgr.h"
 
 // #include "smgr_s3_frontend.h"
 

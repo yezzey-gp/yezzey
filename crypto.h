@@ -30,10 +30,10 @@ static struct gpgme_data_cbs yezzey_crypto_cbs = {
 
 int yezzey_io_prepare_crypt(yezzey_io_handler * ptr);
 
-int
+void
 yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr);
 
-int
+void
 yezzey_io_dispatch_decrypt(yezzey_io_handler * ptr);
 
 #endif /* YEZZEY_CRYPTO_H */

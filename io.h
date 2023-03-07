@@ -11,8 +11,6 @@
 #include "gpwriter.h"
 
 struct yezzey_io_handler {
-    void * read_ptr; // GPReader *
-    void * write_ptr; // GPWriter *
 
 // 
     BlockingBuffer buf;
@@ -22,9 +20,9 @@ struct yezzey_io_handler {
 //  GPG - related
     /* "/usr/bin/gpg" or something */
     const char * engine_path; 
-
     const char * gpg_key_id;
-// S3 + WAL-G related
+
+//  storage + WAL-G related
 
 	const char * config_path;
      // schema name for relation
@@ -50,9 +48,8 @@ struct yezzey_io_handler {
 
 //  S3 + WAL-G - related structs
 
-    GPReader * rhandle;
-    GPWriter * whandle;
-
+    GPReader * read_ptr;
+    GPWriter * write_ptr;
     // handler thread
     std::thread wt;
 };

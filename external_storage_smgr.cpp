@@ -11,7 +11,7 @@
  * 
  */
 
-#include "smgr_s3.h"
+#include "external_storage_smgr.h"
 
 #include <string>
 #include <vector>
@@ -211,6 +211,14 @@ void * createWriterHandle(
     if (handler->read_ptr == NULL) {
         return NULL;
     }
+    
+
+    /* Graft url in format
+    *  handler->external_storage_prefix + seg_{segid} + ...
+    * example:
+    * wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
+    *
+     */
 
     auto prefix = getYezzeyRelationUrl(handler->nspname, handler->relname, handler->external_storage_prefix, handler->fileName, segid);
 
@@ -220,10 +228,10 @@ void * createWriterHandle(
     if (content.size() == 0) {
         auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix, {modcount, modcount, modcount, modcount});
         url = yezzey_url_add_options(url, handler->config_path);
-        return writer_init(url.c_str());
+        return handler->write_ptr = writer_init(url.c_str());
     }
-
-    auto largest = parseModcounts(handler->external_storage_prefix, content.back().getName());
+    /* skip first len(prefix) bytes and parse modcounts */
+    auto largest = parseModcounts(prefix, content.back().getName());
     if (largest.size() <= 3) {
         largest.push_back(modcount);
     } else if (largest.size() == 4) {
@@ -233,7 +241,7 @@ void * createWriterHandle(
     }
 
     auto url = make_yezzey_url(
-        getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + handler->external_storage_prefix, largest);
+        getYezzeyExtrenalStorageBucket(handler->host, handler->bucket) + prefix, largest);
 
     // config path
     url = yezzey_url_add_options(url, handler->config_path);
@@ -257,9 +265,9 @@ void * createWriterHandleToPath(
     return handler->write_ptr = writer_init(url.c_str());
 }
 
-bool yezzey_reader_transfer_data(yezzey_io_handler * handler, char *buffer, int *amount) {
+bool yezzey_reader_transfer_data(yezzey_io_handler * handler, char *buffer, size_t *amount) {
     int inner_amount = *amount;
-    auto res = reader_transfer_data((GPReader*)handler->read_ptr, buffer, inner_amount);
+    auto res = reader_transfer_data(handler->read_ptr, buffer, inner_amount);
     *amount = inner_amount;
     return res;
 }
@@ -285,12 +293,10 @@ int64_t yezzey_virtual_relation_size(
 }
 
 int64_t yezzey_calc_virtual_relation_size(yezzey_io_handler * handler) {
-	GPReader * rhandle = (GPReader * )handler->read_ptr;
-    
     int64_t sz = 0;
-    auto content = rhandle->getKeyList().contents;
+    auto content = handler->read_ptr->getKeyList().contents;
     for (auto key : content) {
-        sz += rhandle->bucketReader.constructReaderParams(key).getKeySize();
+        sz += handler->read_ptr->bucketReader.constructReaderParams(key).getKeySize();
     }
     return sz;
 }
@@ -337,27 +343,27 @@ bool yezzey_reader_empty(yezzey_io_handler * handler) {
     return reader_empty((GPReader*) (handler->read_ptr));
 }
 
-bool yezzey_writer_transfer_data(yezzey_io_handler * handler, char *buffer, int *amount) {
-    int inner_amount = *amount;
-    auto res =  writer_transfer_data((GPWriter*) (handler->write_ptr), buffer, inner_amount);
+bool yezzey_writer_transfer_data(yezzey_io_handler * handler, const char *buffer, size_t *amount) {
+    auto inner_amount = *amount;
+    auto res =  writer_transfer_data(handler->write_ptr, (char *)buffer, inner_amount);
     *amount = inner_amount;
     return res; 
 }
 
 /*XXX: fix cleanup*/
 
-bool yezzey_complete_r_transfer_data(void ** handle) {
-    if (handle == NULL) return true;
-    if (*handle == NULL) return true;
-    auto res = reader_cleanup((GPReader**) handle);
-    *handle = NULL;
+bool yezzey_complete_r_transfer_data(yezzey_io_handler * handler) {
+    if (handler == NULL) return true;
+    if (handler->read_ptr == NULL) return true;
+    auto res = reader_cleanup((GPReader**) &handler->read_ptr);
+    handler->read_ptr = NULL;
     return res;
 }
 
-bool yezzey_complete_w_transfer_data(void ** handle) {
-    if (handle == NULL) return true;
-    if (*handle == NULL) return true;
-    auto res = writer_cleanup((GPWriter**) handle);
-    *handle = NULL;
+bool yezzey_complete_w_transfer_data(yezzey_io_handler * handler) {
+    if (handler == NULL) return true;
+    if (handler->write_ptr == NULL) return true;
+    auto res = writer_cleanup((GPWriter**) &handler->write_ptr);
+    handler->write_ptr = NULL;
     return res;
 }

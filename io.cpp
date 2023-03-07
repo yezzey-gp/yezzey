@@ -39,9 +39,9 @@ yezzey_io_free(yezzey_io_handler * ptr) {
     if (ptr->wt.joinable()) {
         ptr->wt.join();
     }
-    // gpgme_data_release(ptr->crypto_in);
-    // gpgme_data_release(ptr->crypto_out);
-    // gpgme_release(ptr->crypto_ctx);
+    gpgme_data_release(ptr->crypto_in);
+    gpgme_data_release(ptr->crypto_out);
+    gpgme_release(ptr->crypto_ctx);
 
     free((void*)ptr->engine_path);
     free((void*)ptr->gpg_key_id);
