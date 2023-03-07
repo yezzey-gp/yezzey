@@ -47,6 +47,8 @@ char *storage_host = NULL;
 char * gpg_engine_path = NULL;
 char * gpg_key_id = NULL;
 
+bool use_gpg_crypto = false;
+
 
 PG_MODULE_MAGIC;
 
