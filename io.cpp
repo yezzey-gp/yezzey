@@ -78,35 +78,35 @@ yezzey_io_handler::yezzey_io_handler(
 }
 
 yezzey_io_handler::yezzey_io_handler(const yezzey_io_handler& other)  {
-    this->engine_path = other.engine_path;
-    this->gpg_key_id = other.gpg_key_id;
-    this->config_path = other.config_path;
-    this->nspname = other.nspname;    
-    this->relname = other.relname;    
-    this->host = other.host;
-    this->bucket = other.bucket;
-    this->external_storage_prefix = other.external_storage_prefix;
-    this->fileName = other.fileName;
+    engine_path = other.engine_path;
+    gpg_key_id = other.gpg_key_id;
+    config_path = other.config_path;
+    nspname = other.nspname;    
+    relname = other.relname;    
+    host = other.host;
+    bucket = other.bucket;
+    external_storage_prefix = other.external_storage_prefix;
+    fileName = other.fileName;
 
-    this->use_gpg_crypto = other.use_gpg_crypto;
-    this->read_initialized_ = this->write_initialized_ = false;
+    use_gpg_crypto = other.use_gpg_crypto;
+    read_initialized_ = write_initialized_ = false;
 
     buf = other.buf;
 }
 
 yezzey_io_handler& yezzey_io_handler::operator=(const yezzey_io_handler &other) {
-    this->engine_path = other.engine_path;
-    this->gpg_key_id = other.gpg_key_id;
-    this->config_path = other.config_path;
-    this->nspname = other.nspname;    
-    this->relname = other.relname;    
-    this->host = other.host;
-    this->bucket = other.bucket;
-    this->external_storage_prefix = other.external_storage_prefix;
-    this->fileName = other.fileName;
+    engine_path = other.engine_path;
+    gpg_key_id = other.gpg_key_id;
+    config_path = other.config_path;
+    nspname = other.nspname;    
+    relname = other.relname;    
+    host = other.host;
+    bucket = other.bucket;
+    external_storage_prefix = other.external_storage_prefix;
+    fileName = other.fileName;
 
-    this->use_gpg_crypto = other.use_gpg_crypto;
-    this->read_initialized_ = this->write_initialized_ = false;
+    use_gpg_crypto = other.use_gpg_crypto;
+    read_initialized_ = write_initialized_ = false;
     buf = other.buf;
     return *this;
 }
