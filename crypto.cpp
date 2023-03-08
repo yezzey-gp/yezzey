@@ -43,8 +43,7 @@ ssize_t
 yezzey_crypto_stream_dec_read(void *handler, void *buffer, size_t size) {
     auto y_handler = (yezzey_io_handler *) handler;
     int inner_amount = size;
-    (void)reader_transfer_data((GPReader*) y_handler->read_ptr, (char*)buffer, inner_amount);
-    if (inner_amount <= 0) {
+    if (!reader_transfer_data((GPReader*) y_handler->read_ptr, (char*)buffer, inner_amount)) {
         /* failed read, probably eof */
         y_handler->buf.close();
     }
