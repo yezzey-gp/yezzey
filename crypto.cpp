@@ -5,6 +5,37 @@
 #include "external_storage_smgr.h"
 #include <memory>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "postgres.h"
+#include "fmgr.h"
+
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdlib.h>
+#include <dirent.h>
+
+#if PG_VERSION_NUM >= 130000
+#include "postmaster/interrupt.h"
+#endif
+
+
+#include "utils/elog.h"
+
+#ifdef GPBUILD
+#include "cdb/cdbvars.h"
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+
 // decrypt operation
 
 // first arg should be (expected to be) yezzey_io_handler * 
@@ -12,7 +43,10 @@ ssize_t
 yezzey_crypto_stream_dec_read(void *handler, void *buffer, size_t size) {
     auto y_handler = (yezzey_io_handler *) handler;
     int inner_amount = size;
-    (void)reader_transfer_data((GPReader*) y_handler->read_ptr, (char*)buffer, inner_amount);
+    if (!reader_transfer_data((GPReader*) y_handler->read_ptr, (char*)buffer, inner_amount)) {
+        /* failed read, probably eof */
+        y_handler->buf.close();
+    }
 
     return inner_amount;
 }
@@ -70,11 +104,6 @@ init_gpgme (gpgme_protocol_t proto)
 int
 yezzey_io_prepare_crypt(yezzey_io_handler &ptr, bool dec) {
     gpgme_error_t err;
-    gpgme_genkey_result_t gen_result;
-    gpgme_encrypt_result_t enc_result;
-    gpgme_decrypt_result_t dec_result;
-    gpgme_encrypt_result_t en_result;
-
     char *agent_info;
     agent_info = getenv("GPG_AGENT_INFO");
 
@@ -99,8 +128,7 @@ yezzey_io_prepare_crypt(yezzey_io_handler &ptr, bool dec) {
         return -1;
     }
     /* Search key for encryption. */
-    gpgme_key_t key;
-    err = gpgme_get_key (ptr.crypto_ctx,  ptr.gpg_key_id.c_str(), &key, 1);
+    err = gpgme_get_key (ptr.crypto_ctx,  ptr.gpg_key_id.c_str(), &ptr.key, 1);
     if (err) {
         auto errstr = gpgme_strerror(err);
         std::cerr << errstr << "\n";
@@ -114,24 +142,38 @@ yezzey_io_prepare_crypt(yezzey_io_handler &ptr, bool dec) {
         return -1;
     }
 
+    ptr.crypto_initialized_ = true;
+
     // fail_if_err (err);
 
     if (dec) {
         /* Initialize input buffer. */
         err = gpgme_data_new_from_cbs(&ptr.crypto_in, &yezzey_crypto_dec_cbs, &ptr);
+        if (err) {
+            return -1;
+        }
         // fail_if_err (err);
 
         err = gpgme_data_new_from_cbs(&ptr.crypto_out, &yezzey_crypto_dec_cbs, &ptr);
+        if (err) {
+            return -1;
+        }
     } else {
         /* Initialize input buffer. */
         err = gpgme_data_new_from_cbs(&ptr.crypto_in, &yezzey_crypto_enc_cbs, &ptr);
+        if (err) {
+            return -1;
+        }
         // fail_if_err (err);
 
         err = gpgme_data_new_from_cbs(&ptr.crypto_out, &yezzey_crypto_enc_cbs, &ptr);
+        if (err) {
+            return -1;
+        }
     }
 
     /* Encrypt data. */
-    ptr.keys[0] = key;
+    ptr.keys[0] = ptr.key;
 
     /* Decrypt data. */
 
@@ -141,30 +183,32 @@ yezzey_io_prepare_crypt(yezzey_io_handler &ptr, bool dec) {
 
 
 void
-yezzey_io_dispatch_encrypt(yezzey_io_handler * ptr) {
-    ptr->wt =std::unique_ptr<std::thread>(new std::thread([&](){
+yezzey_io_dispatch_encrypt(yezzey_io_handler &ptr) {
+    ptr.wt = new std::thread([&](){
         gpgme_error_t err;
-        err = gpgme_op_encrypt(ptr->crypto_ctx, ptr->keys, GPGME_ENCRYPT_ALWAYS_TRUST, ptr->crypto_in, ptr->crypto_out);
+        err = gpgme_op_encrypt(ptr.crypto_ctx, (gpgme_key_t*)ptr.keys, GPGME_ENCRYPT_ALWAYS_TRUST, ptr.crypto_in, ptr.crypto_out);
         if (err) {
             auto errstr = gpgme_strerror(err);
-            std::cerr << errstr << "\n";
+            std::cerr << "failed to dipatch encrypt " << errstr<< '\n';
             return;
             // bad
         }
         // fail_if_err (err);
-    }));
+    });
 }
 
 void
-yezzey_io_dispatch_decrypt(yezzey_io_handler * ptr) {
-    ptr->wt = std::unique_ptr<std::thread>(new std::thread([&](){
+yezzey_io_dispatch_decrypt(yezzey_io_handler &ptr) {
+    ptr.wt = new std::thread([&](){
         gpgme_error_t err;
-        err = gpgme_op_decrypt(ptr->crypto_ctx, ptr->crypto_in, ptr->crypto_out);
-        if (err) {
+        err = gpgme_op_decrypt(ptr.crypto_ctx, ptr.crypto_in, ptr.crypto_out);
+        if (err) {            
+            auto errstr = gpgme_strerror(err);
+            std::cerr << "failed to dipatch decrypt " << errstr << '\n';
             return;
             // bad
         }
         // fail_if_err (err);
-    }));
+    });
 }
 

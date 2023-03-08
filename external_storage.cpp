@@ -175,7 +175,7 @@ offloadFileToExternalStorage(
 
 		progress += rc;
 	}
-
+	
 	if (!yezzey_io_close(iohandler)) {
 		elog(ERROR, "yezzey: failed to complete %s offloading", localPath);
 	}

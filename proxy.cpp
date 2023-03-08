@@ -18,9 +18,9 @@ typedef struct yezzey_vfd {
 	int localTmpVfd; /* for writing cache files */
 	
 	/* s3-related params */
-	char * filepath;
-	char * nspname;
-	char * relname;
+	std::string filepath;
+	std::string nspname;
+	std::string relname;
 
 	yezzey_io_handler handler;
 
@@ -36,8 +36,9 @@ typedef struct yezzey_vfd {
 	int64 virtualSize;
 	int64 modcount;
 
-	yezzey_vfd() : y_vfd(0), localTmpVfd(0), filepath(NULL), nspname(NULL),
-	relname(NULL), fileFlags(0), fileMode(0), offset(0), virtualSize(0), modcount(0), handler(yezzey_io_handler()) {
+	yezzey_vfd() : y_vfd(0), localTmpVfd(0), fileFlags(0), 
+		fileMode(0), offset(0), 
+		virtualSize(0), modcount(0), handler(yezzey_io_handler()) {
 
 	}
 	yezzey_vfd& operator=(yezzey_vfd&& vfd) {
@@ -113,31 +114,33 @@ File virtualEnsure(SMGRFile file) {
 	}	
 	if (yezzey_vfd_cache[file].y_vfd == YEZZEY_NOT_OPENED) {
 		// not opened yet
-		if (!ensureFilepathLocal(yezzey_vfd_cache[file].filepath)) {
+		if (!ensureFilepathLocal(yezzey_vfd_cache[file].filepath.c_str())) {
 			// do s3 read
 			return s3ext;
 		}
 
 		/* Do we need this? */
 
-		internal_vfd = PathNameOpenFile(yezzey_vfd_cache[file].filepath,
-		yezzey_vfd_cache[file].fileFlags, yezzey_vfd_cache[file].fileMode);
+		internal_vfd = PathNameOpenFile(
+			(FileName)yezzey_vfd_cache[file].filepath.c_str(),
+			yezzey_vfd_cache[file].fileFlags,
+			yezzey_vfd_cache[file].fileMode);
 
 		elog(
 			yezzey_ao_log_level, 
 			"virtualEnsure: yezzey virtual file descriptor for file %s become %d", 
-			yezzey_vfd_cache[file].filepath, 
+			yezzey_vfd_cache[file].filepath.c_str(), 
 			internal_vfd);
 		
 		if (internal_vfd == -1) {
 			// error
-			elog(ERROR, "virtualEnsure: failed to proxy open file %s for fd %d", yezzey_vfd_cache[file].filepath, file);
+			elog(ERROR, "virtualEnsure: failed to proxy open file %s for fd %d", yezzey_vfd_cache[file].filepath.c_str(), file);
 		}
 		elog(yezzey_ao_log_level, "y vfd become %d", internal_vfd);
 
 		yezzey_vfd_cache[file].y_vfd = internal_vfd; // -1 is ok
 
-		elog(yezzey_ao_log_level, "virtualEnsure: file %s yezzey descriptor become %d", yezzey_vfd_cache[file].filepath, file);
+		elog(yezzey_ao_log_level, "virtualEnsure: file %s yezzey descriptor become %d", yezzey_vfd_cache[file].filepath.c_str(), file);
 		/* allocate handle struct */
 	}
 
@@ -191,39 +194,35 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileNam
 		if (!yezzey_vfd_cache.count(yezzey_fd)) {
 			yezzey_vfd_cache[yezzey_fd] = yezzey_vfd();
 			// memset(&yezzey_vfd_cache[file], 0, sizeof(yezzey_vfd));
-			yezzey_vfd_cache[yezzey_fd].filepath = strdup(fileName);
+			yezzey_vfd_cache[yezzey_fd].filepath = std::string(fileName);
 			if (relname == NULL) {
 				/* Should be possible only in recovery */
 				Assert(RecoveryInProgress());
 			} else {
-				yezzey_vfd_cache[yezzey_fd].relname = strdup(relname);
+				yezzey_vfd_cache[yezzey_fd].relname = std::string(relname);
 			}
 			if (nspname == NULL) {
 				/* Should be possible only in recovery */
 				Assert(RecoveryInProgress());
 			} else {
-				yezzey_vfd_cache[yezzey_fd].nspname = strdup(nspname);
+				yezzey_vfd_cache[yezzey_fd].nspname = std::string(nspname);
 			}
 			yezzey_vfd_cache[yezzey_fd].fileFlags = fileFlags;
 			yezzey_vfd_cache[yezzey_fd].fileMode = fileMode;
 			yezzey_vfd_cache[yezzey_fd].modcount = modcount;
-			if (yezzey_vfd_cache[yezzey_fd].filepath == NULL || 
-			(!RecoveryInProgress() && yezzey_vfd_cache[yezzey_fd].relname == NULL)) {
-				elog(ERROR, "out of memory");
-			}
 
 			yezzey_vfd_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
 		
 			yezzey_vfd_cache[yezzey_fd].handler = yezzey_io_handler(
-				gpg_engine_path,
-				gpg_key_id,
+				std::string(gpg_engine_path),
+				std::string(gpg_key_id),
 				use_gpg_crypto,
-				storage_config,
+				std::string(storage_config),
 				yezzey_vfd_cache[yezzey_fd].nspname,
 				yezzey_vfd_cache[yezzey_fd].relname,
-				storage_host /*host*/,
-				storage_bucket/*bucket*/,
-				storage_prefix/*prefix*/,
+				std::string(storage_host /*host*/),
+				std::string(storage_bucket/*bucket*/),
+				std::string(storage_prefix/*prefix*/),
 				yezzey_vfd_cache[yezzey_fd].filepath
 			);
 
@@ -234,7 +233,7 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char * relname, FileName fileNam
 				return yezzey_fd;
 			} else {
 				/* primary */
-				if (!ensureFilepathLocal(yezzey_vfd_cache[yezzey_fd].filepath)) {
+				if (!ensureFilepathLocal(yezzey_vfd_cache[yezzey_fd].filepath.c_str())) {
 					switch (fileFlags) {
 						case O_WRONLY:
 							/* allocate handle struct */						
@@ -283,16 +282,6 @@ void yezzey_FileClose(SMGRFile file) {
 #ifdef DISKCACHE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
-	if (yezzey_vfd_cache[file].filepath) {
-		free(yezzey_vfd_cache[file].filepath);
-	}
-	if (yezzey_vfd_cache[file].relname) {
-		free(yezzey_vfd_cache[file].relname);
-	}
-	if (yezzey_vfd_cache[file].nspname) {
-		free(yezzey_vfd_cache[file].nspname);
-	}
-	yezzey_io_free(yezzey_vfd_cache[file].handler);
 	yezzey_vfd_cache.erase(file);
 }
 
