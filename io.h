@@ -50,29 +50,35 @@ struct yezzey_io_handler {
     gpgme_data_t crypto_out;
     
     gpgme_ctx_t crypto_ctx;
-    gpgme_key_t keys[2];
+    gpgme_key_t keys[2]{NULL,NULL};
+    gpgme_key_t key;
+
+    bool crypto_initialized_{false};
 
 //  S3 + WAL-G - related structs
 
-    GPReader * read_ptr;
-    bool read_initialized_;
-    GPWriter * write_ptr;
-    bool write_initialized_;
+    GPReader * read_ptr{nullptr};
+    bool read_initialized_{false};
+    GPWriter * write_ptr{nullptr};
+    bool write_initialized_{false};
     // handler thread
-    std::unique_ptr<std::thread> wt;
+    // std::unique_ptr<std::thread> wt;
+    std::thread * wt {nullptr};
+
+    void waitio();
 
     // construcor
     yezzey_io_handler(
-        const char * engine_path,
-        const char * gpg_key_id,
+        const std::string &engine_path,
+        const std::string &gpg_key_id,
         bool         use_gpg_crypto,
-        const char * config_path,
-        const char * nspname,
-        const char * relname,
-        const char * host,
-        const char * bucket,
-        const char * external_storage_prefix,
-        const char * fileName
+        const std::string & config_path,
+        const std::string &nspname,
+        const std::string &relname,
+        const std::string &host,
+        const std::string &bucket,
+        const std::string &external_storage_prefix,
+        const std::string &fileName
     );
     // copyable
     yezzey_io_handler(const yezzey_io_handler& buf);
@@ -83,21 +89,6 @@ struct yezzey_io_handler {
     ~yezzey_io_handler();
 };
 
-
-yezzey_io_handler * yezzey_io_handler_allocate(
-    const char * engine_path,
-    const char * gpg_key_id,
-    bool         use_gpg_crypto,
-    const char * config_path,
-    const char * nspname,
-	const char * relname,
-	const char * host,
-	const char * bucket,
-	const char * external_storage_prefix,
-	const char * fileName
-);
-
-int yezzey_io_free(yezzey_io_handler &handle);
 
 bool yezzey_io_read(yezzey_io_handler &handle, char *buffer, size_t *amount);
 
