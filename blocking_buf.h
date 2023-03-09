@@ -19,7 +19,7 @@ class BlockingBuffer {
 
     const size_t default_sz_ = 1 << 12;
 
-    bool closed_;
+    bool closed_{false};
 
 public:
     // // Non-copyable
