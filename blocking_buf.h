@@ -93,6 +93,15 @@ public:
         cv_write_.notify_all();
     }
 
+    void reset() {
+        std::unique_lock<std::mutex> lk(mu_);
+
+        offset_ = 0;
+        closed_ = false;
+        cv_read_.notify_all();
+        cv_write_.notify_all();
+    }
+
     void close () {
         std::unique_lock<std::mutex> lk(mu_);
 

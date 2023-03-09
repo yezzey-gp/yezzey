@@ -122,6 +122,8 @@ offloadFileToExternalStorage(
 	}
 	
 	virtual_size = yezzey_calc_virtual_relation_size(iohandler);
+
+	elog(WARNING, "yezzey: relation virtaul size calculated: %d", virtual_size);
 	progress = virtual_size;
 	FileSeek(vfd, progress, SEEK_SET);
 

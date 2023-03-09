@@ -311,10 +311,23 @@ int64_t yezzey_virtual_relation_size(
 
 int64_t yezzey_calc_virtual_relation_size(yezzey_io_handler &handler) {
     int64_t sz = 0;
-    auto content = handler.read_ptr->getKeyList().contents;
-    for (auto key : content) {
-        sz += handler.read_ptr->bucketReader.constructReaderParams(key).getKeySize();
+    auto buf = std::vector<char>(1 << 20);
+    /* fix this */
+    for (;;) {
+        auto rc = buf.size();
+        if (!yezzey_io_read(handler, buf.data(), &rc)) {
+            break;
+        }
+        sz += rc;
     }
+
+    handler.buf.close();
+	handler.waitio();
+    handler.buf.reset();
+    // auto content = handler.read_ptr->getKeyList().contents;
+    // for (auto key : content) {
+    //     sz += handler.read_ptr->bucketReader.constructReaderParams(key).getKeySize();
+    // }
     return sz;
 }
 
