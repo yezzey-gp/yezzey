@@ -45,7 +45,13 @@ yezzey_crypto_stream_dec_read(void *handler, void *buffer, size_t size) {
     int inner_amount = size;
     if (!reader_transfer_data((GPReader*) y_handler->read_ptr, (char*)buffer, inner_amount)) {
         /* failed read, probably eof */
-        y_handler->buf.close();
+        // y_handler->buf.close();
+        return -1;
+    }
+
+    if (inner_amount <= 0) {
+        /* failed read, probably eof */
+        // y_handler->buf.close();
     }
 
     return inner_amount;
@@ -184,7 +190,7 @@ yezzey_io_prepare_crypt(yezzey_io_handler &ptr, bool dec) {
 
 void
 yezzey_io_dispatch_encrypt(yezzey_io_handler &ptr) {
-    ptr.wt = new std::thread([&](){
+    ptr.wt = std::make_unique<std::thread>([&](){
         gpgme_error_t err;
         err = gpgme_op_encrypt(ptr.crypto_ctx, (gpgme_key_t*)ptr.keys, GPGME_ENCRYPT_ALWAYS_TRUST, ptr.crypto_in, ptr.crypto_out);
         if (err) {
@@ -199,9 +205,11 @@ yezzey_io_dispatch_encrypt(yezzey_io_handler &ptr) {
 
 void
 yezzey_io_dispatch_decrypt(yezzey_io_handler &ptr) {
-    ptr.wt = new std::thread([&](){
+    ptr.wt = std::make_unique<std::thread>([&](){
         gpgme_error_t err;
         err = gpgme_op_decrypt(ptr.crypto_ctx, ptr.crypto_in, ptr.crypto_out);
+
+        ptr.buf.close();
         if (err) {            
             auto errstr = gpgme_strerror(err);
             std::cerr << "failed to dipatch decrypt " << errstr << '\n';

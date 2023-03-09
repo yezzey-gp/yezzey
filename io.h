@@ -63,7 +63,7 @@ struct yezzey_io_handler {
     bool write_initialized_{false};
     // handler thread
     // std::unique_ptr<std::thread> wt;
-    std::thread * wt {nullptr};
+    std::unique_ptr<std::thread> wt {nullptr};
 
     void waitio();
 
