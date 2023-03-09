@@ -115,9 +115,11 @@ void yezzey_io_handler::waitio() {
     if (wt && wt->joinable()) {
         wt->join();
     }
+    wt = nullptr;
 }
 
 yezzey_io_handler::~yezzey_io_handler() {
+    waitio();    
 
     if (crypto_initialized_) {
         gpgme_data_release(crypto_in);

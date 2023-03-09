@@ -206,16 +206,22 @@ yezzey_io_dispatch_encrypt(yezzey_io_handler &ptr) {
 void
 yezzey_io_dispatch_decrypt(yezzey_io_handler &ptr) {
     ptr.wt = std::make_unique<std::thread>([&](){
-        gpgme_error_t err;
-        err = gpgme_op_decrypt(ptr.crypto_ctx, ptr.crypto_in, ptr.crypto_out);
+        for (;!reader_empty(ptr.read_ptr);) {
+            ptr.read_ptr->BumpArenda(1);
+            /* operation per file */
+            gpgme_error_t err;
+            err = gpgme_op_decrypt(ptr.crypto_ctx, ptr.crypto_in, ptr.crypto_out);
+
+            if (err) {          
+                ptr.buf.close();  
+                auto errstr = gpgme_strerror(err);
+                std::cerr << "failed to dipatch decrypt " << errstr << '\n';
+                return;
+                // bad
+            }
+        }
 
         ptr.buf.close();
-        if (err) {            
-            auto errstr = gpgme_strerror(err);
-            std::cerr << "failed to dipatch decrypt " << errstr << '\n';
-            return;
-            // bad
-        }
         // fail_if_err (err);
     });
 }
