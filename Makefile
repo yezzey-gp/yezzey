@@ -6,15 +6,15 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 COMMON_OBJS = gpreader.o gpwriter.o s3conf.o s3utils.o s3log.o s3url.o s3http_headers.o s3interface.o s3restful_service.o s3bucket_reader.o s3common_reader.o s3common_writer.o decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o
 
-COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lgpgme 
+COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lgpgme
 
-COMMON_CPP_FLAGS = -std=c++17 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include
+COMMON_CPP_FLAGS = -std=c++17 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS
 
 override CPPFLAGS = -fPIC -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lgpgme -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++17 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -Iinclude -Ilib -I../../src/interfaces/libpq -I../../src/interfaces/libpq/postgresql/server/utils -g -I. -I. -I../../src/include -D_GNU_SOURCE -I/usr/include/libxml2 -I../gpcloud_modified_for_yezzey/include -I../gpcloud_modified_for_yezzey/lib  -DGPBUILD
 
 
 SHLIB_LINK += $(COMMON_LINK_OPTIONS)
-PG_CPPFLAGS += $(COMMON_CPP_FLAGS) -Iinclude -Ilib -I$(libpq_srcdir) -I$(libpq_srcdir)/postgresql/server/utils
+PG_CPPFLAGS += $(COMMON_CPP_FLAGS) -I./include -Iinclude -Ilib -I$(libpq_srcdir) -I$(libpq_srcdir)/postgresql/server/utils
 
 
 MODULE_big = yezzey
@@ -22,7 +22,13 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	smgr.o worker.o yezzey.o external_storage.o proxy.o external_storage_smgr.o io.o crypto.o  ../gpcloud_modified_for_yezzey/src/gpcloud.o ../gpcloud_modified_for_yezzey/lib/http_parser.o ../gpcloud_modified_for_yezzey/lib/ini.o $(addprefix ../gpcloud_modified_for_yezzey/src/,$(COMMON_OBJS))
+	src/storage.o src/proxy.o src/encrypted_storage_reader.o \
+	src/encrypted_storage_writer.o  src/io_adv.o src/io.o src/crypto.o  \
+	src/external_reader.o src/external_writer.o \
+	src/walg_reader.o \
+	src/util.o \
+	smgr.o worker.o yezzey.o \
+	../gpcloud_modified_for_yezzey/src/gpcloud.o ../gpcloud_modified_for_yezzey/lib/http_parser.o ../gpcloud_modified_for_yezzey/lib/ini.o $(addprefix ../gpcloud_modified_for_yezzey/src/,$(COMMON_OBJS))
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql

@@ -168,11 +168,11 @@ make destroy-demo-cluster && make create-demo-cluster && gpconfig -s shared_prel
 
 
 make destroy-demo-cluster && make create-demo-cluster
-gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005'
-gpconfig -c yezzey.storage_bucket -v 'loh228'
-gpconfig -c yezzey.storage_config -v '/home/reshke/s3test.conf'
-gpconfig -c yezzey.storage_host -v 'storage.yandexcloud.net'
-
+gpconfig -c yezzey.storage_prefix -v "'wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005'"
+gpconfig -c yezzey.storage_bucket -v "'loh228'"
+gpconfig -c yezzey.storage_config -v "'/home/reshke/s3test.conf'"
+gpconfig -c yezzey.storage_host -v "'storage.yandexcloud.net'"
+gpconfig -c yezzey.gpg_key_id -v  '5697E1083B8509B8'
 
 
 gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbtvdnna6t7oqaioeaj/6/segments_005'
