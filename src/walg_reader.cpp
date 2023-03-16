@@ -17,9 +17,10 @@ wal-g
 std::string craftString(std::shared_ptr<IOadv> adv, size_t segindx) {
 
   std::string cmd =
-      "/home/reshke/work/wal-g/main/gp/wal-g "
+      adv->walg_bin_path +
+      " "
       "--config=/home/reshke/work/wal-g/conf.yaml aosegfile-stream";
-  auto coords = getRelnodeCorrdinate(adv->fileName);
+  auto coords = adv->coords_;
   auto dbOid = std::get<0>(coords);
   auto relOid = std::get<1>(coords);
   auto relBlck = std::get<2>(coords);
@@ -38,7 +39,11 @@ WALGReader::WALGReader(std::shared_ptr<IOadv> adv, ssize_t segindx)
 
 WALGReader::~WALGReader() { close(); }
 
-bool WALGReader::close() {   if (initialized_)  wal_g_->close(); return true; }
+bool WALGReader::close() {
+  if (initialized_)
+    wal_g_->close();
+  return true;
+}
 bool WALGReader::read(char *buffer, size_t *amount) {
   if (!initialized_) {
     wal_g_ = std::make_unique<redi::ipstream>(cmd_);
@@ -56,4 +61,9 @@ int WALGReader::prepare() { return 0; }
 
 void WALGReader::BumpArenda(size_t /*count*/) {}
 
-bool WALGReader::empty() { if (!initialized_) return false; else return wal_g_->eof(); };
+bool WALGReader::empty() {
+  if (!initialized_)
+    return false;
+  else
+    return wal_g_->eof();
+};

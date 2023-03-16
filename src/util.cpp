@@ -50,8 +50,7 @@ std::string storage_url_add_options(const std::string &s3path,
   return ret;
 }
 
-std::tuple<int64_t, int64_t, int64_t>
-getRelnodeCorrdinate(const std::string &fileName) {
+relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
 
   int64_t dboid = 0, tableoid = 0;
   int64_t relation_segment = 0;
@@ -87,24 +86,16 @@ getRelnodeCorrdinate(const std::string &fileName) {
   return {dboid, tableoid, relation_segment};
 }
 
-/// @brief
-/// @param nspname
-/// @param relname
-/// @param external_storage_prefix
-/// @param fileName
-/// @param segid greenplum executor segment id
-/// @return
-std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
-                                 const char *external_storage_prefix,
-                                 const char *fileName, int32_t segid) {
+std::string
+getYezzeyRelationUrl_internal(const std::string &nspname,
+                              const std::string &relname,
+                              const std::string &external_storage_prefix,
+                              relnodeCoord coords, int32_t segid) {
 
-  std::string url = "";
-  url += external_storage_prefix;
-  url += "/seg" + std::to_string(segid) + basebackupsPath;
+  std::string url = external_storage_prefix + "/seg" + std::to_string(segid) +
+                    basebackupsPath;
 
   int64_t dboid, tableoid, relation_segment;
-  std::string filename_str = std::string(fileName);
-  auto coords = getRelnodeCorrdinate(filename_str);
   dboid = std::get<0>(coords);
   tableoid = std::get<1>(coords);
   relation_segment = std::get<2>(coords);
@@ -114,10 +105,7 @@ std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
   url +=
       std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(dboid) + "_";
 
-  std::string full_name = "";
-  full_name += nspname;
-  full_name += ".";
-  full_name += relname;
+  std::string full_name = nspname + "." + relname;
   /* compute AO/AOCS relation name, just like walg does*/
   (void)MD5((const unsigned char *)full_name.c_str(), full_name.size(), md);
 
@@ -132,6 +120,25 @@ std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
          std::to_string(relation_segment) + "_";
 
   return url;
+}
+
+/// @brief
+/// @param nspname
+/// @param relname
+/// @param external_storage_prefix
+/// @param fileName
+/// @param segid greenplum executor segment id
+/// @return
+std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
+                                 const char *external_storage_prefix,
+                                 const char *fileName, int32_t segid) {
+
+  int64_t dboid, tableoid, relation_segment;
+  std::string filename_str = std::string(fileName);
+  auto coords = getRelnodeCoordinate(filename_str);
+
+  return getYezzeyRelationUrl_internal(nspname, relname,
+                                       external_storage_prefix, coords, segid);
 }
 
 void getYezzeyExternalStoragePath(const char *nspname, const char *relname,

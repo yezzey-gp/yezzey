@@ -663,6 +663,10 @@ void yezzey_define_gucs() {
                              &gpg_engine_path, "/usr/bin/gpg", PGC_SUSET, 0,
                              NULL, NULL, NULL);
 
+  DefineCustomStringVariable("yezzey.walg_bin_path", "wal-g engine path", NULL,
+                             &walg_bin_path, "/usr/bin/wal-g-gp", PGC_SUSET, 0,
+                             NULL, NULL, NULL);
+
   DefineCustomBoolVariable(
       "yezzey.autooffload", "enable auto-offloading worker", NULL,
       &yezzey_autooffload, false, PGC_USERSET, 0, NULL, NULL, NULL);

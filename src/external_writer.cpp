@@ -44,9 +44,9 @@ void ExternalWriter::createWriterHandle() {
    *
    */
 
-  auto prefix = getYezzeyRelationUrl(
-      adv_->nspname.c_str(), adv_->relname.c_str(),
-      adv_->external_storage_prefix.c_str(), adv_->fileName.c_str(), segindx_);
+  auto prefix = getYezzeyRelationUrl_internal(adv_->nspname, adv_->relname,
+                                              adv_->external_storage_prefix,
+                                              adv_->coords_, segindx_);
 
   auto content = reader_->list_chunk_names();
   if (content.size() == 0) {

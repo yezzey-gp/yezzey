@@ -178,7 +178,8 @@ int yezzey_FileSync(SMGRFile file) {
 SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
                                  FileName fileName, int fileFlags, int fileMode,
                                  int64 modcount) {
-  elog(yezzey_ao_log_level, "yezzey_AORelOpenSegFile: path name open file %s with modcount %ld",
+  elog(yezzey_ao_log_level,
+       "yezzey_AORelOpenSegFile: path name open file %s with modcount %ld",
        fileName, modcount);
 
   if (modcount != -1) {
@@ -216,7 +217,8 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
           YVirtFD_cache[yezzey_fd].relname, std::string(storage_host /*host*/),
           std::string(storage_bucket /*bucket*/),
           std::string(storage_prefix /*prefix*/),
-          YVirtFD_cache[yezzey_fd].filepath, use_gpg_crypto);
+          YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
+          use_gpg_crypto);
       /* we dont need to interact with s3 while in recovery*/
 
       YVirtFD_cache[yezzey_fd].handler =

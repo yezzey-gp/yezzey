@@ -14,6 +14,7 @@ extern const char *basebackupsPath;
 
 #include "io.h"
 #include "io_adv.h"
+#include "types.h"
 
 // create external storage reading handle, able to
 // read all files related to given relation
@@ -22,8 +23,11 @@ extern const char *basebackupsPath;
 // to transfer segment file of given AO/AOCS relation,
 // with operation modcound $modcount$
 
-std::tuple<int64_t, int64_t, int64_t>
-getRelnodeCorrdinate(const std::string &fileName);
+std::string
+getYezzeyRelationUrl_internal(const std::string &nspname,
+                              const std::string &relname,
+                              const std::string &external_storage_prefix,
+                              relnodeCoord coords, int32_t segid);
 
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv, int32_t segid);
 

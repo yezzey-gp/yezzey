@@ -40,15 +40,20 @@ typedef struct yezzeyChunkMeta {
 
 #ifdef __cplusplus
 #include "string"
+
+#include "types.h"
+
+std::string getlocalpath(Oid dbnode, Oid relNode, int segno);
 bool ensureFilepathLocal(const std::string &filepath);
+std::string getlocalpath(const relnodeCoord &coords);
 #endif
 
-EXTERNC int offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno,
-                                   int64 modcount, int64 logicalEof,
-                                   bool remove_locally,
+EXTERNC int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
+                                   int64 logicalEof, bool remove_locally,
                                    const char *external_storage_path);
 
-EXTERNC int loadRelationSegment(RelFileNode rnode, int segno);
+EXTERNC int loadRelationSegment(Relation aorel, int segno,
+                                const char *dest_path);
 
 EXTERNC bool ensureFileLocal(RelFileNode rnode, BackendId backend,
                              ForkNumber forkNum, BlockNumber blkno);

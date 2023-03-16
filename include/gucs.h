@@ -16,4 +16,8 @@ extern char *storage_bucket;
 extern char *storage_config;
 extern char *storage_host;
 
+/* WAL-G */
+
+extern char *walg_bin_path;
+
 #endif /* YEZZEY_GUCS_H */

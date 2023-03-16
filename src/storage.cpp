@@ -33,13 +33,13 @@ extern "C" {
 
 int offloadFileToExternalStorage(const std::string &spname,
                                  const std::string &relname,
-                                 const std::string &localPath, int64 modcount,
+                                 const relnodeCoord &coords, int64 modcount,
                                  int64 logicalEof,
                                  const std::string &xternal_storage_path);
 
 int offloadRelationSegmentPath(const std::string &nspname,
                                const std::string &relname,
-                               const std::string &localpath, int64 modcount,
+                               const relnodeCoord &coords, int64 modcount,
                                int64 logicalEof,
                                const std::string &external_storage_path);
 
@@ -56,18 +56,25 @@ bool ensureFilepathLocal(const std::string &filepath) {
 
 int offloadFileToExternalStorage(const std::string &nspname,
                                  const std::string &relname,
-                                 const std::string &localPath, int64 modcount,
+                                 const relnodeCoord &coords, int64 modcount,
                                  int64 logicalEof,
                                  const std::string &external_storage_path) {
+
+  const std::string localPath = getlocalpath(coords);
+
+  if (!ensureFilepathLocal(localPath)) {
+    // nothing to do
+    return 0;
+  }
+
   int rc;
   int tot;
-  size_t chunkSize;
+  size_t chunkSize = 1 << 20;
   File vfd;
   int64 curr_read_chunk;
   int64 progress;
   int64 virtual_size;
 
-  chunkSize = 1 << 20;
   std::vector<char> buffer(chunkSize);
   vfd = PathNameOpenFile((FileName)localPath.c_str(), O_RDONLY, 0600);
   if (vfd <= 0) {
@@ -80,7 +87,8 @@ int offloadFileToExternalStorage(const std::string &nspname,
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, localPath, use_gpg_crypto);
+      storage_prefix /*prefix*/, localPath /* filename */, walg_bin_path,
+      use_gpg_crypto);
 
   auto iohandler =
       YIO(ioadv, GpIdentity.segindex, modcount, external_storage_path);
@@ -136,40 +144,145 @@ int offloadFileToExternalStorage(const std::string &nspname,
   return rc;
 }
 
+int loadSegmentFromExternalStorage(const std::string &nspname,
+                                   const std::string &relname, int segno,
+                                   const relnodeCoord &coords,
+                                   const std::string &dest_path) {
+  int rc;
+  int tot;
+  size_t chunkSize;
+  File vfd;
+  int64 curr_read_chunk;
+  int64 progress;
+  int64 virtual_size;
+
+  auto tmp_path = dest_path + "_yezzey_tmp";
+
+  chunkSize = 1 << 20;
+  std::vector<char> buffer(chunkSize);
+  vfd = PathNameOpenFile((FileName)tmp_path.c_str(), O_WRONLY, 0600);
+  if (vfd <= 0) {
+    elog(ERROR,
+         "yezzey: failed to open %s file to transfer to external storage",
+         tmp_path.c_str());
+  }
+  progress = 0;
+
+  auto ioadv = std::make_shared<IOadv>(
+      gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
+      storage_host /* host */, storage_bucket /*bucket*/,
+      storage_prefix /*prefix*/, coords /* filename */, walg_bin_path,
+      use_gpg_crypto);
+
+  /*
+   * Create external storage reader handle to read segment files
+   */
+  auto iohandler = YIO(ioadv, GpIdentity.segindex);
+
+  FileSeek(vfd, 0, SEEK_SET);
+  rc = 0;
+
+  while (!iohandler.reader_empty()) {
+    size_t amount = chunkSize;
+    if (!iohandler.io_read(buffer.data(), &amount)) {
+      elog(ERROR, "failed to read file from external storage");
+      return -1;
+    }
+
+    /* code */
+
+    tot = 0;
+    char *bptr = buffer.data();
+
+    while (tot < amount) {
+      size_t currptrtot = amount - tot;
+      auto rc = FileWrite(vfd, bptr, currptrtot);
+      if (rc <= 0) {
+        elog(ERROR, "failed to read file from external storage");
+        return rc;
+      }
+
+      tot += currptrtot;
+      bptr += currptrtot;
+    }
+  }
+
+  if (!iohandler.io_close()) {
+    elog(ERROR, "yezzey: failed to complete %s offloading", tmp_path.c_str());
+  }
+
+  FileClose(vfd);
+  std::error_code ec;
+
+  const std::filesystem::path old{tmp_path};
+  const std::filesystem::path path{dest_path};
+
+  std::filesystem::rename(old, path, ec);
+
+  return ec.value();
+}
+
+int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
+
+  if (segno == 0) {
+    /* should never happen */
+    return 0;
+  }
+  RelFileNode rnode = aorel->rd_node;
+
+  relnodeCoord coords = {rnode.dbNode, rnode.relNode, segno};
+
+  std::string path;
+  if (dest_path) {
+    path = std::string(dest_path);
+  } else {
+    getlocalpath(rnode.dbNode, rnode.relNode, segno);
+  }
+  elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
+  if (ensureFilepathLocal(path)) {
+    // nothing to do
+    return 0;
+  }
+
+  auto tp = SearchSysCache1(NAMESPACEOID,
+                            ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+
+  if (!HeapTupleIsValid(tp)) {
+    elog(ERROR, "yezzey: failed to get namescape name of relation %s",
+         aorel->rd_rel->relname.data);
+  }
+
+  Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
+  auto nspname = std::string(NameStr(nsptup->nspname));
+  auto relname = std::string(aorel->rd_rel->relname.data);
+  ReleaseSysCache(tp);
+
+  return loadSegmentFromExternalStorage(nspname, relname, segno, coords, path);
+}
+
 bool ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum,
                      BlockNumber blkno) {
   /* MDB-19689: do not consult catalog */
 
   elog(yezzey_log_level, "ensuring %d is local", rnode.relNode);
-  return true;
-  StringInfoData path;
   bool result = true;
-  initStringInfo(&path);
 
-  // result = ensureFilepathLocal(path.data);
+  auto path = std::string(relpathbackend(rnode, backend, forkNum));
+  /* TBD: construct path*/
 
-  pfree(path.data);
+  // result = ensureFilepathLocal(path);
+
   return result;
 }
 
 int removeLocalFile(const char *localPath) {
-  int rc = remove(localPath);
+  const std::filesystem::path path{localPath};
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
   elog(yezzey_ao_log_level,
-       "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath, rc);
-  return rc;
-}
-
-int offloadRelationSegmentPath(const std::string &nspname,
-                               const std::string &relname,
-                               const std::string &localpath, int64 modcount,
-                               int64 logicalEof,
-                               const std::string &external_storage_path) {
-  if (!ensureFilepathLocal(localpath)) {
-    // nothing to do
-    return 0;
-  }
-  return offloadFileToExternalStorage(nspname, relname, localpath, modcount,
-                                      logicalEof, external_storage_path);
+       "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath,
+       ec.value());
+  return ec.value();
 }
 
 std::string getlocalpath(Oid dbnode, Oid relNode, int segno) {
@@ -184,16 +297,31 @@ std::string getlocalpath(Oid dbnode, Oid relNode, int segno) {
   return local_path;
 }
 
-int offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno,
-                           int64 modcount, int64 logicalEof,
-                           bool remove_locally,
+std::string getlocalpath(const relnodeCoord &coords) {
+  auto dbnode = std::get<0>(coords);
+  auto relnode = std::get<1>(coords);
+  auto segno = std::get<2>(coords);
+  return getlocalpath(dbnode, relnode, segno);
+}
+
+int offloadRelationSegmentPath(const std::string &nspname,
+                               const std::string &relname,
+                               const relnodeCoord &coords, int64 modcount,
+                               int64 logicalEof,
+                               const std::string &external_storage_path) {
+  return offloadFileToExternalStorage(nspname, relname, coords, modcount,
+                                      logicalEof, external_storage_path);
+}
+
+int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
+                           int64 logicalEof, bool remove_locally,
                            const char *external_storage_path) {
+  RelFileNode rnode = aorel->rd_node;
   int rc;
   int64_t virtual_sz;
   HeapTuple tp;
 
-  auto local_path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
-  elog(yezzey_ao_log_level, "contructed path %s", local_path.c_str());
+  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
 
   /* xlog goes first */
   // xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
@@ -213,7 +341,7 @@ int offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno,
       !external_storage_path ? "" : std::string(external_storage_path);
   ReleaseSysCache(tp);
 
-  if ((rc = offloadRelationSegmentPath(nspname, relname, local_path, modcount,
+  if ((rc = offloadRelationSegmentPath(nspname, relname, coords, modcount,
                                        logicalEof, storage_path)) < 0) {
     return rc;
   }
@@ -229,7 +357,8 @@ int offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno,
       std::string(aorel->rd_rel->relname.data),
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
-      std::string(storage_prefix /*prefix*/), local_path, use_gpg_crypto);
+      std::string(storage_prefix /*prefix*/), coords,
+      std::string(walg_bin_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -237,9 +366,9 @@ int offloadRelationSegment(Relation aorel, RelFileNode rnode, int segno,
   virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
 
   elog(yezzey_ao_log_level,
-       "yezzey: relation segment reached external storage path %s, virtual "
+       "yezzey: relation segment reached external storage (blkno=%ld), virtual "
        "size %ld, logical eof %ld",
-       local_path.c_str(), virtual_sz, logicalEof);
+       std::get<2>(coords), virtual_sz, logicalEof);
   return 0;
 }
 
@@ -248,14 +377,10 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
                            size_t *local_commited_bytes,
                            size_t *external_bytes) {
   size_t virtual_sz;
-  RelFileNode rnode;
-  HeapTuple tp;
-  int vfd;
+  auto rnode = aorel->rd_node;
 
-  rnode = aorel->rd_node;
-
-  tp = SearchSysCache1(NAMESPACEOID,
-                       ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+  auto tp = SearchSysCache1(NAMESPACEOID,
+                            ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
   if (!HeapTupleIsValid(tp)) {
 
@@ -267,8 +392,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   auto nspname = std::string(NameStr(nsptup->nspname));
   ReleaseSysCache(tp);
 
-  auto local_path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
-  elog(yezzey_ao_log_level, "yezzey: contructed path %s", local_path.c_str());
+  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
 
   auto ioadv = std::make_shared<IOadv>(
       std::string(gpg_engine_path), std::string(gpg_key_id),
@@ -276,7 +400,8 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(aorel->rd_rel->relname.data),
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
-      std::string(storage_prefix /*prefix*/), local_path, use_gpg_crypto);
+      std::string(storage_prefix /*prefix*/), coords,
+      std::string(walg_bin_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -287,13 +412,9 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   *external_bytes = virtual_sz;
 
   /* No local storage cache logic for now */
-  *local_bytes = 0;
+  auto local_path = getlocalpath(coords);
 
-  vfd = PathNameOpenFile((char *)local_path.c_str(), O_RDONLY, 0600);
-  if (vfd != -1) {
-    *local_bytes += FileSeek(vfd, 0, SEEK_END);
-    FileClose(vfd);
-  }
+  *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
 
   // Assert(virtual_sz <= logicalEof);
   *local_commited_bytes = logicalEof - virtual_sz;
@@ -307,13 +428,11 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
                                            yezzeyChunkMeta **list,
                                            size_t *cnt_chunks) {
   RelFileNode rnode;
-  int vfd;
   HeapTuple tp;
 
   rnode = aorel->rd_node;
 
-  auto local_path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
-  elog(yezzey_ao_log_level, "contructed path %s", local_path.c_str());
+  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
 
   tp = SearchSysCache1(NAMESPACEOID,
                        ObjectIdGetDatum(aorel->rd_rel->relnamespace));
@@ -333,7 +452,8 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(aorel->rd_rel->relname.data),
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
-      std::string(storage_prefix /*prefix*/), local_path, use_gpg_crypto);
+      std::string(storage_prefix /*prefix*/), coords,
+      std::string(walg_bin_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -354,36 +474,10 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   }
 
   /* No local storage cache logic for now */
-  *local_bytes = 0;
+  auto local_path = getlocalpath(coords);
 
-  vfd = PathNameOpenFile((char *)local_path.c_str(), O_RDONLY, 0600);
-  if (vfd != -1) {
-    *local_bytes += FileSeek(vfd, 0, SEEK_END);
-    FileClose(vfd);
-  }
+  *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
 
   *local_commited_bytes = 0;
-  return 0;
-}
-
-int loadRelationSegment(RelFileNode rnode, int segno) {
-
-  if (segno == 0) {
-    /* should never happen */
-    return 0;
-  }
-
-  auto path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
-  elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
-  if (ensureFilepathLocal(path)) {
-    // nothing to do
-    return 0;
-  }
-
-#if 0
-    if ((rc = getFilepathFromS3(path.data)) < 0) {
-        return rc;
-    }
-#endif
   return 0;
 }

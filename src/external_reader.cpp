@@ -33,9 +33,9 @@ ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx)
 
 void ExternalReader::createReaderHandle() {
 
-  auto prefix = getYezzeyRelationUrl(
-      adv_->nspname.c_str(), adv_->relname.c_str(),
-      adv_->external_storage_prefix.c_str(), adv_->fileName.c_str(), segindx_);
+  auto prefix = getYezzeyRelationUrl_internal(adv_->nspname, adv_->relname,
+                                              adv_->external_storage_prefix,
+                                              adv_->coords_, segindx_);
 
   // add config path FIXME
   auto reader = reader_init(

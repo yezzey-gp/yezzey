@@ -137,12 +137,35 @@ LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE FUNCTION
-yezzey.load_relation(reloid OID)
+yezzey_load_relation(reloid OID, dest_path TEXT)
 RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
+
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_load_relation(load_relname TEXT, dest_path TEXT DEFAULT NULL)
+RETURNS VOID
+AS $$
+DECLARE
+    v_pg_class_entry pg_catalog.pg_class%rowtype;
+BEGIN
+    SELECT * FROM pg_catalog.pg_class INTO v_pg_class_entry WHERE relname = load_relname;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'relation % is not found in pg_class', load_relname;
+    END IF;
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=load_relname;
+    PERFORM yezzey_load_relation(
+        load_relname::regclass::oid,
+        dest_path
+    );
+END;
+$$
+LANGUAGE PLPGSQL;
+
 
 
 -- external bytes always commited
@@ -237,7 +260,7 @@ LANGUAGE PLPGSQL;
 
 
 
-CREATE OR REPLACE FUNCTION yezzey.force_segment_offload(reloid OID, segid INT) RETURNS void
+CREATE OR REPLACE FUNCTION yezzey_force_segment_offload(reloid OID, segid INT) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 LANGUAGE C STRICT;

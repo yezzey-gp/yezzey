@@ -40,21 +40,27 @@
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
+/* STORAGE */
 char *storage_prefix = NULL;
 char *storage_bucket = NULL;
 char *storage_config = NULL;
 char *storage_host = NULL;
 
+/* GPG */
 char *gpg_engine_path = NULL;
 char *gpg_key_id = NULL;
 
 bool use_gpg_crypto = false;
 
+/* WAL-G */
+char *walg_bin_path;
+
+
 PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(yezzey_offload_relation);
-PG_FUNCTION_INFO_V1(load_relation);
-PG_FUNCTION_INFO_V1(force_segment_offload);
+PG_FUNCTION_INFO_V1(yezzey_load_relation);
+PG_FUNCTION_INFO_V1(yezzey_force_segment_offload);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_internal);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_per_filesegment);
 PG_FUNCTION_INFO_V1(
@@ -173,7 +179,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
            "offloading segment no %d, modcount %ld up to logial eof %ld", segno,
            modcount, logicalEof);
 
-      rc = offloadRelationSegment(aorel, aorel->rd_node, segno, modcount,
+      rc = offloadRelationSegment(aorel, segno, modcount,
                                   logicalEof, remove_locally,
                                   external_storage_path);
 
@@ -210,7 +216,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
              "eof %ld",
              segno, pseudosegno, modcount, logicalEof);
 
-        rc = offloadRelationSegment(aorel, aorel->rd_node, pseudosegno,
+        rc = offloadRelationSegment(aorel, pseudosegno,
                                     modcount, logicalEof, remove_locally,
                                     external_storage_path);
 
@@ -244,7 +250,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   return 0;
 }
 
-int load_relation_internal(Oid reloid) {
+int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   Relation aorel;
   int i;
   int segno;
@@ -285,7 +291,7 @@ int load_relation_internal(Oid reloid) {
       segno = segfile_array[i]->segno;
       elog(yezzey_log_level, "loading segment no %d", segno);
 
-      rc = loadRelationSegment(aorel->rd_node, segno);
+      rc = loadRelationSegment(aorel, segno, dest_path);
       if (rc < 0) {
         elog(ERROR, "failed to offload segment number %d", segno);
       }
@@ -308,7 +314,7 @@ int load_relation_internal(Oid reloid) {
         elog(yezzey_log_level, "loading cs segment no %d pseudosegno %d", segno,
              pseudosegno);
 
-        rc = loadRelationSegment(aorel->rd_node, pseudosegno);
+        rc = loadRelationSegment(aorel, pseudosegno, dest_path);
         if (rc < 0) {
           elog(ERROR, "failed to load cs segment number %d pseudosegno %d",
                segno, pseudosegno);
@@ -330,7 +336,7 @@ int load_relation_internal(Oid reloid) {
   return 0;
 }
 
-Datum load_relation(PG_FUNCTION_ARGS) {
+Datum yezzey_load_relation(PG_FUNCTION_ARGS) {
   /*
    * Force table offloading to external storage
    * In order:
@@ -340,10 +346,15 @@ Datum load_relation(PG_FUNCTION_ARGS) {
    */
   Oid reloid;
   int rc;
+  char *dest_path;
 
   reloid = PG_GETARG_OID(0);
+  dest_path = GET_STR(PG_GETARG_TEXT_P(2));
 
-  rc = load_relation_internal(reloid);
+  rc = yezzey_load_relation_internal(reloid, dest_path);
+  if (rc) {
+    elog(ERROR, "failed to load relation (oid=%d) files to path %s", reloid, dest_path);
+  }
 
   PG_RETURN_VOID();
 }
@@ -369,7 +380,7 @@ Datum yezzey_offload_relation(PG_FUNCTION_ARGS) {
   PG_RETURN_VOID();
 }
 
-Datum force_segment_offload(PG_FUNCTION_ARGS) { PG_RETURN_VOID(); }
+Datum yezzey_force_segment_offload(PG_FUNCTION_ARGS) { PG_RETURN_VOID(); }
 
 Datum yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS) {
   /*

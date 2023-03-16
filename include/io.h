@@ -26,9 +26,12 @@ struct YIO {
   ssize_t segindx_;
   ssize_t modcount_;
 
-  // construcor
+  // constructor
   YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
       const std::string &storage_path);
+
+  /* read-only case  constructor*/
+  YIO(std::shared_ptr<IOadv> adv, ssize_t segindx);
 
   ~YIO();
 
