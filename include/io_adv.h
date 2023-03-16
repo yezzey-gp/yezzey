@@ -27,11 +27,12 @@ struct IOadv {
   // wal-g specific prefix
   const std::string external_storage_prefix;
 
-  // /usr/bin/wal-g-gp
-  const std::string &walg_bin_path;
-
   // base/5/12345.1
   relnodeCoord coords_;
+
+  // /usr/bin/wal-g-gp
+  const std::string &walg_bin_path;
+  const std::string &walg_config_path;
 
   bool use_gpg_crypto;
 
@@ -40,13 +41,14 @@ struct IOadv {
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
         /*unparse coords*/ const std::string &fileName,
-        const std::string &walg_bin_path, bool use_gpg_crypto);
+        const std::string &walg_bin_path, const std::string &walg_config_path, bool use_gpg_crypto);
 
   IOadv(const std::string &engine_path, const std::string &gpg_key_id,
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
         const relnodeCoord &coords, const std::string &walg_bin_path,
+        const std::string &walg_config_path,
         bool use_gpg_crypto);
 };
 

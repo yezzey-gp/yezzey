@@ -4,6 +4,10 @@
 #include "util.h"
 #include <filesystem>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -88,6 +92,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, localPath /* filename */, walg_bin_path,
+      walg_config_path,
       use_gpg_crypto);
 
   auto iohandler =
@@ -148,39 +153,30 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
                                    const std::string &relname, int segno,
                                    const relnodeCoord &coords,
                                    const std::string &dest_path) {
-  int rc;
   int tot;
   size_t chunkSize;
   File vfd;
   int64 curr_read_chunk;
-  int64 progress;
   int64 virtual_size;
 
   auto tmp_path = dest_path + "_yezzey_tmp";
 
   chunkSize = 1 << 20;
   std::vector<char> buffer(chunkSize);
-  vfd = PathNameOpenFile((FileName)tmp_path.c_str(), O_WRONLY, 0600);
-  if (vfd <= 0) {
-    elog(ERROR,
-         "yezzey: failed to open %s file to transfer to external storage",
-         tmp_path.c_str());
-  }
-  progress = 0;
+
+  std::ofstream ostrm(tmp_path, std::ios::binary);
 
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, coords /* filename */, walg_bin_path,
+      walg_config_path,
       use_gpg_crypto);
 
   /*
    * Create external storage reader handle to read segment files
    */
   auto iohandler = YIO(ioadv, GpIdentity.segindex);
-
-  FileSeek(vfd, 0, SEEK_SET);
-  rc = 0;
 
   while (!iohandler.reader_empty()) {
     size_t amount = chunkSize;
@@ -191,19 +187,9 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
 
     /* code */
 
-    tot = 0;
-    char *bptr = buffer.data();
-
-    while (tot < amount) {
-      size_t currptrtot = amount - tot;
-      auto rc = FileWrite(vfd, bptr, currptrtot);
-      if (rc <= 0) {
-        elog(ERROR, "failed to read file from external storage");
-        return rc;
-      }
-
-      tot += currptrtot;
-      bptr += currptrtot;
+    ostrm.write( buffer.data(), amount);
+    if (ostrm.fail()) {
+      elog(ERROR, "failed to read file from external storage");
     }
   }
 
@@ -244,18 +230,23 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
     return 0;
   }
 
-  auto tp = SearchSysCache1(NAMESPACEOID,
-                            ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+  std::string nspname;
+  std::string relname;
+  {
+    /* c-function calls, need to release memory by-hand */
+    auto tp = SearchSysCache1(NAMESPACEOID,
+                              ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
-  if (!HeapTupleIsValid(tp)) {
-    elog(ERROR, "yezzey: failed to get namescape name of relation %s",
-         aorel->rd_rel->relname.data);
+    if (!HeapTupleIsValid(tp)) {
+      elog(ERROR, "yezzey: failed to get namescape name of relation %s",
+           aorel->rd_rel->relname.data);
+    }
+
+    Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
+    nspname = std::string(NameStr(nsptup->nspname));
+    relname = std::string(aorel->rd_rel->relname.data);
+    ReleaseSysCache(tp);
   }
-
-  Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
-  auto nspname = std::string(NameStr(nsptup->nspname));
-  auto relname = std::string(aorel->rd_rel->relname.data);
-  ReleaseSysCache(tp);
 
   return loadSegmentFromExternalStorage(nspname, relname, segno, coords, path);
 }
@@ -358,7 +349,8 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path), use_gpg_crypto);
+      std::string(walg_bin_path),
+      std::string(walg_config_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -401,7 +393,8 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path), use_gpg_crypto);
+      std::string(walg_bin_path),
+      std::string(walg_config_path),  use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -453,7 +446,8 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path), use_gpg_crypto);
+      std::string(walg_bin_path),
+      std::string(walg_config_path),  use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");

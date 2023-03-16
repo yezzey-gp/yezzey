@@ -24,18 +24,18 @@ public:
 
   virtual bool write(const char *buffer, size_t *amount);
 
-protected:
-  GPWriter *writer_{nullptr};
-  std::shared_ptr<YReader> reader_{nullptr};
-  bool cleaned_{false};
-
 private:
   void createWriterHandleToPath();
   void createWriterHandle();
 
 private:
   std::shared_ptr<IOadv> adv_;
-  const std::string storage_path_;
   ssize_t segindx_;
   ssize_t modcount_;
+  const std::string storage_path_;
+
+protected:
+  GPWriter *writer_{nullptr};
+  std::shared_ptr<YReader> reader_{nullptr};
+  bool cleaned_{false};
 };

@@ -54,6 +54,7 @@ bool use_gpg_crypto = false;
 
 /* WAL-G */
 char *walg_bin_path;
+char *walg_config_path;
 
 
 PG_MODULE_MAGIC;
@@ -407,7 +408,6 @@ Datum yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS) {
 
 Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
   Oid reloid;
-  int rc;
   Relation aorel;
   StringInfoData local_path;
   RelFileNode rnode;
@@ -506,6 +506,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
 #define NUM_USED_OFFLOAD_PER_SEGMENT_STATUS 6
       funcctx->tuple_desc =
           CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
+#undef NUM_USED_OFFLOAD_PER_SEGMENT_STATUS
 
       TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "reloid", OIDOID,
                          -1 /* typmod */, 0 /* attdim */);
@@ -593,9 +594,12 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
     external_bytes = curr_external_bytes;
     local_commited_bytes = curr_local_commited_bytes;
     /* segment if loaded */
-
+#define NUM_USED_OFFLOAD_PER_SEGMENT_STATUS 6
     Datum values[NUM_USED_OFFLOAD_PER_SEGMENT_STATUS];
     bool nulls[NUM_USED_OFFLOAD_PER_SEGMENT_STATUS];
+
+#undef NUM_USED_OFFLOAD_PER_SEGMENT_STATUS
+
     MemSet(nulls, 0, sizeof(nulls));
 
     values[0] = ObjectIdGetDatum(reloid);
@@ -614,6 +618,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   } else {
     elog(ERROR, "wrong rel");
   }
+
   PG_RETURN_VOID();
 }
 
@@ -730,6 +735,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
 #define NUM_USED_OFFLOAD_PER_SEGMENT_STATUS 7
       funcctx->tuple_desc =
           CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
+#undef NUM_USED_OFFLOAD_PER_SEGMENT_STATUS
 
       TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "reloid", OIDOID,
                          -1 /* typmod */, 0 /* attdim */);
@@ -747,7 +753,6 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
                          0 /* attdim */);
       TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)7, "external_bytes",
                          INT8OID, -1 /* typmod */, 0 /* attdim */);
-
       funcctx->tuple_desc = BlessTupleDesc(funcctx->tuple_desc);
     } else {
       elog(ERROR, "yezzey: wrong rel");
@@ -795,9 +800,12 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
 
     i = call_cntr;
 
+
+#define NUM_USED_OFFLOAD_PER_SEGMENT_STATUS 7
     /* segment if loaded */
     Datum values[NUM_USED_OFFLOAD_PER_SEGMENT_STATUS];
     bool nulls[NUM_USED_OFFLOAD_PER_SEGMENT_STATUS];
+#undef NUM_USED_OFFLOAD_PER_SEGMENT_STATUS
     MemSet(nulls, 0, sizeof(nulls));
 
     values[0] = ObjectIdGetDatum(chunkInfo[i].reloid);
@@ -901,6 +909,9 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
 
     Datum values[NUM_USED_OFFLOAD_STATUS];
     bool nulls[NUM_USED_OFFLOAD_STATUS];
+
+#undef NUM_USED_OFFLOAD_STATUS
+
     MemSet(nulls, 0, sizeof(nulls));
 
     values[0] = ObjectIdGetDatum(reloid);

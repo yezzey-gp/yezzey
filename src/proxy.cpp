@@ -218,6 +218,7 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
           std::string(storage_bucket /*bucket*/),
           std::string(storage_prefix /*prefix*/),
           YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
+           std::string(walg_config_path),
           use_gpg_crypto);
       /* we dont need to interact with s3 while in recovery*/
 
