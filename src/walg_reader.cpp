@@ -1,5 +1,5 @@
 #include "walg_reader.h"
-
+#include "meta.h"
 #include "util.h"
 
 /*
@@ -46,7 +46,7 @@ bool WALGReader::close() {
 }
 bool WALGReader::read(char *buffer, size_t *amount) {
   if (!initialized_) {
-    wal_g_ = std::make_unique<redi::ipstream>(cmd_);
+    wal_g_ = make_unique<redi::ipstream>(cmd_);
     initialized_ = true;
   }
 

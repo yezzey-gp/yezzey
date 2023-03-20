@@ -3,6 +3,7 @@
 #include "proxy.h"
 
 #include "unordered_map"
+#include "meta.h"
 
 #include "util.h"
 
@@ -62,7 +63,7 @@ int readprepare(std::shared_ptr<IOadv> ioadv, SMGRFile yezzey_fd) {
 #endif
 
   YVirtFD_cache[yezzey_fd].handler =
-      std::make_unique<YIO>(ioadv, GpIdentity.segindex);
+      make_unique<YIO>(ioadv, GpIdentity.segindex);
 
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
@@ -74,7 +75,7 @@ int writeprepare(std::shared_ptr<IOadv> ioadv, int64_t modcount,
                  SMGRFile yezzey_fd) {
 
   YVirtFD_cache[yezzey_fd].handler =
-      std::make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
+      make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
 
   //   (void)createWriterHandle(YVirtFD_cache[file].handler,
   //   GpIdentity.segindex,

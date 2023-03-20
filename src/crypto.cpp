@@ -2,6 +2,7 @@
 
 #include "crypto.h"
 #include <iostream>
+#include "meta.h"
 
 // decrypt operation
 
@@ -161,7 +162,7 @@ int Crypter::io_prepare_crypt(bool dec) {
 }
 
 void Crypter::io_dispatch_encrypt() {
-  wt = std::make_unique<std::thread>([&]() {
+  wt = make_unique<std::thread>([&]() {
     gpgme_error_t err;
     err = gpgme_op_encrypt(crypto_ctx, (gpgme_key_t *)keys,
                            GPGME_ENCRYPT_ALWAYS_TRUST, crypto_in, crypto_out);
@@ -182,7 +183,7 @@ void Crypter::waitio() {
 }
 
 void Crypter::io_dispatch_decrypt() {
-  wt = std::make_unique<std::thread>([&]() {
+  wt = make_unique<std::thread>([&]() {
     for (; !reader_->empty();) {
       reader_->BumpArenda(1);
       /* operation per file */
