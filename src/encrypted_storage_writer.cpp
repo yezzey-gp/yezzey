@@ -7,11 +7,11 @@ EncryptedStorageWriter::EncryptedStorageWriter(std::shared_ptr<IOadv> adv,
                                                ssize_t segindx,
                                                ssize_t modcount,
                                                const std::string &storage_path,
-                                               std::shared_ptr<YReader> reader)
+                                               std::shared_ptr<YLister> lister)
     : adv_(adv), segindx_(segindx), modcount_(modcount),
-      storage_path_(storage_path), reader_(reader) {
+      storage_path_(storage_path), lister_(lister) {
   writer_ = std::make_shared<ExternalWriter>(adv_, segindx_, modcount_,
-                                             storage_path_, reader_);
+                                             storage_path_, lister_);
   buf_ = std::make_shared<BlockingBuffer>(1 << 12);
   crypter_ = std::make_unique<Crypter>(adv_, writer_, buf_);
 }

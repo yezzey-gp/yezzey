@@ -46,15 +46,7 @@ bool EncryptedStorageReader::close() {
   return reader_->close();
 }
 
-std::vector<storageChunkMeta> EncryptedStorageReader::list_relation_chunks() {
-  return reader_->list_relation_chunks();
-}
-
 bool EncryptedStorageReader::empty() { return reader_->empty(); }
-
-std::vector<std::string> EncryptedStorageReader::list_chunk_names() {
-  return reader_->list_chunk_names();
-};
 
 void EncryptedStorageReader::BumpArenda(size_t count) {
   return reader_->BumpArenda(count);

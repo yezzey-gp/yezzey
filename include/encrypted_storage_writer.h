@@ -2,7 +2,7 @@
 
 #include "crypto.h"
 #include "io_adv.h"
-#include "yreader.h"
+#include "ylister.h"
 #include "ywriter.h"
 
 // write to external storage, using gpwriter.
@@ -12,7 +12,7 @@ public:
   explicit EncryptedStorageWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                                   ssize_t modcount,
                                   const std::string &storage_path,
-                                  std::shared_ptr<YReader> reader_);
+                                  std::shared_ptr<YLister> lister_);
 
   virtual ~EncryptedStorageWriter();
 
@@ -32,7 +32,7 @@ private:
 
 protected:
   std::unique_ptr<Crypter> crypter_;
-  std::shared_ptr<YReader> reader_{nullptr};
+  std::shared_ptr<YLister> lister_{nullptr};
   std::shared_ptr<YWriter> writer_{nullptr};
   bool write_initialized_{false};
 };

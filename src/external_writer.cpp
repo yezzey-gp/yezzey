@@ -23,9 +23,9 @@
 ExternalWriter::ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                                ssize_t modcount,
                                const std::string &storage_path,
-                               std::shared_ptr<YReader> reader)
+                               std::shared_ptr<YLister> lister)
     : adv_(adv), segindx_(segindx), modcount_(modcount),
-      storage_path_(storage_path), reader_(reader) {
+      storage_path_(storage_path), lister_(lister) {
 
   if (storage_path.size()) {
     createWriterHandleToPath();
@@ -48,7 +48,7 @@ void ExternalWriter::createWriterHandle() {
                                               adv_->external_storage_prefix,
                                               adv_->coords_, segindx_);
 
-  auto content = reader_->list_chunk_names();
+  auto content = lister_->list_chunk_names();
   if (content.size() == 0) {
     auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(
                                    adv_->host.c_str(), adv_->bucket.c_str()) +

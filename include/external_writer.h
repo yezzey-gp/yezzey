@@ -4,7 +4,7 @@
 #include "gpwriter.h"
 #include "io_adv.h"
 #include "util.h"
-#include "yreader.h"
+#include "ylister.h"
 #include "ywriter.h"
 #include <memory>
 #include <string>
@@ -16,7 +16,7 @@ class ExternalWriter : public YWriter {
 public:
   explicit ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                           ssize_t modcount, const std::string &storage_path,
-                          std::shared_ptr<YReader> reader_);
+                          std::shared_ptr<YLister> lister_);
 
   virtual ~ExternalWriter();
 
@@ -36,6 +36,6 @@ private:
 
 protected:
   GPWriter *writer_{nullptr};
-  std::shared_ptr<YReader> reader_{nullptr};
+  std::shared_ptr<YLister> lister_{nullptr};
   bool cleaned_{false};
 };

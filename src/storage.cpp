@@ -399,7 +399,8 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   /* No local storage cache logic for now */
   auto local_path = getlocalpath(coords);
 
-  *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
+  *local_bytes = 0;
+  // *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
 
   // Assert(virtual_sz <= logicalEof);
   *local_commited_bytes = logicalEof - virtual_sz;
@@ -444,10 +445,12 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
 
-  Assert((*cnt_chunks) >= 0);
   /* stat external storage usage */
 
   auto meta = iohandler.list_relation_chunks();
+  *cnt_chunks = meta.size();
+
+  Assert((*cnt_chunks) >= 0);
 
   // do copy;
   // list will be allocated in current PostgreSQL mempry context
@@ -461,8 +464,9 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
 
   /* No local storage cache logic for now */
   auto local_path = getlocalpath(coords);
+  *local_bytes = 0;
 
-  *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
+  // *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
 
   *local_commited_bytes = 0;
   return 0;

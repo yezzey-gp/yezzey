@@ -14,8 +14,6 @@ public:
 public:
   virtual bool close();
   virtual bool read(char *buffer, size_t *amount);
-  virtual std::vector<storageChunkMeta> list_relation_chunks();
-  virtual std::vector<std::string> list_chunk_names();
   virtual void BumpArenda(size_t count);
 
   virtual bool empty();

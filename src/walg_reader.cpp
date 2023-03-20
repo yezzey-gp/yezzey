@@ -54,9 +54,6 @@ bool WALGReader::read(char *buffer, size_t *amount) {
   *amount = wal_g_->gcount();
   return *amount > 0;
 }
-std::vector<storageChunkMeta> WALGReader::list_relation_chunks() { return {}; }
-std::vector<std::string> WALGReader::list_chunk_names() { return {}; }
-
 int WALGReader::prepare() { return 0; }
 
 void WALGReader::BumpArenda(size_t /*count*/) {}

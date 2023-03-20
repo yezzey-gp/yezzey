@@ -23,6 +23,7 @@ MODULE_big = yezzey
 OBJS = \
 	$(WIN32RES) \
 	src/storage.o src/proxy.o src/encrypted_storage_reader.o \
+	src/storage_lister.o \
 	src/encrypted_storage_writer.o  src/io_adv.o src/io.o src/crypto.o  \
 	src/external_reader.o src/external_writer.o \
 	src/walg_reader.o \

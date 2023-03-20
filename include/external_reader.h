@@ -3,9 +3,10 @@
 #include "gpreader.h"
 #include "io_adv.h"
 #include "yreader.h"
+#include "ylister.h"
 #include <memory>
 
-class ExternalReader : public YReader {
+class ExternalReader : public YReader, public YLister {
 public:
   friend class ExternalWriter;
   explicit ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx);

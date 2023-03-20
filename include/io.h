@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "yreader.h"
+#include "ylister.h"
 #include "ywriter.h"
 
 #include "io_adv.h"
@@ -20,6 +21,7 @@ struct YIO {
 
   //   reader and writer
   std::shared_ptr<YReader> reader_{nullptr};
+  std::shared_ptr<YLister> lister_{nullptr};
   std::shared_ptr<YWriter> writer_{nullptr};
 
   std::shared_ptr<IOadv> adv_;
