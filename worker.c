@@ -48,10 +48,8 @@
 #include "cdb/cdbvars.h"
 #endif
 
-
 #include "storage.h"
 #include "yezzey.h"
-
 
 #if PG_VERSION_NUM >= 100000
 void yezzey_main(Datum main_arg);
@@ -667,9 +665,9 @@ void yezzey_define_gucs() {
                              &walg_bin_path, "/usr/bin/wal-g-gp", PGC_SUSET, 0,
                              NULL, NULL, NULL);
 
-  DefineCustomStringVariable("yezzey.walg_config_path", "wal-g config path", NULL,
-                             &walg_config_path, "/etc/wal-g/wal-g.yaml", PGC_SUSET, 0,
-                             NULL, NULL, NULL);
+  DefineCustomStringVariable("yezzey.walg_config_path", "wal-g config path",
+                             NULL, &walg_config_path, "/etc/wal-g/wal-g.yaml",
+                             PGC_SUSET, 0, NULL, NULL, NULL);
 
   DefineCustomBoolVariable(
       "yezzey.autooffload", "enable auto-offloading worker", NULL,

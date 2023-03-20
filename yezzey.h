@@ -13,14 +13,18 @@
 #ifndef YEZZEY_H
 #define YEZZEY_H
 
+
+#include "postgres.h"
+
 #include "gucs.h"
+#include "ystat.h"
 
 void yezzey_prepare(void);
 void yezzey_finish(void);
 
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_path);
-int yezzey_load_relation_internal(Oid reloid, const char * dst_path);
+int yezzey_load_relation_internal(Oid reloid, const char *dst_path);
 
 int loadFileFromExternalStorage(RelFileNode rnode, BackendId backend,
                                 ForkNumber forkNum, BlockNumber blkno);
