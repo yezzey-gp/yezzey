@@ -153,21 +153,23 @@ LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE FUNCTION
-yezzey_load_relation(load_relname TEXT, dest_path TEXT DEFAULT NULL)
+yezzey_load_relation(load_relname TEXT, dest_path TEXT DEFAULT '')
 RETURNS VOID
 AS $$
 DECLARE
-    v_pg_class_entry pg_catalog.pg_class%rowtype;
+    v_tmp_relname yezzey.offload_metadata%rowtype;
 BEGIN
-    SELECT * FROM pg_catalog.pg_class INTO v_pg_class_entry WHERE relname = load_relname;
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = load_relname;
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'relation % is not found in pg_class', load_relname;
+        RAISE WARNING'relation % is not in offload metadata table', load_relname;
     END IF;
     UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=load_relname;
     PERFORM yezzey_load_relation(
         load_relname::regclass::oid,
-        dest_path
+        ''
     );
+
+        RAISE WARNING'after loading %s', load_relname;
 END;
 $$
 LANGUAGE PLPGSQL;

@@ -31,6 +31,9 @@ SELECT * FROM yezzey_offload_relation_status('regaoty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
+SELECT yezzey_load_relation('regaoty');
+SELECT count(1) FROM regaoty;
+
 -- AOCS
 
 CREATE TABLE regaocsty(i INT) WITH (appendonly=true, orientation=column);
@@ -58,6 +61,9 @@ SELECT * FROM yezzey_offload_relation_status('regaoty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
+SELECT yezzey_load_relation('regaocsty');
+SELECT count(1) FROM regaocsty;
+
 -- compressed
 
 CREATE TABLE regaotcy(i INT) WITH (appendonly=true);
@@ -84,6 +90,9 @@ SELECT count(1) FROM regaotcy;
 SELECT * FROM yezzey_offload_relation_status('regaotcy');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaotcy');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaotcy');
+
+SELECT yezzey_load_relation('regaotcy');
+SELECT count(1) FROM regaotcy;
 
 \c postgres
 

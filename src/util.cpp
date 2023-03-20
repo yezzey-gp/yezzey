@@ -132,8 +132,6 @@ getYezzeyRelationUrl_internal(const std::string &nspname,
 std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
                                  const char *external_storage_prefix,
                                  const char *fileName, int32_t segid) {
-
-  int64_t dboid, tableoid, relation_segment;
   std::string filename_str = std::string(fileName);
   auto coords = getRelnodeCoordinate(filename_str);
 

@@ -36,6 +36,7 @@ extern "C" {
 #endif
 
 #include "io.h"
+#include <iostream>
 
 int offloadFileToExternalStorage(const std::string &spname,
                                  const std::string &relname,
@@ -201,15 +202,9 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
 }
 
 int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
-
-  if (segno == 0) {
-    /* should never happen */
-    return 0;
-  }
-
   auto rnode = aorel->rd_node;
 
-  if (rnode.dbNode != YEZZEYTABLESPACE_OID) {
+  if (rnode.spcNode != YEZZEYTABLESPACE_OID) {
     /* shoulde never happen*/
     elog(ERROR, "attempted to load non-offloaded relation");
   }
@@ -225,9 +220,17 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
   } else {
     path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
   }
+
   elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
   if (ensureFilepathLocal(path)) {
     // nothing to do
+    return 0;
+  }
+
+  if (segno == 0) {
+    /* simply touch file */
+    std::ofstream file;
+    file.open (path, std::ios::out);
     return 0;
   }
 
