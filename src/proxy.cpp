@@ -31,9 +31,11 @@ typedef struct YVirtFD {
   int64 virtualSize;
   int64 modcount;
 
+  bool offloaded{false};
+
   YVirtFD()
       : y_vfd(0), localTmpVfd(0), handler(nullptr), fileFlags(0), fileMode(0),
-        offset(0), virtualSize(0), modcount(0) {}
+        offset(0), virtualSize(0), modcount(0), offloaded(false) {}
 
   YVirtFD &operator=(YVirtFD &&vfd) {
     handler = std::move(vfd.handler);
@@ -54,15 +56,13 @@ std::unordered_map<SMGRFile, YVirtFD> YVirtFD_cache;
 File s3ext = -2;
 
 /* lazy allocate external storage connections */
-int readprepare(SMGRFile file) {
+int readprepare(std::shared_ptr<IOadv> ioadv, SMGRFile yezzey_fd) {
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
 
-  //   (void)createReaderHandle(YVirtFD_cache[file].handler,
-  //   GpIdentity.segindex);
-
-  //   Assert(YVirtFD_cache[file].handler.read_ptr != NULL);
+  YVirtFD_cache[yezzey_fd].handler =
+      std::make_unique<YIO>(ioadv, GpIdentity.segindex);
 
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
@@ -70,12 +70,11 @@ int readprepare(SMGRFile file) {
   return 0;
 }
 
-int writeprepare(SMGRFile file) {
+int writeprepare(std::shared_ptr<IOadv> ioadv, int64_t modcount,
+                 SMGRFile yezzey_fd) {
 
-  /* should be called once*/
-  if (readprepare(file) == -1) {
-    return -1;
-  }
+  YVirtFD_cache[yezzey_fd].handler =
+      std::make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
 
   //   (void)createWriterHandle(YVirtFD_cache[file].handler,
   //   GpIdentity.segindex,
@@ -83,7 +82,7 @@ int writeprepare(SMGRFile file) {
   //                                YVirtFD_cache[file].modcount);
 
   elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld",
-       YVirtFD_cache[file].modcount);
+       modcount);
 
   //   Assert(YVirtFD_cache[file].handler.writer_ != NULL);
 
@@ -99,14 +98,12 @@ File virtualEnsure(SMGRFile file) {
   if (YVirtFD_cache[file].y_vfd == YEZZEY_VANANT_VFD) {
     elog(ERROR, "attempt to ensure locality of not opened file");
   }
-  if (YVirtFD_cache[file].y_vfd == YEZZEY_NOT_OPENED) {
-    // not opened yet
-    // use std::filesystem::exists here
-    if (!ensureFilepathLocal(YVirtFD_cache[file].filepath)) {
-      // do s3 read
-      return s3ext;
-    }
 
+  if (YVirtFD_cache[file].offloaded) {
+    return s3ext;
+  }
+
+  if (YVirtFD_cache[file].y_vfd == YEZZEY_NOT_OPENED) {
     /* Do we need this? */
     // use postgresql fd-cache subsystem
     internal_vfd = PathNameOpenFile(
@@ -193,70 +190,74 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
       YVirtFD_cache[yezzey_fd] = YVirtFD();
       // memset(&YVirtFD_cache[file], 0, sizeof(YVirtFD));
       YVirtFD_cache[yezzey_fd].filepath = std::string(fileName);
-      if (relname == NULL) {
-        /* Should be possible only in recovery */
-        Assert(RecoveryInProgress());
-      } else {
-        YVirtFD_cache[yezzey_fd].relname = std::string(relname);
+      std::string spcPref = "";
+      if (strlen(fileName) >= 6) {
+        spcPref = std::string(fileName, 6);
       }
-      if (nspname == NULL) {
-        /* Should be possible only in recovery */
-        Assert(RecoveryInProgress());
+      bool offloaded = false;
+      if (spcPref == "yezzey") {
+        offloaded = true;
+        if (relname == NULL || nspname == NULL) {
+          /* Should be possible only in recovery */
+          /* or changing tablespace */
+          /* but we forbit change tablespace to yezzey not using yezzey sql api
+           */
+          Assert(RecoveryInProgress());
+        } else {
+
+          YVirtFD_cache[yezzey_fd].relname = std::string(relname);
+
+          YVirtFD_cache[yezzey_fd].nspname = std::string(nspname);
+        }
       } else {
-        YVirtFD_cache[yezzey_fd].nspname = std::string(nspname);
+        /* nothing*/
       }
+
       YVirtFD_cache[yezzey_fd].fileFlags = fileFlags;
       YVirtFD_cache[yezzey_fd].fileMode = fileMode;
       YVirtFD_cache[yezzey_fd].modcount = modcount;
 
+      YVirtFD_cache[yezzey_fd].offloaded = offloaded;
+
       YVirtFD_cache[yezzey_fd].y_vfd = YEZZEY_NOT_OPENED;
 
-      auto ioadv = std::make_shared<IOadv>(
-          std::string(gpg_engine_path), std::string(gpg_key_id),
-          std::string(storage_config), YVirtFD_cache[yezzey_fd].nspname,
-          YVirtFD_cache[yezzey_fd].relname, std::string(storage_host /*host*/),
-          std::string(storage_bucket /*bucket*/),
-          std::string(storage_prefix /*prefix*/),
-          YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
-           std::string(walg_config_path),
-          use_gpg_crypto);
       /* we dont need to interact with s3 while in recovery*/
 
-      YVirtFD_cache[yezzey_fd].handler =
-          std::make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
-
-      if (RecoveryInProgress()) {
-        /* replicae */
-        return yezzey_fd;
-      } else {
-        /* primary */
-        if (!ensureFilepathLocal(YVirtFD_cache[yezzey_fd].filepath)) {
-          switch (fileFlags) {
-          case O_WRONLY:
-            /* allocate handle struct */
-            if (writeprepare(yezzey_fd) == -1) {
-              return -1;
-            }
-            break;
-          case O_RDONLY:
-            /* allocate handle struct */
-            if (readprepare(yezzey_fd) == -1) {
-              return -1;
-            }
-            break;
-          case O_RDWR:
-            if (writeprepare(yezzey_fd) == -1) {
-              return -1;
-            }
-            break;
-          default:
-            break;
-            /* raise error */
+      if (offloaded && !RecoveryInProgress()) {
+        auto ioadv = std::make_shared<IOadv>(
+            std::string(gpg_engine_path), std::string(gpg_key_id),
+            std::string(storage_config), YVirtFD_cache[yezzey_fd].nspname,
+            YVirtFD_cache[yezzey_fd].relname,
+            std::string(storage_host /*host*/),
+            std::string(storage_bucket /*bucket*/),
+            std::string(storage_prefix /*prefix*/),
+            YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
+            std::string(walg_config_path), use_gpg_crypto);
+        switch (fileFlags) {
+        case O_WRONLY:
+          /* allocate handle struct */
+          if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
+            return -1;
           }
-          // do s3 read
+          break;
+        case O_RDONLY:
+          /* allocate handle struct */
+          if (readprepare(ioadv, yezzey_fd) == -1) {
+            return -1;
+          }
+          break;
+        case O_RDWR:
+          if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
+            return -1;
+          }
+          break;
+        default:
+          break;
+          /* raise error */
         }
-        return yezzey_fd;
       }
+
+      return yezzey_fd;
     }
   }
   /* no match*/
@@ -267,6 +268,10 @@ void yezzey_FileClose(SMGRFile file) {
   File actual_fd = virtualEnsure(file);
   elog(yezzey_ao_log_level, "file close with %d actual %d", file, actual_fd);
   if (actual_fd == s3ext) {
+    if (RecoveryInProgress()) {
+      /* not need to do anything */
+      return;
+    }
     if (!YVirtFD_cache[file].handler->io_close()) {
       // very bad
 

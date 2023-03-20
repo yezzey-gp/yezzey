@@ -49,7 +49,7 @@ std::string getlocalpath(const relnodeCoord &coords);
 #endif
 
 EXTERNC int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
-                                   int64 logicalEof, bool remove_locally,
+                                   int64 logicalEof,
                                    const char *external_storage_path);
 
 EXTERNC int loadRelationSegment(Relation aorel, int segno,

@@ -4,8 +4,8 @@
 #include "util.h"
 #include <filesystem>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <string>
 
 #ifdef __cplusplus
@@ -92,8 +92,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, localPath /* filename */, walg_bin_path,
-      walg_config_path,
-      use_gpg_crypto);
+      walg_config_path, use_gpg_crypto);
 
   auto iohandler =
       YIO(ioadv, GpIdentity.segindex, modcount, external_storage_path);
@@ -120,6 +119,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
     /* code */
     rc = FileRead(vfd, buffer.data(), curr_read_chunk);
     if (rc < 0) {
+      FileClose(vfd);
       return rc;
     }
     if (rc == 0)
@@ -131,6 +131,8 @@ int offloadFileToExternalStorage(const std::string &nspname,
     while (tot < rc) {
       size_t currptrtot = rc - tot;
       if (!iohandler.io_write(bptr, &currptrtot)) {
+
+        FileClose(vfd);
         return -1;
       }
 
@@ -153,10 +155,7 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
                                    const std::string &relname, int segno,
                                    const relnodeCoord &coords,
                                    const std::string &dest_path) {
-  int tot;
   size_t chunkSize;
-  File vfd;
-  int64 curr_read_chunk;
   int64 virtual_size;
 
   auto tmp_path = dest_path + "_yezzey_tmp";
@@ -170,8 +169,7 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, coords /* filename */, walg_bin_path,
-      walg_config_path,
-      use_gpg_crypto);
+      walg_config_path, use_gpg_crypto);
 
   /*
    * Create external storage reader handle to read segment files
@@ -187,7 +185,7 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
 
     /* code */
 
-    ostrm.write( buffer.data(), amount);
+    ostrm.write(buffer.data(), amount);
     if (ostrm.fail()) {
       elog(ERROR, "failed to read file from external storage");
     }
@@ -197,7 +195,6 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
     elog(ERROR, "yezzey: failed to complete %s offloading", tmp_path.c_str());
   }
 
-  FileClose(vfd);
   std::error_code ec;
 
   const std::filesystem::path old{tmp_path};
@@ -222,7 +219,7 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
   if (dest_path) {
     path = std::string(dest_path);
   } else {
-    getlocalpath(rnode.dbNode, rnode.relNode, segno);
+    path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
   }
   elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
   if (ensureFilepathLocal(path)) {
@@ -305,7 +302,7 @@ int offloadRelationSegmentPath(const std::string &nspname,
 }
 
 int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
-                           int64 logicalEof, bool remove_locally,
+                           int64 logicalEof,
                            const char *external_storage_path) {
   RelFileNode rnode = aorel->rd_node;
   int rc;
@@ -337,11 +334,6 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
     return rc;
   }
 
-  if (remove_locally) {
-    /*wtf*/
-    RelationDropStorageNoClose(aorel);
-  }
-
   auto ioadv = std::make_shared<IOadv>(
       std::string(gpg_engine_path), std::string(gpg_key_id),
       std::string(storage_config), nspname,
@@ -349,8 +341,8 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path),
-      std::string(walg_config_path), use_gpg_crypto);
+      std::string(walg_bin_path), std::string(walg_config_path),
+      use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -393,8 +385,8 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path),
-      std::string(walg_config_path),  use_gpg_crypto);
+      std::string(walg_bin_path), std::string(walg_config_path),
+      use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
@@ -446,8 +438,8 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path),
-      std::string(walg_config_path),  use_gpg_crypto);
+      std::string(walg_bin_path), std::string(walg_config_path),
+      use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");

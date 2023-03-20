@@ -16,11 +16,10 @@ wal-g
 
 std::string craftString(std::shared_ptr<IOadv> adv, size_t segindx) {
 
-  std::string cmd =
-      adv->walg_bin_path;
-    
+  std::string cmd = adv->walg_bin_path;
+
   cmd += " --config=" + adv->walg_config_path;
-  cmd += "aosegfile-stream";
+  cmd += " aosegfile-stream ";
   auto coords = adv->coords_;
   auto dbOid = std::get<0>(coords);
   auto relOid = std::get<1>(coords);

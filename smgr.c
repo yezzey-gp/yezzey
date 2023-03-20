@@ -26,6 +26,8 @@
 #include "cdb/cdbvars.h"
 #endif
 
+#include "catalog/pg_tablespace.h"
+
 #include "yezzey.h"
 
 // For GpIdentity
@@ -35,9 +37,6 @@
 #include "storage.h"
 
 #include "proxy.h"
-
-int readprepare(SMGRFile file);
-int writeprepare(SMGRFile file);
 
 /*
  * Construct external storage filepath.
@@ -106,7 +105,9 @@ void yezzey_close(SMgrRelation reln, ForkNumber forkNum) {
 }
 
 void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo) {
-  if (forkNum == YEZZEY_FORKNUM) {
+  if (reln->smgr_rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
+    /* skip this*/
+    return;
   }
   elog(yezzey_log_level, "[YEZZEY_SMGR] create");
   if (forkNum == MAIN_FORKNUM &&

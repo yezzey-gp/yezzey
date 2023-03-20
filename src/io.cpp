@@ -23,7 +23,8 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
                                                      storage_path, reader_);
 }
 
-YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx) {
+YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx)
+    : adv_(adv), segindx_(segindx) {
 #if USE_WLG_READER
   reader_ = std::make_shared<WALGReader>(adv_, segindx_);
 #else
@@ -48,8 +49,14 @@ bool YIO::io_write(char *buffer, size_t *amount) {
 }
 
 bool YIO::io_close() {
-  auto rrs = reader_->close();
-  auto wrs = writer_->close();
+  bool rrs = true;
+  bool wrs = true;
+  if (reader_.get()) {
+    rrs = reader_->close();
+  }
+  if (writer_.get()) {
+    wrs = writer_->close();
+  }
   return rrs && wrs;
 }
 

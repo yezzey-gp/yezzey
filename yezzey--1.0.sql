@@ -5,6 +5,12 @@
 
 CREATE SCHEMA yezzey;
 
+-- since GP uses segment-file discovery technique
+-- in can fail to remove some AO/AOCS relation files locally
+-- in cases when table write happened after folloading
+-- see ao_foreach_extent_file
+-- 
+
 CREATE OR REPLACE FUNCTION yezzey_offload_relation(reloid OID, remove_locally BOOLEAN) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE

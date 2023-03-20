@@ -172,7 +172,9 @@ gpconfig -c yezzey.storage_prefix -v "'wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005
 gpconfig -c yezzey.storage_bucket -v "'loh228'"
 gpconfig -c yezzey.storage_config -v "'/home/reshke/s3test.conf'"
 gpconfig -c yezzey.storage_host -v "'storage.yandexcloud.net'"
-gpconfig -c yezzey.gpg_key_id -v  '5697E1083B8509B8'
+gpconfig -c yezzey.gpg_key_id -v  "'5697E1083B8509B8'"
+gpconfig -c yezzey.walg_bin_path -v  "'/home/reshke/work/wal-g/main/gp/wal-g'"
+gpconfig -c yezzey.walg_config_path -v  "'/home/reshke/work/wal-g/conf.yaml'"
 
 
 gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbtvdnna6t7oqaioeaj/6/segments_005'
