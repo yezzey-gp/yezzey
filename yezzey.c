@@ -468,8 +468,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   return 0;
 }
 
-Datum
-yezzey_load_relation(PG_FUNCTION_ARGS) {
+Datum yezzey_load_relation(PG_FUNCTION_ARGS) {
   /*
    * Force table loading from external storage
    * In order:
@@ -493,8 +492,7 @@ yezzey_load_relation(PG_FUNCTION_ARGS) {
   PG_RETURN_VOID();
 }
 
-Datum 
-yezzey_offload_relation(PG_FUNCTION_ARGS) {
+Datum yezzey_offload_relation(PG_FUNCTION_ARGS) {
   /*
    * Force table offloading to external storage
    * In order:
@@ -791,7 +789,12 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
 
   values[0] = ObjectIdGetDatum(reloid);
   values[1] = Int32GetDatum(GpIdentity.segindex);
-  values[2] = Int32GetDatum(pseudosegno);
+
+  if (aorel->rd_rel->relstorage == 'a') {
+    values[2] = Int32GetDatum(pseudosegno);
+  } else if (aorel->rd_rel->relstorage == 'c') {
+    values[2] = Int32GetDatum(segno);
+  }
   values[3] = Int64GetDatum(local_bytes);
   values[4] = Int64GetDatum(local_commited_bytes);
   values[5] = Int64GetDatum(external_bytes);
