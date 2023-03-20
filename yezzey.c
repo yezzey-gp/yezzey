@@ -493,7 +493,8 @@ yezzey_load_relation(PG_FUNCTION_ARGS) {
   PG_RETURN_VOID();
 }
 
-Datum yezzey_offload_relation(PG_FUNCTION_ARGS) {
+Datum 
+yezzey_offload_relation(PG_FUNCTION_ARGS) {
   /*
    * Force table offloading to external storage
    * In order:
