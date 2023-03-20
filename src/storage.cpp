@@ -28,6 +28,7 @@ extern "C" {
 
 // For GpIdentity
 #include "cdb/cdbvars.h"
+#include "catalog/pg_tablespace.h"
 
 #ifdef __cplusplus
 }
@@ -211,9 +212,18 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
     /* should never happen */
     return 0;
   }
-  RelFileNode rnode = aorel->rd_node;
 
-  relnodeCoord coords = {rnode.dbNode, rnode.relNode, segno};
+  auto rnode = aorel->rd_node;
+
+  if (rnode.dbNode != YEZZEYTABLESPACE_OID) {
+    /* shoulde never happen*/
+    elog(ERROR, "attempted to load non-offloaded relation");
+  }
+
+
+  rnode.spcNode = DEFAULTTABLESPACE_OID;
+
+  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
 
   std::string path;
   if (dest_path) {

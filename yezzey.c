@@ -1,4 +1,3 @@
-
 #include "postgres.h"
 #include "fmgr.h"
 
@@ -469,9 +468,10 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   return 0;
 }
 
-Datum yezzey_load_relation(PG_FUNCTION_ARGS) {
+Datum
+yezzey_load_relation(PG_FUNCTION_ARGS) {
   /*
-   * Force table offloading to external storage
+   * Force table loading from external storage
    * In order:
    * 1) lock table in IN EXCLUSIVE MODE (is that needed?)
    * 2) check pg_aoseg.pg_aoseg_XXX table for all segments
