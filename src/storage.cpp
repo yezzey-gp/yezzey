@@ -400,10 +400,15 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   auto local_path = getlocalpath(coords);
 
   *local_bytes = 0;
-  // *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
+  // *local_bytes =
+  // std::filesystem::file_size(std::filesystem::path(local_path));
 
   // Assert(virtual_sz <= logicalEof);
-  *local_commited_bytes = logicalEof - virtual_sz;
+  //
+  *local_commited_bytes = 0;
+  // the following will not work since files in externakl storage may be
+  // encrypted & compressed.
+  // *local_commited_bytes = logicalEof - virtual_sz;
   return 0;
 }
 
@@ -466,7 +471,8 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   auto local_path = getlocalpath(coords);
   *local_bytes = 0;
 
-  // *local_bytes = std::filesystem::file_size(std::filesystem::path(local_path));
+  // *local_bytes =
+  // std::filesystem::file_size(std::filesystem::path(local_path));
 
   *local_commited_bytes = 0;
   return 0;

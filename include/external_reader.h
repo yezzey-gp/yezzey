@@ -2,8 +2,8 @@
 
 #include "gpreader.h"
 #include "io_adv.h"
-#include "yreader.h"
 #include "ylister.h"
+#include "yreader.h"
 #include <memory>
 
 class ExternalReader : public YReader, public YLister {

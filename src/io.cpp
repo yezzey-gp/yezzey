@@ -5,8 +5,8 @@
 #include "util.h"
 
 #include "encrypted_storage_reader.h"
-#include "storage_lister.h"
 #include "encrypted_storage_writer.h"
+#include "storage_lister.h"
 #include "walg_reader.h"
 
 #define USE_WLG_READER 1

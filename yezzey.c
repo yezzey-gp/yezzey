@@ -256,7 +256,15 @@ ATExecSetTableSpace(Relation aorel, Oid reloid)
 }
 
 
-int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
+/*
+* yezzey_offload_relation_internal:
+* offloads relation segments data to external storage.
+* if remove_locally is true, 
+* issues ATExecSetTableSpace(tablespace shange to virtual (yezzey) tablespace)
+* which will result in local-storage files drops (on both primary and mirror segments)
+*/
+int 
+yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path) {
   Relation aorel;
   int i;
@@ -373,8 +381,9 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   /* cleanup */
   // yezzey_log_smgroffload(&aorel->rd_node);
   // smgrcreate(aorel->rd_smgr, YEZZEY_FORKNUM, false);
-
-  ATExecSetTableSpace(aorel, reloid);
+  if (remove_locally) {
+    ATExecSetTableSpace(aorel, reloid);
+  }
 
   // smgrclose(aorel->rd_smgr);
   // aorel->rd_smgr = NULL;
@@ -961,39 +970,58 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   PG_RETURN_VOID();
 }
 
-Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
+
+/*
+* yezzey_offload_relation_status_internal:
+* List total segment(block) files statistic for relation
+* Includes info abount segment(block) external storage usage
+* (which may differ from logical offset (sic!)) and local stogare
+* usage. Urgent: for now, local stogare usage should be 0 since no 
+* cache-logic implemented.
+*/
+Datum 
+yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   Oid reloid;
   Relation aorel;
   int i;
   int segno;
+  int inat;
+  int nvp;
+  int pseudosegno;
   int total_segfiles;
   int64 modcount;
   int64 logicalEof;
   FileSegInfo **segfile_array;
+  AOCSFileSegInfo **segfile_array_cs;
   Snapshot appendOnlyMetaDataSnapshot;
+  TupleDesc tupdesc;
+
+  segfile_array = segfile_array_cs = NULL;
 
   reloid = PG_GETARG_OID(0);
 
-  /*  This mode guarantees that the holder is the only transaction accessing the
-   * table in any way. we need to be sure, thar no other transaction either
-   * reads or write to given relation because we are going to delete relation
-   * from local storage
+
+  /* 
+  * Lock table in share mode 
    */
   aorel = relation_open(reloid, AccessShareLock);
+
+  nvp = aorel->rd_att->natts;
 
   /* GetAllFileSegInfo_pg_aoseg_rel */
 
   /* acquire snapshot for aoseg table lookup */
   appendOnlyMetaDataSnapshot = SnapshotSelf;
 
+  size_t local_bytes = 0;
+  size_t external_bytes = 0;
+  size_t local_commited_bytes = 0;
+
   if (aorel->rd_rel->relstorage == 'a') {
     /* ao rows relation */
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
-    size_t local_bytes = 0;
-    size_t external_bytes = 0;
-    size_t local_commited_bytes = 0;
 
     for (i = 0; i < total_segfiles; i++) {
       segno = segfile_array[i]->segno;
@@ -1018,53 +1046,93 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
       local_commited_bytes += curr_local_commited_bytes;
       /* segment if loaded */
     }
+  } else if (aorel->rd_rel->relstorage == 'c') {
+ /* ao columns, relstorage == 'c' */
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 
-    /*
-     * Build a tuple descriptor for our result type
-     * The number and type of attributes have to match the definition of the
-     * view yezzey_offload_relation_status_internal
-     */
+    for (inat = 0; inat < nvp; ++inat) {
+      for (i = 0; i < total_segfiles; i++) {
+        segno = segfile_array_cs[i]->segno;
+        /* in AOCS case actual *segno* differs from segfile_array_cs[i]->segno
+         * whis is logical number of segment. On physical level, each logical
+         * segno (segfile_array_cs[i]->segno) is represented by
+         * AOTupleId_MultiplierSegmentFileNum in storage (1 file per attribute)
+         */
+        pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
+        modcount = segfile_array_cs[i]->modcount;
+        logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
+
+        elog(yezzey_log_level,
+            "yezzey: stat segment no %d, pseudosegno %d, modcount %ld with to logial eof %ld",
+            segno, pseudosegno, modcount, logicalEof);
+        size_t curr_local_bytes = 0;
+        size_t curr_external_bytes = 0;
+        size_t curr_local_commited_bytes = 0;
+
+        if (statRelationSpaceUsage(aorel, pseudosegno, modcount, logicalEof,
+                                  &curr_local_bytes, &curr_local_commited_bytes,
+                                  &curr_external_bytes) < 0) {
+          elog(ERROR, "yezzey: failed to stat segment %d usage", segno);
+        }
+
+        local_bytes += curr_local_bytes;
+        external_bytes += curr_external_bytes;
+        local_commited_bytes += curr_local_commited_bytes;
+        /* segment if offloaded */
+      }
+    }
+  } else {
+    elog(ERROR, "wrong relation type (not AO/AOCS) storage");
+  }
+
+  /*
+    * Build a tuple descriptor for our result type
+    * The number and type of attributes have to match the definition of the
+    * view yezzey_offload_relation_status_internal
+    */
 #define NUM_USED_OFFLOAD_STATUS 5
-    TupleDesc tupdesc = CreateTemplateTupleDesc(NUM_USED_OFFLOAD_STATUS, false);
+  tupdesc = CreateTemplateTupleDesc(NUM_USED_OFFLOAD_STATUS, false);
 
-    TupleDescInitEntry(tupdesc, (AttrNumber)1, "reloid", OIDOID,
-                       -1 /* typmod */, 0 /* attdim */);
-    TupleDescInitEntry(tupdesc, (AttrNumber)2, "segindex", INT4OID,
-                       -1 /* typmod */, 0 /* attdim */);
-    TupleDescInitEntry(tupdesc, (AttrNumber)3, "local_bytes", INT8OID,
-                       -1 /* typmod */, 0 /* attdim */);
-    TupleDescInitEntry(tupdesc, (AttrNumber)4, "local_commited_bytes", INT8OID,
-                       -1 /* typmod */, 0 /* attdim */);
-    TupleDescInitEntry(tupdesc, (AttrNumber)5, "external_bytes", INT8OID,
-                       -1 /* typmod */, 0 /* attdim */);
+  TupleDescInitEntry(tupdesc, (AttrNumber)1, "reloid", OIDOID,
+                      -1 /* typmod */, 0 /* attdim */);
+  TupleDescInitEntry(tupdesc, (AttrNumber)2, "segindex", INT4OID,
+                      -1 /* typmod */, 0 /* attdim */);
+  TupleDescInitEntry(tupdesc, (AttrNumber)3, "local_bytes", INT8OID,
+                      -1 /* typmod */, 0 /* attdim */);
+  TupleDescInitEntry(tupdesc, (AttrNumber)4, "local_commited_bytes", INT8OID,
+                      -1 /* typmod */, 0 /* attdim */);
+  TupleDescInitEntry(tupdesc, (AttrNumber)5, "external_bytes", INT8OID,
+                      -1 /* typmod */, 0 /* attdim */);
 
-    tupdesc = BlessTupleDesc(tupdesc);
+  tupdesc = BlessTupleDesc(tupdesc);
 
-    Datum values[NUM_USED_OFFLOAD_STATUS];
-    bool nulls[NUM_USED_OFFLOAD_STATUS];
+  Datum values[NUM_USED_OFFLOAD_STATUS];
+  bool nulls[NUM_USED_OFFLOAD_STATUS];
 
 #undef NUM_USED_OFFLOAD_STATUS
 
-    MemSet(nulls, 0, sizeof(nulls));
+  MemSet(nulls, 0, sizeof(nulls));
 
-    values[0] = ObjectIdGetDatum(reloid);
-    values[1] = Int32GetDatum(GpIdentity.segindex);
-    values[2] = Int64GetDatum(local_bytes);
-    values[3] = Int64GetDatum(local_commited_bytes);
-    values[4] = Int64GetDatum(external_bytes);
+  values[0] = ObjectIdGetDatum(reloid);
+  values[1] = Int32GetDatum(GpIdentity.segindex);
+  values[2] = Int64GetDatum(local_bytes);
+  values[3] = Int64GetDatum(local_commited_bytes);
+  values[4] = Int64GetDatum(external_bytes);
 
-    HeapTuple tuple = heap_form_tuple(tupdesc, values, nulls);
-    Datum result = HeapTupleGetDatum(tuple);
+  HeapTuple tuple = heap_form_tuple(tupdesc, values, nulls);
+  Datum result = HeapTupleGetDatum(tuple);
 
-    if (segfile_array) {
-      FreeAllSegFileInfo(segfile_array, total_segfiles);
-      pfree(segfile_array);
-    }
-
-    relation_close(aorel, AccessShareLock);
-    PG_RETURN_DATUM(result);
-  } else {
-    elog(ERROR, "wrong rel");
+  if (segfile_array) {
+    FreeAllSegFileInfo(segfile_array, total_segfiles);
+    pfree(segfile_array);
   }
-  PG_RETURN_VOID();
+
+  if (segfile_array_cs) {
+    FreeAllAOCSSegFileInfo(segfile_array_cs, total_segfiles);
+    pfree(segfile_array_cs);
+  }
+
+  relation_close(aorel, AccessShareLock);
+  PG_RETURN_DATUM(result);
 }

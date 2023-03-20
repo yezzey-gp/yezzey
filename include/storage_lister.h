@@ -1,10 +1,10 @@
 #pragma once
 
+#include "external_reader.h"
 #include "io_adv.h"
 #include "ylister.h"
-#include "external_reader.h"
-#include <vector>
 #include <memory>
+#include <vector>
 
 // read from external storage, using gpreader.
 // decrypt all data with gpg
@@ -18,7 +18,6 @@ public:
 
   virtual std::vector<storageChunkMeta> list_relation_chunks();
   virtual std::vector<std::string> list_chunk_names();
-
 
 protected:
   std::shared_ptr<ExternalReader> reader_{nullptr};
