@@ -1,5 +1,5 @@
-#include "meta.h"
 #include "encrypted_storage_reader.h"
+#include "meta.h"
 
 EncryptedStorageReader::EncryptedStorageReader(std::shared_ptr<IOadv> adv,
                                                ssize_t segindx)

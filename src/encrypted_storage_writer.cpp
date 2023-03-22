@@ -1,7 +1,7 @@
 
 #include "encrypted_storage_writer.h"
-#include "meta.h"
 #include "external_writer.h"
+#include "meta.h"
 
 EncryptedStorageWriter::EncryptedStorageWriter(std::shared_ptr<IOadv> adv,
                                                ssize_t segindx,

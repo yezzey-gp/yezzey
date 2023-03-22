@@ -28,8 +28,8 @@ extern "C" {
 #include "utils/syscache.h"
 
 // For GpIdentity
-#include "cdb/cdbvars.h"
 #include "catalog/pg_tablespace.h"
+#include "cdb/cdbvars.h"
 
 #ifdef __cplusplus
 }
@@ -57,8 +57,8 @@ int yezzey_ao_log_level = INFO;
  * This function used by AO-related realtion functions
  */
 bool ensureFilepathLocal(const std::string &filepath) {
-  struct stat buffer;   
-  return (stat (filepath.c_str(), &buffer) == 0); 
+  struct stat buffer;
+  return (stat(filepath.c_str(), &buffer) == 0);
 }
 
 int offloadFileToExternalStorage(const std::string &nspname,
@@ -204,14 +204,6 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
 int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
   auto rnode = aorel->rd_node;
 
-  if (rnode.spcNode != YEZZEYTABLESPACE_OID) {
-    /* shoulde never happen*/
-    elog(ERROR, "attempted to load non-offloaded relation");
-  }
-
-
-  rnode.spcNode = DEFAULTTABLESPACE_OID;
-
   auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
 
   std::string path;
@@ -224,13 +216,6 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
   elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
   if (ensureFilepathLocal(path)) {
     // nothing to do
-    return 0;
-  }
-
-  if (segno == 0) {
-    /* simply touch file */
-    std::ofstream file;
-    file.open (path, std::ios::out);
     return 0;
   }
 
@@ -273,8 +258,7 @@ bool ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum,
 int removeLocalFile(const char *localPath) {
   auto res = std::remove(localPath);
   elog(yezzey_ao_log_level,
-       "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath,
-       res);
+       "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath, res);
   return res;
 }
 

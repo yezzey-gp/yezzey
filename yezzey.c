@@ -409,6 +409,13 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
 
   /* acquire snapshot for aoseg table lookup */
   appendOnlyMetaDataSnapshot = SnapshotSelf;
+  /*sanity check */
+  if (aorel->rd_node.spcNode != YEZZEYTABLESPACE_OID) {
+    /* shoulde never happen*/
+    elog(ERROR, "attempted to load non-offloaded relation");
+  }
+
+  ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
   if (aorel->rd_rel->relstorage == 'a') {
@@ -457,9 +464,6 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
       pfree(segfile_array_cs);
     }
   }
-
-  ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
-
   /* cleanup */
 
   relation_close(aorel, AccessExclusiveLock);
