@@ -1,7 +1,7 @@
 
 #include "encrypted_storage_writer.h"
-
 #include "external_writer.h"
+#include "meta.h"
 
 EncryptedStorageWriter::EncryptedStorageWriter(std::shared_ptr<IOadv> adv,
                                                ssize_t segindx,
@@ -13,7 +13,7 @@ EncryptedStorageWriter::EncryptedStorageWriter(std::shared_ptr<IOadv> adv,
   writer_ = std::make_shared<ExternalWriter>(adv_, segindx_, modcount_,
                                              storage_path_, lister_);
   buf_ = std::make_shared<BlockingBuffer>(1 << 12);
-  crypter_ = std::make_unique<Crypter>(adv_, writer_, buf_);
+  crypter_ = make_unique<Crypter>(adv_, writer_, buf_);
 }
 
 EncryptedStorageWriter::~EncryptedStorageWriter() { close(); }

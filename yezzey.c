@@ -1,4 +1,3 @@
-
 #include "postgres.h"
 #include "fmgr.h"
 
@@ -136,14 +135,11 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
  * Execute ALTER TABLE SET TABLESPACE for cases where there is no tuple
  * rewriting to be done, so we just want to copy the data as fast as possible.
  */
-static void ATExecSetTableSpace(Relation aorel, Oid reloid) {
-  Oid newrelfilenode;
-  RelFileNode newrnode;
-  SMgrRelation dstrel;
+static void ATExecSetTableSpace(Relation aorel, Oid reloid,
+                                Oid desttablespace_oid) {
   Relation pg_class;
   HeapTuple tuple;
   Form_pg_class rd_rel;
-  ListCell *lc;
   /*
    * Need lock here in case we are recursing to toast table or index
    */
@@ -210,7 +206,7 @@ static void ATExecSetTableSpace(Relation aorel, Oid reloid) {
   RelationDropStorage(aorel);
 
   /* update the pg_class row */
-  rd_rel->reltablespace = YEZZEYTABLESPACE_OID;
+  rd_rel->reltablespace = desttablespace_oid;
   simple_heap_update(pg_class, &tuple->t_self, tuple);
   CatalogUpdateIndexes(pg_class, tuple);
 
@@ -372,7 +368,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   // yezzey_log_smgroffload(&aorel->rd_node);
   // smgrcreate(aorel->rd_smgr, YEZZEY_FORKNUM, false);
   if (remove_locally) {
-    ATExecSetTableSpace(aorel, reloid);
+    ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
   }
 
   // smgrclose(aorel->rd_smgr);
@@ -413,6 +409,13 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
 
   /* acquire snapshot for aoseg table lookup */
   appendOnlyMetaDataSnapshot = SnapshotSelf;
+  /*sanity check */
+  if (aorel->rd_node.spcNode != YEZZEYTABLESPACE_OID) {
+    /* shoulde never happen*/
+    elog(ERROR, "attempted to load non-offloaded relation");
+  }
+
+  ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
   if (aorel->rd_rel->relstorage == 'a') {
@@ -461,7 +464,6 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
       pfree(segfile_array_cs);
     }
   }
-
   /* cleanup */
 
   relation_close(aorel, AccessExclusiveLock);
@@ -471,7 +473,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
 
 Datum yezzey_load_relation(PG_FUNCTION_ARGS) {
   /*
-   * Force table offloading to external storage
+   * Force table loading from external storage
    * In order:
    * 1) lock table in IN EXCLUSIVE MODE (is that needed?)
    * 2) check pg_aoseg.pg_aoseg_XXX table for all segments
@@ -611,7 +613,8 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   int32 call_cntr;
 
   reloid = PG_GETARG_OID(0);
-  segfile_array_cs = segfile_array = NULL;
+  segfile_array_cs = NULL;
+  segfile_array = NULL;
 
   /*  This mode guarantees that the holder is the only transaction accessing the
    * table in any way. we need to be sure, thar no other transaction either
@@ -790,7 +793,12 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
 
   values[0] = ObjectIdGetDatum(reloid);
   values[1] = Int32GetDatum(GpIdentity.segindex);
-  values[2] = Int32GetDatum(pseudosegno);
+
+  if (aorel->rd_rel->relstorage == 'a') {
+    values[2] = Int32GetDatum(pseudosegno);
+  } else if (aorel->rd_rel->relstorage == 'c') {
+    values[2] = Int32GetDatum(segno);
+  }
   values[3] = Int64GetDatum(local_bytes);
   values[4] = Int64GetDatum(local_commited_bytes);
   values[5] = Int64GetDatum(external_bytes);
@@ -1090,7 +1098,8 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   Snapshot appendOnlyMetaDataSnapshot;
   TupleDesc tupdesc;
 
-  segfile_array = segfile_array_cs = NULL;
+  segfile_array = NULL;
+  segfile_array_cs = NULL;
 
   reloid = PG_GETARG_OID(0);
 

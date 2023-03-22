@@ -11,7 +11,17 @@ CREATE SCHEMA yezzey;
 -- see ao_foreach_extent_file
 -- 
 
-CREATE OR REPLACE FUNCTION yezzey_offload_relation(reloid OID, remove_locally BOOLEAN) RETURNS void
+CREATE OR REPLACE FUNCTION 
+yezzey_offload_relation(reloid OID, remove_locally BOOLEAN) RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_load_relation(reloid OID, dest_path TEXT)
+RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 EXECUTE ON ALL SEGMENTS
@@ -62,7 +72,7 @@ CREATE TYPE offload_policy AS ENUM ('local', 'remote_always', 'cron');
 
 -- manually/automatically relocated relations
 CREATE TABLE yezzey.offload_metadata(
-    relname          TEXT NOT NULL UNIQUE,
+    reloid           OID,
     relpolicy        offload_policy NOT NULL,
     relext_date      DATE,
     rellast_archived TIMESTAMP
@@ -70,50 +80,123 @@ CREATE TABLE yezzey.offload_metadata(
 DISTRIBUTED REPLICATED;
 
 CREATE OR REPLACE FUNCTION
-yezzey_define_offload_policy(offload_relname TEXT, policy offload_policy DEFAULT 'remote_always')
+yezzey_define_offload_policy(i_offload_nspname TEXT, i_offload_relname TEXT, i_policy offload_policy DEFAULT 'remote_always')
 RETURNS VOID
 AS $$
 DECLARE
-    v_pg_class_entry pg_catalog.pg_class%rowtype;
+    v_reloid OID;
 BEGIN
-    SELECT * FROM pg_catalog.pg_class INTO v_pg_class_entry WHERE relname = offload_relname;
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = i_offload_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_offload_nspname);
+
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'relation % is not found in pg_class', offload_relname;
+        RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
     END IF;
     PERFORM yezzey_define_relation_offload_policy_internal(
-        offload_relname::regclass::oid
+        v_reloid
     );
-    INSERT INTO yezzey.offload_metadata VALUES(offload_relname, policy, NULL, NOW());
+    INSERT INTO yezzey.offload_metadata VALUES(v_reloid, i_policy, NULL, NOW());
     -- get xid before executing offload realtion func
     PERFORM yezzey_offload_relation(
-        offload_relname::regclass::oid,
+        v_reloid,
         TRUE
     );
 END;
 $$
 LANGUAGE PLPGSQL;
 
+
 CREATE OR REPLACE FUNCTION
-yezzey_offload_relation(offload_relname TEXT, remove_locally BOOLEAN DEFAULT TRUE)
+yezzey_define_offload_policy(i_offload_relname TEXT, i_policy offload_policy DEFAULT 'remote_always')
 RETURNS VOID
 AS $$
-DECLARE
-    v_tmp_relname yezzey.offload_metadata%rowtype;
 BEGIN
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = offload_relname;
-    IF NOT FOUND THEN
-        RAISE WARNING'relation % is not in offload metadata table', offload_relname;
-    END IF;
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
-    PERFORM yezzey_offload_relation(
-        (SELECT OID FROM pg_class WHERE relname=offload_relname),
-        remove_locally
-    );
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
+    PERFORM yezzey_define_offload_policy('public', i_offload_relname, i_policy);
 END;
 $$
 LANGUAGE PLPGSQL;
 
+CREATE OR REPLACE FUNCTION
+yezzey_offload_relation(offload_nspname TEXT, offload_relname TEXT, remove_locally BOOLEAN DEFAULT TRUE)
+RETURNS VOID
+AS $$
+DECLARE
+    v_tmp_relname yezzey.offload_metadata%rowtype;
+    v_reloid OID;
+BEGIN
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = offload_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = offload_nspname);
+
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    IF NOT FOUND THEN
+        RAISE WARNING'relation %.% is not in offload metadata table', offload_nspname, offload_relname;
+    END IF;
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    PERFORM yezzey_offload_relation(
+        v_reloid,
+        remove_locally
+    );
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reliod=v_reloid;
+END;
+$$
+LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_offload_relation(offload_relname TEXT, remove_locally BOOLEAN DEFAULT TRUE)
+RETURNS VOID
+AS $$
+BEGIN
+    PERFORM yezzey_offload_relation('public', offload_relname, remove_locally);
+END;
+$$
+LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_offload_relation_to_external_path(
+    offload_nspname TEXT,
+    offload_relname TEXT, 
+    remove_locally BOOLEAN DEFAULT TRUE, 
+    external_storage_path TEXT DEFAULT NULL)
+RETURNS VOID
+AS $$
+DECLARE
+    v_tmp_relname yezzey.offload_metadata%rowtype;
+    v_reloid OID;
+BEGIN
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = offload_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = offload_nspname);
+
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    IF NOT FOUND THEN
+        RAISE WARNING'relation %.% is not in offload metadata table', offload_nspname, offload_relname;
+    END IF;
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    PERFORM yezzey_offload_relation_to_external_path(
+        v_reloid,
+        remove_locally,
+        external_storage_path
+    );
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+END;
+$$
+LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE FUNCTION
@@ -123,50 +206,57 @@ yezzey_offload_relation_to_external_path(
     external_storage_path TEXT DEFAULT NULL)
 RETURNS VOID
 AS $$
+BEGIN
+    PERFORM yezzey_offload_relation_to_external_path('public', offload_relname, remove_locally, external_storage_path);
+END;
+$$
+LANGUAGE PLPGSQL;
+
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_load_relation(load_nspname TEXT, load_relname TEXT)
+RETURNS VOID
+AS $$
 DECLARE
     v_tmp_relname yezzey.offload_metadata%rowtype;
+    v_reloid OID;
 BEGIN
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = offload_relname;
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = load_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = load_nspname);
+
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
     IF NOT FOUND THEN
-        RAISE WARNING'relation % is not in offload metadata table', offload_relname;
+        RAISE WARNING'relation % is not in offload metadata table', load_relname;
     END IF;
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
-    PERFORM yezzey_offload_relation_to_external_path(
-        (SELECT OID FROM pg_class WHERE relname=offload_relname),
-        remove_locally,
-        external_storage_path
+    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    PERFORM yezzey_load_relation(
+        v_reloid,
+        ''-- omit dest path 
     );
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=offload_relname;
+
+    DELETE FROM yezzey.offload_metadata WHERE reloid = v_reloid;
+    RAISE INFO'loaded relation %s to local storage', load_relname;
 END;
 $$
 LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE FUNCTION
-yezzey_load_relation(reloid OID, dest_path TEXT)
-RETURNS void
-AS 'MODULE_PATHNAME'
-VOLATILE
-EXECUTE ON ALL SEGMENTS
-LANGUAGE C STRICT;
-
-
-
-CREATE OR REPLACE FUNCTION
-yezzey_load_relation(load_relname TEXT, dest_path TEXT DEFAULT NULL)
+yezzey_load_relation(load_relname TEXT)
 RETURNS VOID
 AS $$
 DECLARE
-    v_pg_class_entry pg_catalog.pg_class%rowtype;
+    v_tmp_relname yezzey.offload_metadata%rowtype;
 BEGIN
-    SELECT * FROM pg_catalog.pg_class INTO v_pg_class_entry WHERE relname = load_relname;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'relation % is not found in pg_class', load_relname;
-    END IF;
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE relname=load_relname;
     PERFORM yezzey_load_relation(
-        load_relname::regclass::oid,
-        dest_path
+        'public',
+        load_relname
     );
 END;
 $$
@@ -198,21 +288,50 @@ VOLATILE
 LANGUAGE C STRICT;
 
 
-CREATE OR REPLACE FUNCTION yezzey_offload_relation_status(i_relname TEXT) 
-RETURNS TABLE (reloid OID, segindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status(
+    i_nspname TEXT,
+    i_relname TEXT
+) 
+RETURNS TABLE (offload_reloid OID, segindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS $$
 DECLARE
     v_tmp_relname yezzey.offload_metadata%rowtype;
+    v_reloid OID;
 BEGIN
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = i_relname;
+
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
+
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
     IF NOT FOUND THEN
-        RAISE WARNING'relation % is not in offload metadata table', i_relname;
+        RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
     END IF;
 
     RETURN QUERY SELECT 
         *
     FROM yezzey_offload_relation_status_internal(
-        i_relname::regclass::oid
+        v_reloid
+    );
+END;
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status(i_relname TEXT) 
+RETURNS TABLE (offload_reloid OID, segindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+AS $$
+BEGIN
+    RETURN QUERY SELECT 
+        *
+    FROM yezzey_offload_relation_status(
+        'public',
+        i_relname
     );
 END;
 $$
@@ -221,21 +340,87 @@ LANGUAGE PLPGSQL;
 
 
 
-CREATE OR REPLACE FUNCTION yezzey_offload_relation_status_per_filesegment(i_relname TEXT) 
-RETURNS TABLE (reloid OID, segindex INTEGER, segfileindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status_per_filesegment(
+    i_nspname TEXT,
+    i_relname TEXT
+    ) 
+RETURNS TABLE (offload_reloid OID, segindex INTEGER, segfileindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS $$
 DECLARE
     v_tmp_relname yezzey.offload_metadata%rowtype;
+    v_reloid OID;
 BEGIN
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = i_relname;
+
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
+
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+
     IF NOT FOUND THEN
-        RAISE WARNING'relation % is not in offload metadata table', i_relname;
+        RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
     END IF;
  
     RETURN QUERY SELECT 
         *
     FROM yezzey_offload_relation_status_per_filesegment(
-        i_relname::regclass::oid
+        v_reloid
+    );
+END;
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION yezzey_offload_relation_status_per_filesegment(i_relname TEXT) 
+RETURNS TABLE (offload_reloid OID, segindex INTEGER, segfileindex INTEGER, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+AS $$
+DECLARE
+    v_tmp_relname yezzey.offload_metadata%rowtype;
+BEGIN
+ 
+    RETURN QUERY SELECT 
+        *
+    FROM yezzey_offload_relation_status_per_filesegment(
+        'public',
+        i_relname
+    );
+END;
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION yezzey_relation_describe_external_storage_structure(
+    i_nspname TEXT, i_relname TEXT) 
+RETURNS TABLE (offload_reloid OID, segindex INTEGER, segfileindex INTEGER, external_storage_filepath TEXT, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+AS $$
+DECLARE
+    v_tmp_relname yezzey.offload_metadata%rowtype;
+    v_reloid OID;
+BEGIN
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
+
+    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+
+    IF NOT FOUND THEN
+        RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
+    END IF;
+ 
+    RETURN QUERY SELECT 
+        *
+    FROM yezzey_relation_describe_external_storage_structure_internal(
+        v_reloid
     );
 END;
 $$
@@ -244,20 +429,14 @@ LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE FUNCTION yezzey_relation_describe_external_storage_structure(i_relname TEXT) 
-RETURNS TABLE (reloid OID, segindex INTEGER, segfileindex INTEGER, external_storage_filepath TEXT, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
+RETURNS TABLE (offload_reloid OID, segindex INTEGER, segfileindex INTEGER, external_storage_filepath TEXT, local_bytes BIGINT, local_commited_bytes BIGINT, external_bytes BIGINT)
 AS $$
-DECLARE
-    v_tmp_relname yezzey.offload_metadata%rowtype;
 BEGIN
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE relname = i_relname;
-    IF NOT FOUND THEN
-        RAISE WARNING'relation % is not in offload metadata table', i_relname;
-    END IF;
- 
     RETURN QUERY SELECT 
         *
-    FROM yezzey_relation_describe_external_storage_structure_internal(
-        i_relname::regclass::oid
+    FROM yezzey_relation_describe_external_storage_structure(
+        'public',
+        i_relname
     );
 END;
 $$
@@ -266,11 +445,6 @@ LANGUAGE PLPGSQL;
 
 
 
-CREATE OR REPLACE FUNCTION yezzey_force_segment_offload(reloid OID, segid INT) RETURNS void
-AS 'MODULE_PATHNAME'
-VOLATILE
-LANGUAGE C STRICT;
-
 CREATE TABLE yezzey.auto_offload_relations(
     reloid OID,
     expire_date DATE
@@ -278,9 +452,15 @@ CREATE TABLE yezzey.auto_offload_relations(
 DISTRIBUTED REPLICATED;
 
 
-CREATE OR REPLACE FUNCTION yezzey.auto_offload_relation(offload_relname TEXT, expire_date DATE) RETURNS VOID
+CREATE OR REPLACE FUNCTION yezzey_auto_offload_relation(offload_nspname TEXT, offload_relname TEXT, expire_date DATE) RETURNS VOID
 AS $$
     INSERT INTO yezzey.auto_offload_relations (reloid, expire_date) VALUES ((select oid from pg_class where relname=offload_relname), expire_date);
+$$
+LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION yezzey_auto_offload_relation(offload_relname TEXT, expire_date DATE) RETURNS VOID
+AS $$
+    SELECT yezzey_auto_offload_relation('public', offload_relname, expire_date);
 $$
 LANGUAGE SQL;
 

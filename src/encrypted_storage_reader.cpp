@@ -1,12 +1,12 @@
-
 #include "encrypted_storage_reader.h"
+#include "meta.h"
 
 EncryptedStorageReader::EncryptedStorageReader(std::shared_ptr<IOadv> adv,
                                                ssize_t segindx)
     : adv_(adv), segindx_(segindx) {
   buf_ = std::make_shared<BlockingBuffer>(1 << 12);
   reader_ = std::make_shared<ExternalReader>(adv_, segindx_);
-  crypter_ = std::make_unique<Crypter>(adv_, reader_, buf_);
+  crypter_ = make_unique<Crypter>(adv_, reader_, buf_);
 }
 
 EncryptedStorageReader::~EncryptedStorageReader() { close(); }

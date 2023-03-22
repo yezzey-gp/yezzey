@@ -2,11 +2,12 @@
 
 #include "storage.h"
 #include "util.h"
-#include <filesystem>
 
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,6 +28,7 @@ extern "C" {
 #include "utils/syscache.h"
 
 // For GpIdentity
+#include "catalog/pg_tablespace.h"
 #include "cdb/cdbvars.h"
 
 #ifdef __cplusplus
@@ -34,6 +36,7 @@ extern "C" {
 #endif
 
 #include "io.h"
+#include <iostream>
 
 int offloadFileToExternalStorage(const std::string &spname,
                                  const std::string &relname,
@@ -54,8 +57,8 @@ int yezzey_ao_log_level = INFO;
  * This function used by AO-related realtion functions
  */
 bool ensureFilepathLocal(const std::string &filepath) {
-  const std::filesystem::path path{filepath};
-  return std::filesystem::exists(path);
+  struct stat buffer;
+  return (stat(filepath.c_str(), &buffer) == 0);
 }
 
 int offloadFileToExternalStorage(const std::string &nspname,
@@ -195,25 +198,13 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
     elog(ERROR, "yezzey: failed to complete %s offloading", tmp_path.c_str());
   }
 
-  std::error_code ec;
-
-  const std::filesystem::path old{tmp_path};
-  const std::filesystem::path path{dest_path};
-
-  std::filesystem::rename(old, path, ec);
-
-  return ec.value();
+  return std::rename(tmp_path.c_str(), dest_path.c_str());
 }
 
 int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
+  auto rnode = aorel->rd_node;
 
-  if (segno == 0) {
-    /* should never happen */
-    return 0;
-  }
-  RelFileNode rnode = aorel->rd_node;
-
-  relnodeCoord coords = {rnode.dbNode, rnode.relNode, segno};
+  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
 
   std::string path;
   if (dest_path) {
@@ -221,6 +212,7 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
   } else {
     path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
   }
+
   elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
   if (ensureFilepathLocal(path)) {
     // nothing to do
@@ -264,13 +256,10 @@ bool ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum,
 }
 
 int removeLocalFile(const char *localPath) {
-  const std::filesystem::path path{localPath};
-  std::error_code ec;
-  std::filesystem::remove(path, ec);
+  auto res = std::remove(localPath);
   elog(yezzey_ao_log_level,
-       "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath,
-       ec.value());
-  return ec.value();
+       "[YEZZEY_SMGR_BG] remove local file \"%s\", result: %d", localPath, res);
+  return res;
 }
 
 std::string getlocalpath(Oid dbnode, Oid relNode, int segno) {
