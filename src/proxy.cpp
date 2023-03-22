@@ -74,11 +74,6 @@ int writeprepare(std::shared_ptr<IOadv> ioadv, int64_t modcount,
   YVirtFD_cache[yezzey_fd].handler =
       make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
 
-  //   (void)createWriterHandle(YVirtFD_cache[file].handler,
-  //   GpIdentity.segindex,
-  //                            1 /*because modcount will increase on write*/ +
-  //                                YVirtFD_cache[file].modcount);
-
   elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld",
        modcount);
 
@@ -194,17 +189,20 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
         case O_WRONLY:
           /* allocate handle struct */
           if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
+            YVirtFD_cache.erase(yezzey_fd);
             return -1;
           }
           break;
         case O_RDONLY:
           /* allocate handle struct */
           if (readprepare(ioadv, yezzey_fd) == -1) {
+            YVirtFD_cache.erase(yezzey_fd);
             return -1;
           }
           break;
         case O_RDWR:
           if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
+            YVirtFD_cache.erase(yezzey_fd);
             return -1;
           }
           break;
@@ -216,6 +214,11 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
         YVirtFD_cache[yezzey_fd].y_vfd = PathNameOpenFile(
         (FileName)YVirtFD_cache[yezzey_fd].filepath.c_str(),
         YVirtFD_cache[yezzey_fd].fileFlags, YVirtFD_cache[yezzey_fd].fileMode);
+
+        if (YVirtFD_cache[yezzey_fd].y_vfd == -1) {
+          YVirtFD_cache.erase(yezzey_fd);
+          return -1;
+        }
       }
 
       return yezzey_fd;
@@ -276,11 +279,6 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
       return amount;
     }
 
-    // if (YVirtFD_cache[file].handler.write_ptr == NULL) {
-    //   elog(yezzey_ao_log_level,
-    //        "read from external storage while read handler uninitialized");
-    //   return -1;
-    // }
 #ifdef ALLOW_MODIFY_EXTERNAL_TABLE
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
