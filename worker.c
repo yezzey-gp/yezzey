@@ -422,7 +422,6 @@ void yezzey_offload_databases() {
   /* start transaction */
   yezzey_prepare();
   /*
-   * CREATE relocate table if not yet
    */
   initStringInfo(&buf);
   appendStringInfo(&buf, ""

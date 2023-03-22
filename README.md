@@ -87,6 +87,10 @@ Write to already offloaeded AO/AOCS segment logic is following:
 ## end
 
 
+# Vacuum
+
+Need to change relfilenode while vacuuming yezzey relations, since yezzey does not support truncate operation propetly.
+
 
 do not read this, this trash will be moved to separate doc/test files and explaned fully later
 
@@ -115,14 +119,8 @@ WHERE relstorage IN ( 'ao', 'co' ) AND relpersistence='p'
 ) aotables ON pg_ao.relid = aotables.oid
 ) seg ON aoseg_c.oid = seg.segrelid;
 
-to install this:
 
-include yezzey into shared_preload_libraries
-modify your config:
-
-yezzey.storage_prefix = 'segment{{ content_id }}/'
-
-restart cluster
+Install:
 
 source gpAux/gpdemo/gpdemo-env.sh
 source /usr/local/gpdb/greenplum_path.sh
@@ -130,41 +128,6 @@ export GPHOME=/usr/local/gpdb/
 export PATH=$PATH:/usr/local/gpdb/bin
 
 make destroy-demo-cluster && make create-demo-cluster
-gpconfig -c shared_preload_libraries -v yezzey
-
-gpstop -a -i && gpstart -a
-
-create extension yezzey;
-create table aocst(i int, j int, k int) with (appendonly=true, orientation=column);
-insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-
-insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-insert into aocst(i, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-
-select count(1) from aocst;
-select yezzey.offload_relation('aocst');
-insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-
-insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-insert into aocst(i, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-select count(1) from aocst;
-select yezzey.offload_relation('aocst');
-select count(1) from aocst;
-
-insert into aocst(k, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-
-insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-insert into aocst(k, i) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-insert into aocst(i, j) select * from (select * from generate_series(1, 100)) a join (select * from generate_series(1, 100)) b on true;
-select count(1) from aocst;
-select yezzey.offload_relation('aocst');
-select count(1) from aocst;
-
-gpstop -a -i && gpstart -a
-
-make destroy-demo-cluster && make create-demo-cluster && gpconfig -s shared_preload_libraries -v yezzey && gpstop -a -i && gpstart -a
 
 
 make destroy-demo-cluster && make create-demo-cluster
@@ -176,11 +139,15 @@ gpconfig -c yezzey.gpg_key_id -v  "'5697E1083B8509B8'"
 gpconfig -c yezzey.walg_bin_path -v  "'/home/reshke/work/wal-g/main/gp/wal-g'"
 gpconfig -c yezzey.walg_config_path -v  "'/home/reshke/work/wal-g/conf.yaml'"
 
+gpconfig -c shared_preload_libraries -v yezzey
+
+
+gpstop -a -i && gpstart -a
+
+
 
 gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbtvdnna6t7oqaioeaj/6/segments_005'
 gpconfig -c yezzey.storage_bucket -v 'yandexcloud-dbaas-mdbtvdnna6t7oqaioeaj'
 
 gpconfig -c yezzey.storage_host -v 's3.mds.yandex.net'
 gpconfig -c yezzey.storage_config -v '/home/gpadmin/yezzey_conf/yezzey_s3.conf'
-
-gpconfig -c shared_preload_libraries -v yezzey
