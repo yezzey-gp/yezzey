@@ -315,7 +315,6 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileWrite = yezzey_FileWrite,
     .smgr_FileRead = yezzey_FileRead,
     .smgr_FileSync = yezzey_FileSync,
-
     .smgr_FileTruncate = yezzey_FileTruncate,
 };
 
