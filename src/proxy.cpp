@@ -74,11 +74,6 @@ int writeprepare(std::shared_ptr<IOadv> ioadv, int64_t modcount,
   YVirtFD_cache[yezzey_fd].handler =
       make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
 
-  //   (void)createWriterHandle(YVirtFD_cache[file].handler,
-  //   GpIdentity.segindex,
-  //                            1 /*because modcount will increase on write*/ +
-  //                                YVirtFD_cache[file].modcount);
-
   elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld",
        modcount);
 
@@ -107,7 +102,7 @@ int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 }
 
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
-  File actual_fd = YVirtFD_cache[file].y_vfd ;
+  File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     // what?
     YVirtFD_cache[file].offset = offset;
@@ -120,7 +115,7 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
 }
 
 int yezzey_FileSync(SMGRFile file) {
-  File actual_fd = YVirtFD_cache[file].y_vfd ;
+  File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     /* s3 always sync ? */
     /* sync tmp buf file here */
@@ -162,9 +157,7 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
            */
           Assert(RecoveryInProgress());
         } else {
-
           YVirtFD_cache[yezzey_fd].relname = std::string(relname);
-
           YVirtFD_cache[yezzey_fd].nspname = std::string(nspname);
         }
       } else {
@@ -179,50 +172,60 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
 
       /* we dont need to interact with s3 while in recovery*/
 
-      if (offloaded && !RecoveryInProgress()) {
+      if (offloaded) {
         YVirtFD_cache[yezzey_fd].y_vfd = YEZZEY_OFFLOADED_FD;
-        auto ioadv = std::make_shared<IOadv>(
-            std::string(gpg_engine_path), std::string(gpg_key_id),
-            std::string(storage_config), YVirtFD_cache[yezzey_fd].nspname,
-            YVirtFD_cache[yezzey_fd].relname,
-            std::string(storage_host /*host*/),
-            std::string(storage_bucket /*bucket*/),
-            std::string(storage_prefix /*prefix*/),
-            YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
-            std::string(walg_config_path), use_gpg_crypto);
-        switch (fileFlags) {
-        case O_WRONLY:
-          /* allocate handle struct */
-          if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
-            return -1;
+        if (!RecoveryInProgress()) {
+          auto ioadv = std::make_shared<IOadv>(
+              std::string(gpg_engine_path), std::string(gpg_key_id),
+              std::string(storage_config), YVirtFD_cache[yezzey_fd].nspname,
+              YVirtFD_cache[yezzey_fd].relname,
+              std::string(storage_host /*host*/),
+              std::string(storage_bucket /*bucket*/),
+              std::string(storage_prefix /*prefix*/),
+              YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
+              std::string(walg_config_path), use_gpg_crypto);
+          switch (fileFlags) {
+          case O_WRONLY:
+            /* allocate handle struct */
+            if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
+              YVirtFD_cache.erase(yezzey_fd);
+              return -1;
+            }
+            break;
+          case O_RDONLY:
+            /* allocate handle struct */
+            if (readprepare(ioadv, yezzey_fd) == -1) {
+              YVirtFD_cache.erase(yezzey_fd);
+              return -1;
+            }
+            break;
+          case O_RDWR:
+            if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
+              YVirtFD_cache.erase(yezzey_fd);
+              return -1;
+            }
+            break;
+          default:
+            break;
+            /* raise error */
           }
-          break;
-        case O_RDONLY:
-          /* allocate handle struct */
-          if (readprepare(ioadv, yezzey_fd) == -1) {
-            return -1;
-          }
-          break;
-        case O_RDWR:
-          if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
-            return -1;
-          }
-          break;
-        default:
-          break;
-          /* raise error */
         }
       } else {
+        /* not offloaded */
         YVirtFD_cache[yezzey_fd].y_vfd = PathNameOpenFile(
-        (FileName)YVirtFD_cache[yezzey_fd].filepath.c_str(),
-        YVirtFD_cache[yezzey_fd].fileFlags, YVirtFD_cache[yezzey_fd].fileMode);
+            (FileName)YVirtFD_cache[yezzey_fd].filepath.c_str(),
+            YVirtFD_cache[yezzey_fd].fileFlags,
+            YVirtFD_cache[yezzey_fd].fileMode);
+
+        if (YVirtFD_cache[yezzey_fd].y_vfd == -1) {
+          YVirtFD_cache.erase(yezzey_fd);
+          return -1;
+        }
       }
 
       return yezzey_fd;
     }
   }
-  /* no match*/
-  return -1;
 }
 
 void yezzey_FileClose(SMGRFile file) {
@@ -240,19 +243,19 @@ void yezzey_FileClose(SMGRFile file) {
   }
 
   if (YVirtFD_cache[file].y_vfd == YEZZEY_OFFLOADED_FD) {
+    if (!RecoveryInProgress()) {
       Assert(YVirtFD_cache[file].handler);
       if (!YVirtFD_cache[file].handler->io_close()) {
         // very bad
 
         elog(ERROR, "failed to complete external storage interfacrtion: fd %d",
-            file);
+             file);
       }
-  }
+    } else {
 
-  if (RecoveryInProgress()) {
-    /* not need to do anything */
+      /* not need to do anything */
+    }
   }
-
 
 #ifdef DISKCACHE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
@@ -263,7 +266,7 @@ void yezzey_FileClose(SMGRFile file) {
 #define ALLOW_MODIFY_EXTERNAL_TABLE
 
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
-  File actual_fd = YVirtFD_cache[file].y_vfd ;
+  File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
 
     /* Assert here we are not in crash or regular recovery
@@ -276,11 +279,6 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
       return amount;
     }
 
-    // if (YVirtFD_cache[file].handler.write_ptr == NULL) {
-    //   elog(yezzey_ao_log_level,
-    //        "read from external storage while read handler uninitialized");
-    //   return -1;
-    // }
 #ifdef ALLOW_MODIFY_EXTERNAL_TABLE
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
@@ -309,7 +307,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
   size_t curr = amount;
-  File actual_fd = YVirtFD_cache[file].y_vfd ;
+  File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     if (YVirtFD_cache[file].handler->reader_empty()) {
       if (YVirtFD_cache[file].localTmpVfd <= 0) {
@@ -340,8 +338,8 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
   return FileRead(actual_fd, buffer, amount);
 }
 
-int yezzey_FileTruncate(SMGRFile file, int offset) {  
-  File actual_fd = YVirtFD_cache[file].y_vfd ;
+int yezzey_FileTruncate(SMGRFile file, int offset) {
+  File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     /* Leave external storage file untouched
      * We may need them for point-in-time recovery
