@@ -173,9 +173,8 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
       /* we dont need to interact with s3 while in recovery*/
 
       if (offloaded) {
+        YVirtFD_cache[yezzey_fd].y_vfd = YEZZEY_OFFLOADED_FD;
         if (!RecoveryInProgress()) {
-
-          YVirtFD_cache[yezzey_fd].y_vfd = YEZZEY_OFFLOADED_FD;
           auto ioadv = std::make_shared<IOadv>(
               std::string(gpg_engine_path), std::string(gpg_key_id),
               std::string(storage_config), YVirtFD_cache[yezzey_fd].nspname,
@@ -244,17 +243,18 @@ void yezzey_FileClose(SMGRFile file) {
   }
 
   if (YVirtFD_cache[file].y_vfd == YEZZEY_OFFLOADED_FD) {
-    Assert(YVirtFD_cache[file].handler);
-    if (!YVirtFD_cache[file].handler->io_close()) {
-      // very bad
+    if (!RecoveryInProgress()) {
+      Assert(YVirtFD_cache[file].handler);
+      if (!YVirtFD_cache[file].handler->io_close()) {
+        // very bad
 
-      elog(ERROR, "failed to complete external storage interfacrtion: fd %d",
-           file);
+        elog(ERROR, "failed to complete external storage interfacrtion: fd %d",
+             file);
+      }
+    } else {
+
+      /* not need to do anything */
     }
-  }
-
-  if (RecoveryInProgress()) {
-    /* not need to do anything */
   }
 
 #ifdef DISKCACHE

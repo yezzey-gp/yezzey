@@ -23,6 +23,7 @@ extern "C" {
 #include "catalog/pg_namespace.h"
 #include "catalog/storage.h"
 #include "catalog/storage_xlog.h"
+#include "catalog/pg_tablespace.h"
 #include "storage/smgr.h"
 #include "utils/catcache.h"
 #include "utils/syscache.h"
@@ -30,6 +31,7 @@ extern "C" {
 // For GpIdentity
 #include "catalog/pg_tablespace.h"
 #include "cdb/cdbvars.h"
+#include "cdb/cdbappendonlyxlog.h"
 
 #ifdef __cplusplus
 }
@@ -159,14 +161,11 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
                                    const relnodeCoord &coords,
                                    const std::string &dest_path) {
   size_t chunkSize;
-  int64 virtual_size;
-
-  auto tmp_path = dest_path + "_yezzey_tmp";
 
   chunkSize = 1 << 20;
   std::vector<char> buffer(chunkSize);
 
-  std::ofstream ostrm(tmp_path, std::ios::binary);
+  std::ofstream ostrm(dest_path, std::ios::binary);
 
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
@@ -178,6 +177,16 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
    * Create external storage reader handle to read segment files
    */
   auto iohandler = YIO(ioadv, GpIdentity.segindex);
+  size_t position = 0;
+
+  RelFileNode rnode;
+  /* coords does not contain tablespace */
+  rnode.spcNode = DEFAULTTABLESPACE_OID; 
+  rnode.dbNode = std::get<0>(coords);
+  rnode.relNode = std::get<1>(coords);
+
+  /*WAL-create new segfile */
+  xlog_ao_insert(rnode, segno, 0, NULL, 0);
 
   while (!iohandler.reader_empty()) {
     size_t amount = chunkSize;
@@ -192,13 +201,16 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
     if (ostrm.fail()) {
       elog(ERROR, "failed to read file from external storage");
     }
+
+    xlog_ao_insert(rnode, segno, position, buffer.data(), amount);
+    position += amount;
   }
 
   if (!iohandler.io_close()) {
-    elog(ERROR, "yezzey: failed to complete %s offloading", tmp_path.c_str());
+    elog(ERROR, "yezzey: failed to complete %s offloading", dest_path.c_str());
   }
-
-  return std::rename(tmp_path.c_str(), dest_path.c_str());
+  return 0;
+  // return std::rename(tmp_path.c_str(), dest_path.c_str());
 }
 
 int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
