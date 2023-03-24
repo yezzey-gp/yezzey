@@ -1,6 +1,5 @@
-#pragma once
 
-#include <gpgme.h>
+#pragma once
 
 #include "blocking_buf.h"
 #include "external_reader.h"
@@ -10,6 +9,9 @@
 #include <memory>
 #include <thread>
 
+#ifdef HAVE_CRYPTO
+
+#include <gpgme.h>
 // first arg should be (expected to be) YIO *
 ssize_t yezzey_crypto_stream_dec_read(void *handler, void *buffer, size_t size);
 
@@ -78,3 +80,37 @@ public:
 
   int io_prepare_crypt(bool dec);
 };
+
+#else
+
+class Crypter {
+public:
+  bool crypto_initialized_{false};
+  // handler thread
+  std::unique_ptr<std::thread> wt{nullptr};
+
+  //
+
+  std::shared_ptr<IOadv> adv_;
+  std::shared_ptr<YReader> reader_{nullptr};
+  std::shared_ptr<YWriter> writer_{nullptr};
+
+  std::shared_ptr<BlockingBuffer> buf_;
+
+  void waitio();
+
+  Crypter(std::shared_ptr<IOadv> adv, std::shared_ptr<YReader> reader,
+          std::shared_ptr<BlockingBuffer> buf);
+
+  Crypter(std::shared_ptr<IOadv> adv, std::shared_ptr<YWriter> writer,
+          std::shared_ptr<BlockingBuffer> buf);
+
+  ~Crypter();
+
+  void io_dispatch_encrypt();
+  void io_dispatch_decrypt();
+
+  int io_prepare_crypt(bool dec);
+};
+
+#endif

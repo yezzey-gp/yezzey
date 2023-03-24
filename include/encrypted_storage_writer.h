@@ -1,5 +1,6 @@
 #pragma once
 
+#include "blocking_buf.h"
 #include "crypto.h"
 #include "io_adv.h"
 #include "ylister.h"

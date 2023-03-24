@@ -13,6 +13,7 @@
 
 #include "external_writer.h"
 
+#include "url.h"
 #include "util.h"
 #include <map>
 #include <string>
@@ -36,48 +37,7 @@ ExternalWriter::ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
 
 // pass yreader
 void ExternalWriter::createWriterHandle() {
-
-  /* Craft url in format
-   *  handler->external_storage_prefix + seg_{segid} + ...
-   * example:
-   * wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
-   *
-   */
-
-  auto prefix = getYezzeyRelationUrl_internal(adv_->nspname, adv_->relname,
-                                              adv_->external_storage_prefix,
-                                              adv_->coords_, segindx_);
-
-  auto content = lister_->list_chunk_names();
-  if (content.size() == 0) {
-    auto url = make_yezzey_url(getYezzeyExtrenalStorageBucket(
-                                   adv_->host.c_str(), adv_->bucket.c_str()) +
-                                   prefix,
-                               {modcount_, modcount_, modcount_, modcount_});
-
-    url = storage_url_add_options(url, adv_->config_path.c_str());
-
-    writer_ = writer_init(url.c_str());
-    return;
-  }
-  /* skip first len(prefix) bytes and parse modcounts */
-  auto largest = parseModcounts(prefix, content.back());
-  if (largest.size() <= 3) {
-    largest.push_back(modcount_);
-  } else if (largest.size() == 4) {
-    largest.back() = modcount_;
-  } else {
-    // else error
-  }
-
-  auto url = make_yezzey_url(
-      getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) +
-          prefix,
-      largest);
-
-  // config path
-  url = storage_url_add_options(url, adv_->config_path.c_str());
-
+  auto url = craftUrl(lister_, adv_, segindx_, modcount_);
   writer_ = writer_init(url.c_str());
 }
 

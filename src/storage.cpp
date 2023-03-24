@@ -21,17 +21,17 @@ extern "C" {
 #include "utils/tqual.h"
 
 #include "catalog/pg_namespace.h"
+#include "catalog/pg_tablespace.h"
 #include "catalog/storage.h"
 #include "catalog/storage_xlog.h"
-#include "catalog/pg_tablespace.h"
 #include "storage/smgr.h"
 #include "utils/catcache.h"
 #include "utils/syscache.h"
 
 // For GpIdentity
 #include "catalog/pg_tablespace.h"
-#include "cdb/cdbvars.h"
 #include "cdb/cdbappendonlyxlog.h"
+#include "cdb/cdbvars.h"
 
 #ifdef __cplusplus
 }
@@ -110,7 +110,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
   virtual_size = yezzey_calc_virtual_relation_size(
       ioadv, GpIdentity.segindex, modcount, external_storage_path);
 
-  elog(WARNING, "yezzey: relation virtaul size calculated: %ld", virtual_size);
+  elog(WARNING, "yezzey: relation virtual size calculated: %ld", virtual_size);
   progress = virtual_size;
   FileSeek(vfd, progress, SEEK_SET);
   rc = 0;
@@ -181,7 +181,7 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
 
   RelFileNode rnode;
   /* coords does not contain tablespace */
-  rnode.spcNode = DEFAULTTABLESPACE_OID; 
+  rnode.spcNode = DEFAULTTABLESPACE_OID;
   rnode.dbNode = std::get<0>(coords);
   rnode.relNode = std::get<1>(coords);
 

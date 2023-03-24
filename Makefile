@@ -29,7 +29,9 @@ OBJS = \
 	src/encrypted_storage_writer.o  src/io_adv.o src/io.o src/crypto.o  \
 	src/external_reader.o src/external_writer.o \
 	src/walg_reader.o \
+	src/walg_writer.o \
 	src/util.o \
+	src/url.o \
 	smgr.o worker.o yezzey.o \
 	../gpcloud_modified_for_yezzey/src/gpcloud.o ../gpcloud_modified_for_yezzey/lib/http_parser.o ../gpcloud_modified_for_yezzey/lib/ini.o $(addprefix ../gpcloud_modified_for_yezzey/src/,$(COMMON_OBJS))
 

@@ -3,7 +3,7 @@
 #include "crypto.h"
 #include "meta.h"
 #include <iostream>
-
+#ifdef HAVE_CRYPTO
 // decrypt operation
 
 // first arg should be (expected to be) YIO *
@@ -203,3 +203,25 @@ void Crypter::io_dispatch_decrypt() {
     // fail_if_err (err);
   });
 }
+
+#else
+
+Crypter::Crypter(std::shared_ptr<IOadv> adv, std::shared_ptr<YReader> reader,
+                 std::shared_ptr<BlockingBuffer> buf)
+    : adv_(adv), reader_(reader), buf_(buf) {}
+
+Crypter::Crypter(std::shared_ptr<IOadv> adv, std::shared_ptr<YWriter> writer,
+                 std::shared_ptr<BlockingBuffer> buf)
+    : adv_(adv), writer_(writer), buf_(buf) {}
+
+Crypter::~Crypter() {}
+
+int Crypter::io_prepare_crypt(bool dec) { return -1; }
+
+void Crypter::io_dispatch_encrypt() {}
+
+void Crypter::waitio() {}
+
+void Crypter::io_dispatch_decrypt() {}
+
+#endif

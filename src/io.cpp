@@ -8,8 +8,11 @@
 #include "encrypted_storage_writer.h"
 #include "storage_lister.h"
 #include "walg_reader.h"
+#include "walg_writer.h"
 
 #define USE_WLG_READER 1
+
+#define USE_WLG_WRITER 1
 
 YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
          const std::string &storage_path)
@@ -21,8 +24,13 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
 #endif
   lister_ = std::make_shared<StorageLister>(adv_, segindx_);
 
+#if USE_WLG_WRITER
+  writer_ = std::make_shared<WALGWriter>(adv_, segindx_, modcount, storage_path,
+                                         lister_);
+#else
   writer_ = std::make_shared<EncryptedStorageWriter>(adv_, segindx_, modcount,
                                                      storage_path, lister_);
+#endif
 }
 
 YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx)

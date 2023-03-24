@@ -1,4 +1,4 @@
-
+#ifdef HAVE_CRYPTO
 #include "encrypted_storage_writer.h"
 #include "external_writer.h"
 #include "meta.h"
@@ -51,3 +51,5 @@ bool EncryptedStorageWriter::close() {
   crypter_->waitio();
   return writer_->close();
 }
+
+#endif
