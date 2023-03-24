@@ -10,9 +10,14 @@
 #include "walg_reader.h"
 #include "walg_writer.h"
 
+#if HAVE_CRYPTO
+#define USE_WLG_WRITER 0
 #define USE_WLG_READER 1
-
+#else
 #define USE_WLG_WRITER 1
+#define USE_WLG_READER 1
+#endif
+
 
 YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
          const std::string &storage_path)

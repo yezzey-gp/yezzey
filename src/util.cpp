@@ -230,11 +230,6 @@ int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
   }
 
   ioh.io_close();
-  // auto content = handler.read_ptr->getKeyList().contents;
-  // for (auto key : content) {
-  //     sz +=
-  //     handler.read_ptr->bucketReader.constructReaderParams(key).getKeySize();
-  // }
   return sz;
 }
 /*XXX: fix cleanup*/

@@ -39,8 +39,9 @@ WALGWriter::WALGWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
 WALGWriter::~WALGWriter() { close(); }
 
 bool WALGWriter::close() {
-  if (initialized_)
+  if (initialized_) {
     wal_g_->close();
+  }
   return true;
 }
 
