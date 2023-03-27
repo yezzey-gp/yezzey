@@ -81,41 +81,29 @@ void yezzey_init(void) {
 
 #ifndef GPBUILD
 void yezzey_open(SMgrRelation reln) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] open");
-  if (!ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdopen(reln);
 }
 #endif
 
 void yezzey_close(SMgrRelation reln, ForkNumber forkNum) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] close");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdclose(reln, forkNum);
 }
 
 void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo) {
-  if (reln->smgr_rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
-    /* skip this*/
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
     return;
   }
-  elog(yezzey_log_level, "[YEZZEY_SMGR] create");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
 
   mdcreate(reln, forkNum, isRedo);
 }
@@ -123,23 +111,20 @@ void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo) {
 #ifdef GPBUILD
 void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
                       bool isRedo) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] create ao");
-  if (!ensureFileLocal((rnode).node, (rnode).backend, MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((rnode).node, (rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdcreate_ao(rnode, segmentFileNum, isRedo);
 }
 #endif
 
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] exists");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   return mdexists(reln, forkNum);
 }
@@ -151,11 +136,10 @@ yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
 yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage)
 #endif
 {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] unlink");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((rnode).node, (rnode).backend, MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((rnode).node, (rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
 #ifndef GPBUILD
   mdunlink(rnode, forkNum, isRedo);
@@ -166,14 +150,10 @@ yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char re
 
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                    char *buffer, bool skipFsync) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] extend");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, blockNum))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                blockNum);
-
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
   mdextend(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
@@ -184,39 +164,30 @@ void
 #endif
 yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum)
 {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] prefetch");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, blockNum))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                blockNum);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   return mdprefetch(reln, forkNum, blockNum);
 }
 
 void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                  char *buffer) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] read");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, blockNum))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                blockNum);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdread(reln, forkNum, blockNum, buffer);
 }
 
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                   char *buffer, bool skipFsync) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] write");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, blockNum))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                blockNum);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdwrite(reln, forkNum, blockNum, buffer, skipFsync);
 }
@@ -224,51 +195,39 @@ void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
 #ifndef GPBUILD
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] writeback");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, blockNum))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                blockNum);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdwriteback(reln, forkNum, blockNum, nBlocks);
 }
 #endif
 
 BlockNumber yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] nblocks");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   return mdnblocks(reln, forkNum);
 }
 
 void yezzey_truncate(SMgrRelation reln, ForkNumber forkNum,
                      BlockNumber nBlocks) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] truncate");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdtruncate(reln, forkNum, nBlocks);
 }
 
 void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
-  elog(yezzey_log_level, "[YEZZEY_SMGR] immedsync");
-  if (forkNum == MAIN_FORKNUM &&
-      !ensureFileLocal((reln->smgr_rnode).node, (reln->smgr_rnode).backend,
-                       MAIN_FORKNUM, (uint32)0))
-    loadFileFromExternalStorage((reln->smgr_rnode).node,
-                                (reln->smgr_rnode).backend, MAIN_FORKNUM,
-                                (uint32)0);
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
 
   mdimmedsync(reln, forkNum);
 }

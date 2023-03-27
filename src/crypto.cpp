@@ -107,7 +107,7 @@ int Crypter::io_prepare_crypt(bool dec) {
     return -1;
   }
   /* Search key for encryption. */
-  err = gpgme_get_key(crypto_ctx, adv_->gpg_key_id.c_str(), &key, 1);
+  err = gpgme_get_key(crypto_ctx, adv_->gpg_key_id.c_str(), &key, 0);
   if (err) {
     auto errstr = gpgme_strerror(err);
     std::cerr << errstr << "\n";

@@ -154,6 +154,8 @@ gpconfig -c yezzey.walg_config_path -v  '/etc/wal-g/wal-g.yaml'
 
 gpconfig -c yezzey.gpg_key_id -v  '4993C0545AF16F9F'
 
+
+gpconfig -c yezzey.gpg_key_id -v  'BF8CF25BCD98A38E99CED4084993C0545AF16F9F'
 gpconfig -c shared_preload_libraries -v yezzey
 
 gpstop -a -i && gpstart -a
