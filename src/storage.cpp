@@ -24,7 +24,6 @@ extern "C" {
 #include "catalog/pg_tablespace.h"
 #include "catalog/storage.h"
 #include "catalog/storage_xlog.h"
-#include "catalog/pg_tablespace.h"
 #include "storage/smgr.h"
 #include "utils/catcache.h"
 #include "utils/syscache.h"
@@ -33,7 +32,6 @@ extern "C" {
 #include "catalog/pg_tablespace.h"
 #include "cdb/cdbappendonlyxlog.h"
 #include "cdb/cdbvars.h"
-#include "cdb/cdbappendonlyxlog.h"
 
 #ifdef __cplusplus
 }

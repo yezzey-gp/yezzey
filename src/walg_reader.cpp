@@ -40,8 +40,12 @@ WALGReader::WALGReader(std::shared_ptr<IOadv> adv, ssize_t segindx)
 WALGReader::~WALGReader() { close(); }
 
 bool WALGReader::close() {
-  if (initialized_)
+  if (initialized_) {
+
+    auto *pbuf = wal_g_->rdbuf();
+    pbuf->kill(SIGTERM);
     wal_g_->close();
+  }
   return true;
 }
 bool WALGReader::read(char *buffer, size_t *amount) {

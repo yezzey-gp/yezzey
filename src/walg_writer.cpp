@@ -47,7 +47,7 @@ bool WALGWriter::close() {
 
 bool WALGWriter::write(const char *buffer, size_t *amount) {
   if (!initialized_) {
-    wal_g_ = make_unique<redi::opstream>(cmd_);
+    wal_g_ = make_unique<redi::pstream>(cmd_);
     initialized_ = true;
   }
 

@@ -18,7 +18,6 @@
 #define USE_WLG_READER 1
 #endif
 
-
 YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
          const std::string &storage_path)
     : adv_(adv), segindx_(segindx), modcount_(modcount) {

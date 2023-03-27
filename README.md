@@ -135,12 +135,25 @@ gpconfig -c yezzey.storage_host -v 's3.mds.yandex.net'
 gpconfig -c yezzey.storage_config -v '/home/gpadmin/yezzey_conf/yezzey_s3.conf'
 
 
-gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbjlkietqrntgo0p2r8/6/segments_005'
-gpconfig -c yezzey.storage_bucket -v 'yandexcloud-dbaas-mdbjlkietqrntgo0p2r8'
+gpconfig -c yezzey.storage_prefix -v "'wal-e/mdb8i7f8cr8ker9ec6a8/6/segments_005'"
+gpconfig -c yezzey.storage_bucket -v "'yandexcloud-dbaas-mdb8i7f8cr8ker9ec6a8'"
+gpconfig -c yezzey.storage_config -v "'/home/gpadmin/gpconfigs/yezzey.conf'"
+gpconfig -c yezzey.storage_host -v "'s3.mds.yandex.net'"
+gpconfig -c yezzey.walg_bin_path -v  "'/usr/bin/wal-g-gp'"
+gpconfig -c yezzey.walg_config_path -v  "'/etc/wal-g/wal-g.yaml'"
+
+gpconfig -c yezzey.gpg_key_id -v  "'4993C0545AF16F9F'"
+
+
+gpconfig -c yezzey.storage_prefix -v 'wal-e/mdb8i7f8cr8ker9ec6a8/6/segments_005'
+gpconfig -c yezzey.storage_bucket -v 'yandexcloud-dbaas-mdb8i7f8cr8ker9ec6a8'
 gpconfig -c yezzey.storage_config -v '/home/gpadmin/gpconfigs/yezzey.conf'
 gpconfig -c yezzey.storage_host -v 's3.mds.yandex.net'
 gpconfig -c yezzey.walg_bin_path -v  '/usr/bin/wal-g-gp'
 gpconfig -c yezzey.walg_config_path -v  '/etc/wal-g/wal-g.yaml'
 
+gpconfig -c yezzey.gpg_key_id -v  '4993C0545AF16F9F'
 
-gpconfig -c yezzey.gpg_key_id -v  "'6AEAC2457EEBAA14'"
+gpconfig -c shared_preload_libraries -v yezzey
+
+gpstop -a -i && gpstart -a

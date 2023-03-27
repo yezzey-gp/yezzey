@@ -27,7 +27,7 @@ private:
   ssize_t segindx_;
   std::string cmd_;
 
-  std::unique_ptr<redi::opstream> wal_g_{nullptr};
+  std::unique_ptr<redi::pstream> wal_g_{nullptr};
   bool initialized_{false};
 
   ssize_t modcount_;
