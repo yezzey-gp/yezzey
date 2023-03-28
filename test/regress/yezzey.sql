@@ -137,7 +137,7 @@ INSERT INTO regaotylol SELECT * FROM generate_series(1, 100000);
 SELECT count(1) FROM regaotylol;
 
 DELETE FROM regaotylol;
-INSERT INTO regaotylol SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
+INSERT INTO regaotylol SELECT * FROM generate_series(1, 100000);
 VACUUM regaotylol;
 SELECT count(1) FROM regaotylol;
 
@@ -153,7 +153,7 @@ INSERT INTO regaotylol SELECT * FROM generate_series(1, 100000);
 SELECT count(1) FROM regaotylol;
 
 DELETE FROM regaotylol;
-INSERT INTO regaotylol SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
+INSERT INTO regaotylol SELECT * FROM generate_series(1, 100000);
 VACUUM regaotylol;
 SELECT count(1) FROM regaotylol;
 

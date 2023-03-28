@@ -20,11 +20,19 @@ LANGUAGE C STRICT;
 
 
 CREATE OR REPLACE FUNCTION
-yezzey_load_relation(reloid OID, dest_path TEXT)
+yezzey_load_relation_seg(reloid OID, dest_path TEXT)
 RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
 EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION
+yezzey_load_relation(reloid OID, dest_path TEXT)
+RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON MASTER
 LANGUAGE C STRICT;
 
 CREATE OR REPLACE FUNCTION yezzey_offload_relation_to_external_path(
@@ -67,8 +75,13 @@ VOLATILE
 EXECUTE ON MASTER
 LANGUAGE C STRICT;
 
+CREATE OR REPLACE FUNCTION yezzey_define_relation_offload_policy_internal_seg(reloid OID) RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
 
-CREATE TYPE offload_policy AS ENUM ('local', 'remote_always', 'cron');
+CREATE TYPE offload_policy AS ENUM ('remote_always', 'cache_writes');
 
 -- manually/automatically relocated relations
 CREATE TABLE yezzey.offload_metadata(
@@ -97,11 +110,15 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
     END IF;
+
+    PERFORM yezzey_define_relation_offload_policy_internal_seg(
+        v_reloid
+    );
     PERFORM yezzey_define_relation_offload_policy_internal(
         v_reloid
     );
     INSERT INTO yezzey.offload_metadata VALUES(v_reloid, i_policy, NULL, NOW());
-    -- get xid before executing offload realtion func
+    -- -- get xid before executing offload realtion func
     PERFORM yezzey_offload_relation(
         v_reloid,
         TRUE
@@ -235,6 +252,11 @@ BEGIN
         RAISE WARNING'relation % is not in offload metadata table', load_relname;
     END IF;
     UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    PERFORM yezzey_load_relation_seg(
+        v_reloid,
+        ''-- omit dest path 
+    );
+
     PERFORM yezzey_load_relation(
         v_reloid,
         ''-- omit dest path 

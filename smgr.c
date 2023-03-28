@@ -123,7 +123,7 @@ void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum) {
   if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
     /*do nothing */
-    return;
+    return true;
   }
 
   return mdexists(reln, forkNum);
@@ -166,7 +166,11 @@ yezzey_prefetch(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum)
 {
   if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
     /*do nothing */
+#if PG_VERSION_NUM >= 130000
+    return true;
+#else
     return;
+#endif
   }
 
   return mdprefetch(reln, forkNum, blockNum);
@@ -207,7 +211,7 @@ void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
 BlockNumber yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum) {
   if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
     /*do nothing */
-    return;
+    return 0;
   }
 
   return mdnblocks(reln, forkNum);

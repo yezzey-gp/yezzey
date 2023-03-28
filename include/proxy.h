@@ -43,6 +43,6 @@ EXTERNC SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
                                          int fileMode, int64 modcount);
 EXTERNC int yezzey_FileWrite(SMGRFile file, char *buffer, int amount);
 EXTERNC int yezzey_FileRead(SMGRFile file, char *buffer, int amount);
-EXTERNC int yezzey_FileTruncate(SMGRFile file, int offset);
+EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset);
 
 #endif /* YEZZEY_PROXY_H */

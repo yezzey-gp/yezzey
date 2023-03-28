@@ -110,7 +110,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
   virtual_size = yezzey_calc_virtual_relation_size(
       ioadv, GpIdentity.segindex, modcount, external_storage_path);
 
-  elog(WARNING, "yezzey: relation virtual size calculated: %ld", virtual_size);
+  elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
   progress = virtual_size;
   FileSeek(vfd, progress, SEEK_SET);
   rc = 0;

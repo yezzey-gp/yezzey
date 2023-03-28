@@ -338,7 +338,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
   return FileRead(actual_fd, buffer, amount);
 }
 
-int yezzey_FileTruncate(SMGRFile file, int offset) {
+int yezzey_FileTruncate(SMGRFile file, int64 offset) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     /* Leave external storage file untouched

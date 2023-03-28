@@ -37,6 +37,11 @@
 #include "utils/catcache.h"
 #include "utils/syscache.h"
 
+#include "catalog/heap.h"
+#include "catalog/pg_namespace.h"
+
+#include "nodes/primnodes.h"
+
 #include "yezzey.h"
 
 #include "storage.h"
@@ -65,12 +70,14 @@ PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(yezzey_offload_relation);
 PG_FUNCTION_INFO_V1(yezzey_load_relation);
+PG_FUNCTION_INFO_V1(yezzey_load_relation_seg);
 PG_FUNCTION_INFO_V1(yezzey_force_segment_offload);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_internal);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_status_per_filesegment);
 PG_FUNCTION_INFO_V1(
     yezzey_relation_describe_external_storage_structure_internal);
 PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal);
+PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal_seg);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_to_external_path);
 PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
 
@@ -97,10 +104,115 @@ void yezzey_log_smgroffload(RelFileNode *rnode) {
   XLogInsert(RM_SMGR_ID, XLOG_SMGR_CREATE, &rdata);
 }
 
+int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid, bool remove_locally,
+                                     const char *external_storage_path);
+
+int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
+                                     const char *external_storage_path);
+
+void
+YezzeyCreateAuxIndex(Relation aorel, Oid reloid);
+
+static void ATExecSetTableSpace(Relation aorel, Oid reloid,
+                                Oid desttablespace_oid);
+
+void
+YezzeyCreateAuxIndex(Relation aorel, Oid reloid) {
+
+  Oid yezzey_ao_auxiliary_relid;
+	char yezzey_ao_auxiliary_relname[NAMEDATALEN];
+  TupleDesc tupdesc;
+
+
+	ObjectAddress baseobject;
+	ObjectAddress yezzey_ao_auxiliaryobject;
+
+#define YEZZEY_AUX_INDEX_COLUMN_NUM 5
+
+  tupdesc = CreateTemplateTupleDesc(YEZZEY_AUX_INDEX_COLUMN_NUM, false);
+
+  TupleDescInitEntry(tupdesc, (AttrNumber) 1,
+              "segno",
+              INT4OID,
+              -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber) 2,
+              "offset_start",
+              INT8OID,
+              -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber) 3,
+              "offset_finish",
+              INT8OID,
+              -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber) 4,
+          "modcount",
+          INT8OID,
+          -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber) 5,
+              "external_path",
+              TEXTOID,
+              -1, 0);
+
+	snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
+			 "%s_%u", "yezzey_virtual_index", reloid);
+
+	yezzey_ao_auxiliary_relid = heap_create_with_catalog(
+                            yezzey_ao_auxiliary_relname /* relname */,
+											      YEZZEY_AUX_NAMESPACE /* namespace */,
+											      0 /* tablespace */,
+											      GetNewObjectId() /* relid */,
+												    GetNewObjectId() /* reltype oid */,
+												    InvalidOid /* reloftypeid */,
+											      aorel->rd_rel->relowner /* owner */,
+											      tupdesc /* rel tuple */,
+												    NIL,
+											      InvalidOid  /* relam */ ,
+											      RELKIND_YEZZEYINDEX,
+												    aorel->rd_rel->relpersistence,
+											      RELSTORAGE_HEAP,
+											      aorel->rd_rel->relisshared,
+												    RelationIsMapped(aorel),
+											      true,
+											      0,
+											      ONCOMMIT_NOOP,
+											      NULL /* GP Policy */,
+											      (Datum) 0,
+												    false /* use_user_acl */,
+											      true,
+												    true,
+												    false /* valid_opts */,
+												    false /* is_part_child */,
+												    false /* is part parent */);
+
+
+	/* Make this table visible, else yezzey virtual index creation will fail */
+	CommandCounterIncrement();
+
+	/*
+	 * Register dependency from the auxiliary table to the master, so that the
+	 * aoseg table will be deleted if the master is.
+	 */
+	baseobject.classId = RelationRelationId;
+	baseobject.objectId = reloid;
+	baseobject.objectSubId = 0;
+	yezzey_ao_auxiliaryobject.classId = RelationRelationId;
+	yezzey_ao_auxiliaryobject.objectId = yezzey_ao_auxiliary_relid;
+	yezzey_ao_auxiliaryobject.objectSubId = 0;
+
+	recordDependencyOn(&yezzey_ao_auxiliaryobject, &baseobject, DEPENDENCY_INTERNAL);
+
+
+	/*
+	 * Make changes visible
+	 */
+	CommandCounterIncrement();
+}
+
 Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   Oid reloid;
   Oid yezzey_ext_oid;
   ObjectAddress relationAddr, extensionAddr;
+  int rc;
+  Relation aorel;
 
   reloid = PG_GETARG_OID(0);
 
@@ -121,14 +233,38 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   elog(yezzey_log_level, "recording dependency on yezzey for relation %d",
        reloid);
 
+    /*
+	 * Create auxularry yezzey table to track external storage 
+   * chunks
+   */
+  aorel = relation_open(reloid, AccessExclusiveLock);
+  RelationOpenSmgr(aorel);
+
+  if ((rc = yezzey_offload_relation_internal_rel(aorel, reloid, true, NULL)) < 0) {
+    elog(ERROR, "failed to offload relation (oid=%d) to external storage: return code %d",
+        reloid, rc);
+  }
+
+  (void) YezzeyCreateAuxIndex(aorel, reloid);
+
+  /* change relation tablespace */
+  ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
+
   /*
    * OK, add the dependency.
    */
   // recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_EXTENSION);
-  recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_NORMAL);
+  // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_NORMAL);
+  recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_NORMAL);
   // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_INTERNAL);
+  relation_close(aorel, AccessExclusiveLock);
 
   PG_RETURN_VOID();
+}
+
+
+Datum yezzey_define_relation_offload_policy_internal_seg(PG_FUNCTION_ARGS) {
+  return yezzey_define_relation_offload_policy_internal(fcinfo);
 }
 
 /*
@@ -253,6 +389,29 @@ static void ATExecSetTableSpace(Relation aorel, Oid reloid,
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path) {
   Relation aorel;
+  int rc;
+  /* need sanity checks */
+
+  /*  This mode guarantees that the holder is the only transaction accessing the
+   * table in any way. we need to be sure, thar no other transaction either
+   * reads or write to given relation because we are going to delete relation
+   * from local storage
+   */
+  aorel = relation_open(reloid, AccessExclusiveLock);
+  RelationOpenSmgr(aorel);
+
+  rc = yezzey_offload_relation_internal_rel(aorel, reloid, remove_locally, external_storage_path);
+
+  relation_close(aorel, AccessExclusiveLock);
+  return rc;
+}
+
+/*
+* yezzey_offload_relation_internal_rel: do the offloading job
+* aorel should be locked in AccessExclusiveLock
+*/
+int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid, bool remove_locally,
+                                     const char *external_storage_path) {
   int i;
   int segno;
   int total_segfiles;
@@ -266,15 +425,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   int pseudosegno;
   int inat;
 
-  /* need sanity checks */
 
-  /*  This mode guarantees that the holder is the only transaction accessing the
-   * table in any way. we need to be sure, thar no other transaction either
-   * reads or write to given relation because we are going to delete relation
-   * from local storage
-   */
-  aorel = relation_open(reloid, AccessExclusiveLock);
-  RelationOpenSmgr(aorel);
   nvp = aorel->rd_att->natts;
 
   /*
@@ -291,7 +442,6 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   appendOnlyMetaDataSnapshot = SnapshotSelf;
 
   if (aorel->rd_rel->relstorage == 'a') {
-
     /* Get information about all the file segments we need to scan */
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
@@ -368,13 +518,10 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   // yezzey_log_smgroffload(&aorel->rd_node);
   // smgrcreate(aorel->rd_smgr, YEZZEY_FORKNUM, false);
   if (remove_locally) {
-    ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
   }
 
   // smgrclose(aorel->rd_smgr);
   // aorel->rd_smgr = NULL;
-
-  relation_close(aorel, AccessExclusiveLock);
 
   return 0;
 }
@@ -390,6 +537,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   FileSegInfo **segfile_array;
   AOCSFileSegInfo **segfile_array_cs;
   Snapshot appendOnlyMetaDataSnapshot;
+  ObjectAddress object;
   int rc;
 
   /*  XXX: maybe fix lock here to take more granular lock
@@ -415,7 +563,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
     elog(ERROR, "attempted to load non-offloaded relation");
   }
 
-  ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
+  (void) ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
   if (aorel->rd_rel->relstorage == 'a') {
@@ -438,7 +586,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
       FreeAllSegFileInfo(segfile_array, total_segfiles);
       pfree(segfile_array);
     }
-  } else {
+  } else if (aorel->rd_rel->relstorage == 'c'){
     /* ao columns, relstorage == 'c' */
     segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
@@ -463,7 +611,18 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
       FreeAllAOCSSegFileInfo(segfile_array_cs, total_segfiles);
       pfree(segfile_array_cs);
     }
+  } else {
+    elog(ERROR, "not an AO/AOCS relation, no action performed");
   }
+
+
+  /* Perform actual deletion of yezzey virtual index */
+
+  object.classId = RelationRelationId;
+  object.objectId = reloid;
+  object.objectSubId = 0;
+  performDeletion(&object, DROP_CASCADE, PERFORM_DELETION_INTERNAL);
+
   /* cleanup */
 
   relation_close(aorel, AccessExclusiveLock);
@@ -493,6 +652,11 @@ Datum yezzey_load_relation(PG_FUNCTION_ARGS) {
   }
 
   PG_RETURN_VOID();
+}
+
+
+Datum yezzey_load_relation_seg(PG_FUNCTION_ARGS) {
+  return yezzey_load_relation(fcinfo);
 }
 
 Datum yezzey_offload_relation(PG_FUNCTION_ARGS) {
@@ -544,7 +708,6 @@ Datum yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS) {
 Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
   Oid reloid;
   Relation aorel;
-  StringInfoData local_path;
   RelFileNode rnode;
   int32 segno;
   char *pgptr;
@@ -559,10 +722,6 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
 
   rnode = aorel->rd_node;
 
-  initStringInfo(&local_path);
-  appendStringInfo(&local_path, "base/%d/%d.%d", rnode.dbNode, rnode.relNode,
-                   segno);
-
   tp = SearchSysCache1(NAMESPACEOID,
                        ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
@@ -575,9 +734,9 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
          aorel->rd_rel->relname.data);
   }
 
-  getYezzeyExternalStoragePath(nspname, aorel->rd_rel->relname.data,
+  (void) getYezzeyExternalStoragePathByCoords(nspname, aorel->rd_rel->relname.data,
                                storage_host /*host*/, storage_bucket /*bucket*/,
-                               storage_prefix /*prefix*/, local_path.data,
+                               storage_prefix /*prefix*/, rnode.dbNode, rnode.relNode, segno,
                                GpIdentity.segindex, &ptr);
 
   pgptr = pstrdup(ptr);
