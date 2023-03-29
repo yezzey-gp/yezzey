@@ -2,12 +2,9 @@
 
 #include <openssl/md5.h>
 
-
-
 #ifdef __cplusplus
 extern "C" {
 #include "postgres.h"
-
 }
 
 #endif
@@ -69,11 +66,9 @@ EXTERNC void getYezzeyExternalStoragePath(const char *nspname,
                                           const char *filename, int32_t segid,
                                           char **dest);
 
-EXTERNC void getYezzeyExternalStoragePathByCoords(const char *nspname, const char *relname,
-                                  const char *host, const char *bucket,
-                                  const char *storage_prefix,
-                                  Oid dbNode, Oid relNode, int32_t segblockno /* segment no*/,
-                                  int32_t segid,
-                                  char **dest);
+EXTERNC void getYezzeyExternalStoragePathByCoords(
+    const char *nspname, const char *relname, const char *host,
+    const char *bucket, const char *storage_prefix, Oid dbNode, Oid relNode,
+    int32_t segblockno /* segment no*/, int32_t segid, char **dest);
 
 #undef EXTERNC

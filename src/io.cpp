@@ -59,6 +59,9 @@ bool YIO::io_write(char *buffer, size_t *amount) {
     *amount = -1;
     return false;
   }
+
+  /* insert new chuck in yezzey virtual index */
+
   return writer_->write(buffer, amount);
 }
 

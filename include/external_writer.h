@@ -38,4 +38,10 @@ protected:
   GPWriter *writer_{nullptr};
   std::shared_ptr<YLister> lister_{nullptr};
   bool cleaned_{false};
+
+private:
+  const std::string storage_offload_path_;
+
+public:
+  std::string getExternalStoragePath() { return storage_offload_path_; }
 };

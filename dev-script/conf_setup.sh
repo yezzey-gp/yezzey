@@ -21,3 +21,10 @@ gpconfig -c shared_preload_libraries -v yezzey
 gpstop -a -i && gpstart -a
 
 psql postgres -f ./gpcontrib/yezzey/test/regress/yezzey.sql
+
+
+
+make -j32 install 
+gpstop -a -i && gpstart -a
+
+psql postgres -f ./gpcontrib/yezzey/test/regress/yezzey.sql

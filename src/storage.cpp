@@ -127,8 +127,9 @@ int offloadFileToExternalStorage(const std::string &nspname,
       FileClose(vfd);
       return rc;
     }
-    if (rc == 0)
+    if (rc == 0) {
       continue;
+    }
 
     tot = 0;
     char *bptr = buffer.data();
@@ -136,7 +137,6 @@ int offloadFileToExternalStorage(const std::string &nspname,
     while (tot < rc) {
       size_t currptrtot = rc - tot;
       if (!iohandler.io_write(bptr, &currptrtot)) {
-
         FileClose(vfd);
         return -1;
       }
@@ -156,7 +156,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
   return rc;
 }
 
-int loadSegmentFromExternalStorage(const std::string &nspname,
+int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
                                    const std::string &relname, int segno,
                                    const relnodeCoord &coords,
                                    const std::string &dest_path) {
@@ -182,8 +182,8 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
   RelFileNode rnode;
   /* coords does not contain tablespace */
   rnode.spcNode = DEFAULTTABLESPACE_OID;
-  rnode.dbNode = std::get<0>(coords);
-  rnode.relNode = std::get<1>(coords);
+  rnode.dbNode = rel->rd_node.dbNode;
+  rnode.relNode = rel->rd_node.relNode;
 
   /*WAL-create new segfile */
   xlog_ao_insert(rnode, segno, 0, NULL, 0);
@@ -213,10 +213,11 @@ int loadSegmentFromExternalStorage(const std::string &nspname,
   // return std::rename(tmp_path.c_str(), dest_path.c_str());
 }
 
-int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
+int loadRelationSegment(Relation aorel, Oid orig_relnode, int segno,
+                        const char *dest_path) {
   auto rnode = aorel->rd_node;
 
-  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
+  auto coords = relnodeCoord{rnode.dbNode, orig_relnode, segno};
 
   std::string path;
   if (dest_path) {
@@ -249,7 +250,8 @@ int loadRelationSegment(Relation aorel, int segno, const char *dest_path) {
     ReleaseSysCache(tp);
   }
 
-  return loadSegmentFromExternalStorage(nspname, relname, segno, coords, path);
+  return loadSegmentFromExternalStorage(aorel, nspname, relname, segno, coords,
+                                        path);
 }
 
 bool ensureFileLocal(RelFileNode rnode, BackendId backend, ForkNumber forkNum,

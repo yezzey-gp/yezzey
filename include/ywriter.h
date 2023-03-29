@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 class YWriter {
 public:
   virtual ~YWriter(){
@@ -13,4 +15,6 @@ public:
 
   // This should be reentrant, has no side effects when called multiple times.
   virtual bool close() = 0;
+
+  virtual std::string getExternalStoragePath() = 0;
 };

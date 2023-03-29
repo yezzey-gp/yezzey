@@ -24,6 +24,10 @@ public:
 
   int prepare();
 
+  std::string getExternalStoragePath() {
+    return writer_->getExternalStoragePath();
+  }
+
 private:
   std::shared_ptr<IOadv> adv_;
   std::shared_ptr<BlockingBuffer> buf_;

@@ -52,7 +52,7 @@ EXTERNC int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
                                    int64 logicalEof,
                                    const char *external_storage_path);
 
-EXTERNC int loadRelationSegment(Relation aorel, int segno,
+EXTERNC int loadRelationSegment(Relation aorel, Oid origrelfilenode, int segno,
                                 const char *dest_path);
 
 EXTERNC bool ensureFileLocal(RelFileNode rnode, BackendId backend,

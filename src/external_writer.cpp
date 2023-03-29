@@ -26,7 +26,9 @@ ExternalWriter::ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                                const std::string &storage_path,
                                std::shared_ptr<YLister> lister)
     : adv_(adv), segindx_(segindx), modcount_(modcount),
-      storage_path_(storage_path), lister_(lister) {
+      storage_path_(storage_path), lister_(lister),
+      storage_offload_path_(craftStoragePath(lister_, adv_, segindx, modcount,
+                                             adv_->external_storage_prefix)) {
 
   if (storage_path.size()) {
     createWriterHandleToPath();
