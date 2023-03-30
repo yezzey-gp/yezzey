@@ -50,6 +50,7 @@
 
 #include "storage.h"
 #include "util.h"
+#include "virtual_index.h"
 
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
@@ -115,133 +116,8 @@ int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid,
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
 
-void YezzeyCreateAuxIndex(Relation aorel, Oid reloid);
-
-Oid YezzeyFindAuxIndex(Oid reloid);
-
 static void ATExecSetTableSpace(Relation aorel, Oid reloid,
                                 Oid desttablespace_oid);
-
-void YezzeyCreateAuxIndex(Relation aorel, Oid reloid) {
-
-  Oid yezzey_ao_auxiliary_relid;
-  char yezzey_ao_auxiliary_relname[NAMEDATALEN];
-  TupleDesc tupdesc;
-
-  ObjectAddress baseobject;
-  ObjectAddress yezzey_ao_auxiliaryobject;
-
-#define YEZZEY_AUX_INDEX_COLUMN_NUM 5
-
-  tupdesc = CreateTemplateTupleDesc(YEZZEY_AUX_INDEX_COLUMN_NUM, false);
-
-  TupleDescInitEntry(tupdesc, (AttrNumber)1, "segno", INT4OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)2, "offset_start", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)3, "offset_finish", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)4, "modcount", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)5, "external_path", TEXTOID, -1, 0);
-
-  snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
-           "%s_%u", "yezzey_virtual_index", reloid);
-
-  yezzey_ao_auxiliary_relid = heap_create_with_catalog(
-      yezzey_ao_auxiliary_relname /* relname */,
-      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
-      GetNewObjectId() /* relid */, GetNewObjectId() /* reltype oid */,
-      InvalidOid /* reloftypeid */, aorel->rd_rel->relowner /* owner */,
-      tupdesc /* rel tuple */, NIL, InvalidOid /* relam */, RELKIND_YEZZEYINDEX,
-      aorel->rd_rel->relpersistence, RELSTORAGE_HEAP,
-      aorel->rd_rel->relisshared, RelationIsMapped(aorel), true, 0,
-      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
-      true, true, false /* valid_opts */, false /* is_part_child */,
-      false /* is part parent */);
-
-  /* Make this table visible, else yezzey virtual index creation will fail */
-  CommandCounterIncrement();
-
-  /*
-   * Register dependency from the auxiliary table to the master, so that the
-   * aoseg table will be deleted if the master is.
-   */
-  baseobject.classId = RelationRelationId;
-  baseobject.objectId = reloid;
-  baseobject.objectSubId = 0;
-  yezzey_ao_auxiliaryobject.classId = RelationRelationId;
-  yezzey_ao_auxiliaryobject.objectId = yezzey_ao_auxiliary_relid;
-  yezzey_ao_auxiliaryobject.objectSubId = 0;
-
-  recordDependencyOn(&yezzey_ao_auxiliaryobject, &baseobject,
-                     DEPENDENCY_INTERNAL);
-
-  /*
-   * Make changes visible
-   */
-  CommandCounterIncrement();
-}
-
-Oid YezzeyFindAuxIndex(Oid reloid) {
-  HeapTuple tup;
-  Oid operatorObjectId;
-  char yezzey_ao_auxiliary_relname[NAMEDATALEN];
-  SysScanDesc scan;
-  ScanKeyData skey[2];
-  Relation pg_class;
-  Oid yezzey_virtual_index_oid;
-
-  snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
-           "%s_%u", "yezzey_virtual_index", reloid);
-
-  // tup = SearchSysCache4(RELOID,
-  // 					  PointerGetDatum(yezzey_ao_auxiliary_relname),
-  // 					  ObjectIdGetDatum(leftObjectId),
-  // 					  ObjectIdGetDatum(rightObjectId),
-  // 					  ObjectIdGetDatum(operatorNamespace));
-  // if (HeapTupleIsValid(tup))
-  // {
-  // }
-  /*
-   * Check the pg_appendonly relation to be certain the ao table
-   * is there.
-   */
-  pg_class = heap_open(RelationRelationId, AccessShareLock);
-
-  ScanKeyInit(&skey[0], Anum_pg_class_relname, BTEqualStrategyNumber, F_NAMEEQ,
-              CStringGetDatum(yezzey_ao_auxiliary_relname));
-
-  ScanKeyInit(&skey[1], Anum_pg_class_relnamespace, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(YEZZEY_AUX_NAMESPACE));
-
-  /* FIXME: isn't there a mode in relcache code to *not* use an index? Should
-   * we do something here to obey it?
-   */
-  scan = systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 2, skey);
-
-  //   scan =
-  // systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 1, skey);
-
-  if (HeapTupleIsValid(tup = systable_getnext(scan))) {
-    yezzey_virtual_index_oid = HeapTupleGetOid(tup);
-  } else {
-    elog(ERROR, "could not find yezzey virtual index oid for relation \"%d\"",
-         reloid);
-  }
-
-  // while (HeapTupleIsValid(tup = systable_getnext(scan))) {
-  //   if (strcmp(((Form_pg_class) GETSTRUCT(tup)) ->relname.data,
-  //   yezzey_ao_auxiliary_relname)) {
-  //     continue;
-  //   }
-  //   yezzey_virtual_index_oid = HeapTupleGetOid(tup);
-  //   // elog(ERROR, "could not find yezzey virtual index oid for relation
-  //   \"%d\"",
-  //   //      reloid);
-  // }
-
-  systable_endscan(scan);
-  heap_close(pg_class, AccessShareLock);
-
-  return yezzey_virtual_index_oid;
-}
 
 Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   Oid reloid;
@@ -582,24 +458,6 @@ int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid,
 
   return 0;
 }
-
-void emptyYezzeyIndex(Oid yezzey_index_oid) {
-  HeapTuple tuple;
-  SysScanDesc desc;
-  Relation rel;
-
-  /* DELETE FROM yezzey.yezzey_virtual_index_<oid> */
-  rel = heap_open(yezzey_index_oid, RowExclusiveLock);
-
-  desc = heap_beginscan(rel, SnapshotAny, 0, NULL);
-
-  while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection)))
-    simple_heap_delete(rel, &tuple->t_self);
-
-  heap_endscan(desc);
-  heap_close(rel, RowExclusiveLock);
-
-} /* end MetaTrackDropObject */
 
 int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   Relation aorel;

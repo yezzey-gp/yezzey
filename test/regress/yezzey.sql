@@ -15,8 +15,10 @@ SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
 SELECT count(1) FROM regaoty;
+SELECT * FROM regaoty LIMIT 5;
 INSERT INTO regaoty SELECT * FROM generate_series(1, 100000);
 SELECT count(1) FROM regaoty;
+SELECT * FROM regaoty LIMIT 5;
 
 SELECT * FROM yezzey_offload_relation_status('regaoty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
@@ -24,13 +26,16 @@ SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
 ALTER TABLE regaoty ADD COLUMN j INT;
 SELECT count(1) FROM regaoty;
+SELECT * FROM regaoty LIMIT 5;
 INSERT INTO regaoty SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 SELECT count(1) FROM regaoty;
+SELECT * FROM regaoty LIMIT 5;
 
 DELETE FROM regaoty;
 INSERT INTO regaoty SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 VACUUM regaoty;
 SELECT count(1) FROM regaoty;
+SELECT * FROM regaoty LIMIT 5;
 
 SELECT * FROM yezzey_offload_relation_status('regaoty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
@@ -38,6 +43,7 @@ SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
 SELECT yezzey_load_relation('regaoty');
 SELECT count(1) FROM regaoty;
+SELECT * FROM regaoty LIMIT 5;
 VACUUM regaoty;
 
 \! echo AO simple test OK
@@ -53,8 +59,10 @@ SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaocsty');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaocsty');
 
 SELECT count(1) FROM regaocsty;
+SELECT * FROM regaocsty LIMIT 5;
 INSERT INTO regaocsty SELECT * FROM generate_series(1, 100000);
 SELECT count(1) FROM regaocsty;
+SELECT * FROM regaocsty LIMIT 5;
 
 SELECT * FROM yezzey_offload_relation_status('regaocsty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaocsty');
@@ -62,13 +70,16 @@ SELECT * FROM yezzey_relation_describe_external_storage_structure('regaocsty');
 
 ALTER TABLE regaocsty ADD COLUMN j INT;
 SELECT count(1) FROM regaocsty;
+SELECT * FROM regaocsty LIMIT 5;
 INSERT INTO regaocsty SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 SELECT count(1) FROM regaocsty;
+SELECT * FROM regaocsty LIMIT 5;
 
 DELETE FROM regaocsty;
 INSERT INTO regaocsty SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 VACUUM regaocsty;
 SELECT count(1) FROM regaocsty;
+SELECT * FROM regaocsty LIMIT 5;
 
 SELECT * FROM yezzey_offload_relation_status('regaocsty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaocsty');
@@ -76,12 +87,13 @@ SELECT * FROM yezzey_relation_describe_external_storage_structure('regaocsty');
 
 SELECT yezzey_load_relation('regaocsty');
 SELECT count(1) FROM regaocsty;
+SELECT * FROM regaocsty LIMIT 5;
 
 DELETE FROM regaocsty;
 INSERT INTO regaocsty SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 VACUUM regaocsty;
 SELECT count(1) FROM regaocsty;
-
+SELECT * FROM regaocsty LIMIT 5;
 \! echo AOCS simple test OK
 
 -- compressed
@@ -95,8 +107,10 @@ SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaotcy');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaotcy');
 
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 INSERT INTO regaotcy SELECT * FROM generate_series(1, 100000);
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 
 SELECT * FROM yezzey_offload_relation_status('regaotcy');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaotcy');
@@ -104,13 +118,16 @@ SELECT * FROM yezzey_relation_describe_external_storage_structure('regaotcy');
 
 ALTER TABLE regaotcy ADD COLUMN j INT;
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 INSERT INTO regaotcy SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 
 DELETE FROM regaotcy;
 INSERT INTO regaotcy SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 VACUUM regaotcy;
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 
 SELECT * FROM yezzey_offload_relation_status('regaotcy');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaotcy');
@@ -118,11 +135,13 @@ SELECT * FROM yezzey_relation_describe_external_storage_structure('regaotcy');
 
 SELECT yezzey_load_relation('regaotcy');
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 
 DELETE FROM regaotcy;
 INSERT INTO regaotcy SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
 VACUUM regaotcy;
 SELECT count(1) FROM regaotcy;
+SELECT * FROM regaotcy LIMIT 5;
 
 \! echo AO compressed simple test OK
 

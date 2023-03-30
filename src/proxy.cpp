@@ -4,6 +4,7 @@
 
 #include "meta.h"
 #include "unordered_map"
+#include "virtual_index.h"
 
 #include "util.h"
 
@@ -28,6 +29,8 @@ typedef struct YVirtFD {
   int fileFlags;
   int fileMode;
 
+  Oid reloid;
+
   int64 offset;
   int64 virtualSize;
   int64 modcount;
@@ -36,7 +39,8 @@ typedef struct YVirtFD {
 
   YVirtFD()
       : y_vfd(-1), localTmpVfd(0), handler(nullptr), fileFlags(0), fileMode(0),
-        offset(0), virtualSize(0), modcount(0), offloaded(false) {}
+        reloid(InvalidOid), offset(0), virtualSize(0), modcount(0),
+        offloaded(false) {}
 
   YVirtFD &operator=(YVirtFD &&vfd) {
     handler = std::move(vfd.handler);
@@ -125,7 +129,7 @@ int yezzey_FileSync(SMGRFile file) {
   return FileSync(actual_fd);
 }
 
-SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
+SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
                                  FileName fileName, int fileFlags, int fileMode,
                                  int64 modcount) {
   elog(yezzey_ao_log_level,
@@ -185,13 +189,6 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
               YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
               std::string(walg_config_path), use_gpg_crypto);
           switch (fileFlags) {
-          case O_WRONLY:
-            /* allocate handle struct */
-            if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
-              YVirtFD_cache.erase(yezzey_fd);
-              return -1;
-            }
-            break;
           case O_RDONLY:
             /* allocate handle struct */
             if (readprepare(ioadv, yezzey_fd) == -1) {
@@ -200,10 +197,20 @@ SMGRFile yezzey_AORelOpenSegFile(char *nspname, char *relname,
             }
             break;
           case O_RDWR:
+          /* fall */
+          case O_WRONLY:
+            /* allocate handle struct */
             if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
               YVirtFD_cache.erase(yezzey_fd);
               return -1;
             }
+            /* insert entry in yezzey index */
+            YVirtFD_cache[yezzey_fd].reloid = reloid;
+            YezzeyVirtualIndexInsert(
+                YezzeyFindAuxIndex(reloid),
+                std::get<2>(ioadv->coords_) /* segindex*/, modcount,
+                YVirtFD_cache[yezzey_fd]
+                    .handler->writer_->getExternalStoragePath());
             break;
           default:
             break;

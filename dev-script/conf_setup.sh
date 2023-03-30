@@ -24,6 +24,12 @@ psql postgres -f ./gpcontrib/yezzey/test/regress/yezzey.sql
 
 
 
+source gpAux/gpdemo/gpdemo-env.sh
+source /usr/local/gpdb/greenplum_path.sh
+export GPHOME=/usr/local/gpdb/
+export PATH=$PATH:/usr/local/gpdb/bin
+
+
 make -j32 install 
 gpstop -a -i && gpstart -a
 
