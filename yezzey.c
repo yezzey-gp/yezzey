@@ -109,8 +109,7 @@ void yezzey_log_smgroffload(RelFileNode *rnode) {
   XLogInsert(RM_SMGR_ID, XLOG_SMGR_CREATE, &rdata);
 }
 
-int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid,
-                                         bool remove_locally,
+int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
                                          const char *external_storage_path);
 
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
@@ -125,6 +124,7 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   ObjectAddress relationAddr, extensionAddr;
   int rc;
   Relation aorel;
+  Oid yandexoid;
 
   reloid = PG_GETARG_OID(0);
 
@@ -152,15 +152,14 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
 
-  if ((rc = yezzey_offload_relation_internal_rel(aorel, reloid, true, NULL)) <
-      0) {
+  (void)YezzeyCreateAuxIndex(aorel);
+
+  if ((rc = yezzey_offload_relation_internal_rel(aorel, true, NULL)) < 0) {
     elog(ERROR,
          "failed to offload relation (oid=%d) to external storage: return code "
          "%d",
          reloid, rc);
   }
-
-  (void)YezzeyCreateAuxIndex(aorel, reloid);
 
   /* change relation tablespace */
   (void)ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
@@ -318,7 +317,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
 
-  rc = yezzey_offload_relation_internal_rel(aorel, reloid, remove_locally,
+  rc = yezzey_offload_relation_internal_rel(aorel, remove_locally,
                                             external_storage_path);
 
   relation_close(aorel, AccessExclusiveLock);
@@ -343,8 +342,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
  * yezzey_offload_relation_internal_rel: do the offloading job
  * aorel should be locked in AccessExclusiveLock
  */
-int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid,
-                                         bool remove_locally,
+int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
                                          const char *external_storage_path) {
   int i;
   int segno;
@@ -448,13 +446,6 @@ int yezzey_offload_relation_internal_rel(Relation aorel, Oid reloid,
   /* insert entry in relocate table, is no any */
 
   /* cleanup */
-  // yezzey_log_smgroffload(&aorel->rd_node);
-  // smgrcreate(aorel->rd_smgr, YEZZEY_FORKNUM, false);
-  if (remove_locally) {
-  }
-
-  // smgrclose(aorel->rd_smgr);
-  // aorel->rd_smgr = NULL;
 
   return 0;
 }
@@ -893,9 +884,9 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   values[1] = Int32GetDatum(GpIdentity.segindex);
 
   if (aorel->rd_rel->relstorage == 'a') {
-    values[2] = Int32GetDatum(pseudosegno);
-  } else if (aorel->rd_rel->relstorage == 'c') {
     values[2] = Int32GetDatum(segno);
+  } else if (aorel->rd_rel->relstorage == 'c') {
+    values[2] = Int32GetDatum(pseudosegno);
   }
   values[3] = Int64GetDatum(local_bytes);
   values[4] = Int64GetDatum(local_commited_bytes);

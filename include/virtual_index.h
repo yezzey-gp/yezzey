@@ -30,6 +30,8 @@ extern "C" {
 
 #include "catalog/indexing.h"
 
+#include "utils/snapmgr.h"
+
 #include "utils/guc.h"
 
 #include "fmgr.h"
@@ -84,7 +86,7 @@ extern "C" {
 #define Anum_yezzey_virtual_modcount 4
 #define Anum_yezzey_virtual_ext_path 5
 
-EXTERNC void YezzeyCreateAuxIndex(Relation aorel, Oid reloid);
+EXTERNC Oid YezzeyCreateAuxIndex(Relation aorel);
 
 EXTERNC Oid YezzeyFindAuxIndex(Oid reloid);
 

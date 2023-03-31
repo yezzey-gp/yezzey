@@ -1,7 +1,17 @@
 
 #include "virtual_index.h"
 
-void YezzeyCreateAuxIndex(Relation aorel, Oid reloid) {
+
+
+Oid YezzeyFindAuxIndex_internal(Oid reloid);
+
+Oid YezzeyCreateAuxIndex(Relation aorel) {
+  {
+    auto tmp = YezzeyFindAuxIndex_internal(RelationGetRelid(aorel));
+    if (OidIsValid(tmp)) {
+      return tmp;
+    }
+  }
 
   Oid yezzey_ao_auxiliary_relid;
   char yezzey_ao_auxiliary_relname[NAMEDATALEN];
@@ -10,18 +20,21 @@ void YezzeyCreateAuxIndex(Relation aorel, Oid reloid) {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
-#define YEZZEY_AUX_INDEX_COLUMN_NUM 5
+  tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 
-  tupdesc = CreateTemplateTupleDesc(YEZZEY_AUX_INDEX_COLUMN_NUM, false);
-
-  TupleDescInitEntry(tupdesc, (AttrNumber)1, "segno", INT4OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)2, "offset_start", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)3, "offset_finish", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)4, "modcount", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)5, "external_path", TEXTOID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index, "segno",
+                     INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_start_off,
+                     "offset_start", INT8OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_finish_off,
+                     "offset_finish", INT8OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_modcount,
+                     "modcount", INT8OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_ext_path,
+                     "external_path", TEXTOID, -1, 0);
 
   snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
-           "%s_%u", "yezzey_virtual_index", reloid);
+           "%s_%u", "yezzey_virtual_index", RelationGetRelid(aorel));
 
   yezzey_ao_auxiliary_relid = heap_create_with_catalog(
       yezzey_ao_auxiliary_relname /* relname */,
@@ -43,7 +56,7 @@ void YezzeyCreateAuxIndex(Relation aorel, Oid reloid) {
    * aoseg table will be deleted if the master is.
    */
   baseobject.classId = RelationRelationId;
-  baseobject.objectId = reloid;
+  baseobject.objectId = RelationGetRelid(aorel);
   baseobject.objectSubId = 0;
   yezzey_ao_auxiliaryobject.classId = RelationRelationId;
   yezzey_ao_auxiliaryobject.objectId = yezzey_ao_auxiliary_relid;
@@ -56,9 +69,11 @@ void YezzeyCreateAuxIndex(Relation aorel, Oid reloid) {
    * Make changes visible
    */
   CommandCounterIncrement();
+
+  return yezzey_ao_auxiliary_relid;
 }
 
-Oid YezzeyFindAuxIndex(Oid reloid) {
+Oid YezzeyFindAuxIndex_internal(Oid reloid) {
   HeapTuple tup;
   Oid operatorObjectId;
   char yezzey_ao_auxiliary_relname[NAMEDATALEN];
@@ -67,17 +82,11 @@ Oid YezzeyFindAuxIndex(Oid reloid) {
   Relation pg_class;
   Oid yezzey_virtual_index_oid;
 
+  yezzey_virtual_index_oid = InvalidOid;
+
   snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
            "%s_%u", "yezzey_virtual_index", reloid);
 
-  // tup = SearchSysCache4(RELOID,
-  // 					  PointerGetDatum(yezzey_ao_auxiliary_relname),
-  // 					  ObjectIdGetDatum(leftObjectId),
-  // 					  ObjectIdGetDatum(rightObjectId),
-  // 					  ObjectIdGetDatum(operatorNamespace));
-  // if (HeapTupleIsValid(tup))
-  // {
-  // }
   /*
    * Check the pg_appendonly relation to be certain the ao table
    * is there.
@@ -90,36 +99,26 @@ Oid YezzeyFindAuxIndex(Oid reloid) {
   ScanKeyInit(&skey[1], Anum_pg_class_relnamespace, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(YEZZEY_AUX_NAMESPACE));
 
-  /* FIXME: isn't there a mode in relcache code to *not* use an index? Should
-   * we do something here to obey it?
-   */
   scan = systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 2, skey);
-
-  //   scan =
-  // systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 1, skey);
 
   if (HeapTupleIsValid(tup = systable_getnext(scan))) {
     yezzey_virtual_index_oid = HeapTupleGetOid(tup);
-  } else {
-    elog(ERROR, "could not find yezzey virtual index oid for relation \"%d\"",
-         reloid);
   }
-
-  // while (HeapTupleIsValid(tup = systable_getnext(scan))) {
-  //   if (strcmp(((Form_pg_class) GETSTRUCT(tup)) ->relname.data,
-  //   yezzey_ao_auxiliary_relname)) {
-  //     continue;
-  //   }
-  //   yezzey_virtual_index_oid = HeapTupleGetOid(tup);
-  //   // elog(ERROR, "could not find yezzey virtual index oid for relation
-  //   \"%d\"",
-  //   //      reloid);
-  // }
 
   systable_endscan(scan);
   heap_close(pg_class, AccessShareLock);
 
   return yezzey_virtual_index_oid;
+}
+
+Oid YezzeyFindAuxIndex(Oid reloid) {
+  Oid yezzey_virtual_index_oid = YezzeyFindAuxIndex_internal(reloid);
+  if (OidIsValid(yezzey_virtual_index_oid)) {
+    return yezzey_virtual_index_oid;
+  } else {
+    elog(ERROR, "could not find yezzey virtual index oid for relation \"%d\"",
+         reloid);
+  }
 }
 
 void emptyYezzeyIndex(Oid yezzey_index_oid) {
@@ -130,23 +129,27 @@ void emptyYezzeyIndex(Oid yezzey_index_oid) {
   /* DELETE FROM yezzey.yezzey_virtual_index_<oid> */
   rel = heap_open(yezzey_index_oid, RowExclusiveLock);
 
-  desc = heap_beginscan(rel, SnapshotAny, 0, NULL);
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection)))
+  desc = heap_beginscan(rel, snap, 0, NULL);
+
+  while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     simple_heap_delete(rel, &tuple->t_self);
+  }
 
   heap_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
+  UnregisterSnapshot(snap);
+
+  /* make changes visible*/
+  CommandCounterIncrement();
 } /* end emptyYezzeyIndex */
 
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t segindx, int64_t modcount,
                               const std::string &ext_path) {
-
-  HeapTuple tuple;
   HeapTuple yandxtuple;
-  HeapScanDesc desc;
   Relation yandxrel;
 
   bool nulls[Natts_yezzey_virtual_index];

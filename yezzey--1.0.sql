@@ -118,11 +118,6 @@ BEGIN
         v_reloid
     );
     INSERT INTO yezzey.offload_metadata VALUES(v_reloid, i_policy, NULL, NOW());
-    -- -- get xid before executing offload realtion func
-    PERFORM yezzey_offload_relation(
-        v_reloid,
-        TRUE
-    );
 END;
 $$
 LANGUAGE PLPGSQL;

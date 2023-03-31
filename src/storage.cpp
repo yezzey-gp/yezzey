@@ -40,13 +40,15 @@ extern "C" {
 #include "io.h"
 #include <iostream>
 
-int offloadFileToExternalStorage(const std::string &spname,
+#include "virtual_index.h"
+
+int offloadFileToExternalStorage(Relation aorel, const std::string &spname,
                                  const std::string &relname,
                                  const relnodeCoord &coords, int64 modcount,
                                  int64 logicalEof,
                                  const std::string &xternal_storage_path);
 
-int offloadRelationSegmentPath(const std::string &nspname,
+int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
                                const std::string &relname,
                                const relnodeCoord &coords, int64 modcount,
                                int64 logicalEof,
@@ -63,7 +65,7 @@ bool ensureFilepathLocal(const std::string &filepath) {
   return (stat(filepath.c_str(), &buffer) == 0);
 }
 
-int offloadFileToExternalStorage(const std::string &nspname,
+int offloadFileToExternalStorage(Relation aorel, const std::string &nspname,
                                  const std::string &relname,
                                  const relnodeCoord &coords, int64 modcount,
                                  int64 logicalEof,
@@ -73,6 +75,7 @@ int offloadFileToExternalStorage(const std::string &nspname,
 
   if (!ensureFilepathLocal(localPath)) {
     // nothing to do
+    // elog(ERROR, "attempt to offload non-local relation");
     return 0;
   }
 
@@ -114,6 +117,10 @@ int offloadFileToExternalStorage(const std::string &nspname,
   progress = virtual_size;
   FileSeek(vfd, progress, SEEK_SET);
   rc = 0;
+
+  YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(aorel->rd_id),
+                           std::get<2>(ioadv->coords_) /* segindex*/, modcount,
+                           iohandler.writer_->getExternalStoragePath());
 
   while (progress < logicalEof) {
     curr_read_chunk = chunkSize;
@@ -295,12 +302,12 @@ std::string getlocalpath(const relnodeCoord &coords) {
   return getlocalpath(dbnode, relnode, segno);
 }
 
-int offloadRelationSegmentPath(const std::string &nspname,
+int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
                                const std::string &relname,
                                const relnodeCoord &coords, int64 modcount,
                                int64 logicalEof,
                                const std::string &external_storage_path) {
-  return offloadFileToExternalStorage(nspname, relname, coords, modcount,
+  return offloadFileToExternalStorage(aorel, nspname, relname, coords, modcount,
                                       logicalEof, external_storage_path);
 }
 
@@ -332,8 +339,9 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       !external_storage_path ? "" : std::string(external_storage_path);
   ReleaseSysCache(tp);
 
-  if ((rc = offloadRelationSegmentPath(nspname, relname, coords, modcount,
-                                       logicalEof, storage_path)) < 0) {
+  if ((rc = offloadRelationSegmentPath(aorel, nspname, relname, coords,
+                                       modcount, logicalEof, storage_path)) <
+      0) {
     return rc;
   }
 

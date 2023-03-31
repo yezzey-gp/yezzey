@@ -207,7 +207,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
             /* insert entry in yezzey index */
             YVirtFD_cache[yezzey_fd].reloid = reloid;
             YezzeyVirtualIndexInsert(
-                YezzeyFindAuxIndex(reloid),
+                YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
                 std::get<2>(ioadv->coords_) /* segindex*/, modcount,
                 YVirtFD_cache[yezzey_fd]
                     .handler->writer_->getExternalStoragePath());
@@ -345,8 +345,8 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
   return FileRead(actual_fd, buffer, amount);
 }
 
-int yezzey_FileTruncate(SMGRFile file, int64 offset) {
-  File actual_fd = YVirtFD_cache[file].y_vfd;
+int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
+  File actual_fd = YVirtFD_cache[yezzey_fd].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     /* Leave external storage file untouched
      * We may need them for point-in-time recovery
@@ -355,6 +355,11 @@ int yezzey_FileTruncate(SMGRFile file, int64 offset) {
      * with AO/AOCS table changes relfilenode OID of realtion
      * segments.
      */
+
+    if (!RecoveryInProgress()) {
+      (void)emptyYezzeyIndex(
+          YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid));
+    }
     return 0;
   }
   return FileTruncate(actual_fd, offset);
