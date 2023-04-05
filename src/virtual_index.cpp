@@ -1,8 +1,6 @@
 
 #include "virtual_index.h"
 
-
-
 Oid YezzeyFindAuxIndex_internal(Oid reloid);
 
 Oid YezzeyCreateAuxIndex(Relation aorel) {
@@ -180,87 +178,3 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   CommandCounterIncrement();
 }
-
-/*
-static void
-write_yezzey_index(Relation aorel, int32 segindex, int32 start_offset, int32
-modcount, const char *path)
-{
-        HeapTuple	tuple;
-        MemoryContext oldcxt;
-        Datum	   *values = blockDirectory->values;
-        bool	   *nulls = blockDirectory->nulls;
-        TupleDesc	heapTupleDesc = RelationGetDescr(aorel);
-
-        Assert(minipageInfo->numMinipageEntries > 0);
-
-        oldcxt = MemoryContextSwitchTo(blockDirectory->memoryContext);
-
-        Assert(blkdirRel != NULL);
-
-        values[Anum_pg_aoblkdir_segno - 1] =
-                Int32GetDatum(blockDirectory->currentSegmentFileNum);
-        nulls[Anum_pg_aoblkdir_segno - 1] = false;
-
-        values[Anum_pg_aoblkdir_columngroupno - 1] =
-                Int32GetDatum(columnGroupNo);
-        nulls[Anum_pg_aoblkdir_columngroupno - 1] = false;
-
-        values[Anum_pg_aoblkdir_firstrownum - 1] =
-                Int64GetDatum(minipageInfo->minipage->entry[0].firstRowNum);
-        nulls[Anum_pg_aoblkdir_firstrownum - 1] = false;
-
-        SET_VARSIZE(minipageInfo->minipage,
-                                minipage_size(minipageInfo->numMinipageEntries));
-        minipageInfo->minipage->nEntry = minipageInfo->numMinipageEntries;
-        values[Anum_pg_aoblkdir_minipage - 1] =
-                PointerGetDatum(minipageInfo->minipage);
-        nulls[Anum_pg_aoblkdir_minipage - 1] = false;
-
-        tuple = heaptuple_form_to(heapTupleDesc,
-                                                          values,
-                                                          nulls,
-                                                          NULL,
-                                                          NULL);
-
-        *
-         * Write out the minipage to the block directory relation. If this
-         * minipage is already in the relation, we update the row. Otherwise, a
-         * new row is inserted.
-         *
-        if (ItemPointerIsValid(&minipageInfo->tupleTid))
-        {
-                ereportif(Debug_appendonly_print_blockdirectory, LOG,
-                                  (errmsg("Append-only block directory update a
-minipage: "
-                                                  "(segno, columnGroupNo,
-nEntries, firstRowNum) = "
-                                                  "(%d, %d, %u, " INT64_FORMAT
-")", blockDirectory->currentSegmentFileNum, columnGroupNo,
-minipageInfo->numMinipageEntries,
-                                                  minipageInfo->minipage->entry[0].firstRowNum)));
-
-                simple_heap_update(blkdirRel, &minipageInfo->tupleTid, tuple);
-        }
-        else
-        {
-                ereportif(Debug_appendonly_print_blockdirectory, LOG,
-                                  (errmsg("Append-only block directory insert a
-minipage: "
-                                                  "(segno, columnGroupNo,
-nEntries, firstRowNum) = "
-                                                  "(%d, %d, %u, " INT64_FORMAT
-")", blockDirectory->currentSegmentFileNum, columnGroupNo,
-minipageInfo->numMinipageEntries,
-                                                  minipageInfo->minipage->entry[0].firstRowNum)));
-
-                simple_heap_insert(blkdirRel, tuple);
-        }
-
-        CatalogUpdateIndexes(blkdirRel, tuple);
-
-        heap_freetuple(tuple);
-
-        MemoryContextSwitchTo(oldcxt);
-}
-*/

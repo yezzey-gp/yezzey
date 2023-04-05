@@ -52,6 +52,10 @@
 #include "util.h"
 #include "virtual_index.h"
 
+#include "catalog/oid_dispatch.h"
+
+#include "offload_policy.h"
+
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
@@ -85,28 +89,23 @@ PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal);
 PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal_seg);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_to_external_path);
 PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
+PG_FUNCTION_INFO_V1(yezzey_init_metadata_seg);
+PG_FUNCTION_INFO_V1(yezzey_init_metadata);
 
-void yezzey_log_smgroffload(RelFileNode *rnode);
 
 /*
  * Perform XLogInsert of a XLOG_SMGR_CREATE record to WAL.
  */
-void yezzey_log_smgroffload(RelFileNode *rnode) {
-  xl_smgr_create xlrec;
-  XLogRecData rdata;
+void yezzey_log_smgroffload(RelFileNode *rnode);
 
-  /*
-   * Make an XLOG entry reporting the file creation.
-   */
-  xlrec.rnode = *rnode;
-  xlrec.forkNum = YEZZEY_FORKNUM;
 
-  rdata.data = (char *)&xlrec;
-  rdata.len = sizeof(xlrec);
-  rdata.buffer = InvalidBuffer;
-  rdata.next = NULL;
+Datum yezzey_init_metadata(PG_FUNCTION_ARGS) {
+    (void) YezzeyOffloadPolicyRelation();
+  PG_RETURN_VOID();
+}
 
-  XLogInsert(RM_SMGR_ID, XLOG_SMGR_CREATE, &rdata);
+Datum yezzey_init_metadata_seg(PG_FUNCTION_ARGS) {
+  return yezzey_init_metadata(fcinfo);
 }
 
 int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
@@ -154,15 +153,24 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
 
   (void)YezzeyCreateAuxIndex(aorel);
 
-  if ((rc = yezzey_offload_relation_internal_rel(aorel, true, NULL)) < 0) {
-    elog(ERROR,
-         "failed to offload relation (oid=%d) to external storage: return code "
-         "%d",
-         reloid, rc);
+  if (Gp_role != GP_ROLE_DISPATCH) {
+    if ((rc = yezzey_offload_relation_internal_rel(aorel, true, NULL)) < 0) {
+      elog(ERROR,
+           "failed to offload relation (oid=%d) to external storage: return "
+           "code "
+           "%d",
+           reloid, rc);
+    }
+  } else {
+    GetAssignedOidsForDispatch();
   }
 
   /* change relation tablespace */
-  (void)ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
+  (void) ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
+
+  /* record entry in offload metadata */
+
+  (void) YezzeyOffloadPolicyInsert(reloid, 1 /* always external */);
 
   /*
    * OK, add the dependency.

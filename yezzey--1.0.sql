@@ -83,14 +83,22 @@ LANGUAGE C STRICT;
 
 CREATE TYPE offload_policy AS ENUM ('remote_always', 'cache_writes');
 
+CREATE OR REPLACE FUNCTION yezzey_init_metadata() RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON MASTER
+LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION yezzey_init_metadata_seg() RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
+
 -- manually/automatically relocated relations
-CREATE TABLE yezzey.offload_metadata(
-    reloid           OID,
-    relpolicy        offload_policy NOT NULL,
-    relext_date      DATE,
-    rellast_archived TIMESTAMP
-)
-DISTRIBUTED REPLICATED;
+
+SELECT yezzey_init_metadata();
+SELECT yezzey_init_metadata_seg();
 
 CREATE OR REPLACE FUNCTION
 yezzey_define_offload_policy(i_offload_nspname TEXT, i_offload_relname TEXT, i_policy offload_policy DEFAULT 'remote_always')
@@ -117,7 +125,11 @@ BEGIN
     PERFORM yezzey_define_relation_offload_policy_internal(
         v_reloid
     );
-    INSERT INTO yezzey.offload_metadata VALUES(v_reloid, i_policy, NULL, NOW());
+    -- IF i_policy == 'remote_always' THEN
+        -- INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 1, NULL, NOW());
+    -- ELSE
+        -- INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 2, NULL, NOW());
+    -- END IF;
 END;
 $$
 LANGUAGE PLPGSQL;
@@ -149,16 +161,14 @@ BEGIN
     WHERE 
         relname = offload_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = offload_nspname);
 
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
-    IF NOT FOUND THEN
-        RAISE WARNING'relation %.% is not in offload metadata table', offload_nspname, offload_relname;
-    END IF;
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    -- IF NOT FOUND THEN
+        -- RAISE WARNING'relation %.% is not in offload metadata table', offload_nspname, offload_relname;
+    -- END IF;
     PERFORM yezzey_offload_relation(
         v_reloid,
         remove_locally
     );
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reliod=v_reloid;
 END;
 $$
 LANGUAGE PLPGSQL;
@@ -195,17 +205,15 @@ BEGIN
     WHERE 
         relname = offload_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = offload_nspname);
 
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
-    IF NOT FOUND THEN
-        RAISE WARNING'relation %.% is not in offload metadata table', offload_nspname, offload_relname;
-    END IF;
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    -- IF NOT FOUND THEN
+    --     RAISE WARNING'relation %.% is not in offload metadata table', offload_nspname, offload_relname;
+    -- END IF;
     PERFORM yezzey_offload_relation_to_external_path(
         v_reloid,
         remove_locally,
         external_storage_path
     );
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
 END;
 $$
 LANGUAGE PLPGSQL;
@@ -234,19 +242,18 @@ DECLARE
     v_tmp_relname yezzey.offload_metadata%rowtype;
     v_reloid OID;
 BEGIN
-    SELECT 
-        oid
-    FROM 
-        pg_catalog.pg_class
-    INTO v_reloid 
-    WHERE 
-        relname = load_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = load_nspname);
+    -- SELECT 
+    --     oid
+    -- FROM 
+    --     pg_catalog.pg_class
+    -- INTO v_reloid 
+    -- WHERE 
+    --     relname = load_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = load_nspname);
 
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
-    IF NOT FOUND THEN
-        RAISE WARNING'relation % is not in offload metadata table', load_relname;
-    END IF;
-    UPDATE yezzey.offload_metadata SET rellast_archived = NOW() WHERE reloid=v_reloid;
+    -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    -- IF NOT FOUND THEN
+    --     RAISE WARNING'relation % is not in offload metadata table', load_relname;
+    -- END IF;
     PERFORM yezzey_load_relation_seg(
         v_reloid,
         ''-- omit dest path 
@@ -257,7 +264,6 @@ BEGIN
         ''-- omit dest path 
     );
 
-    DELETE FROM yezzey.offload_metadata WHERE reloid = v_reloid;
     RAISE INFO'loaded relation %s to local storage', load_relname;
 END;
 $$
@@ -316,18 +322,18 @@ DECLARE
     v_reloid OID;
 BEGIN
 
-    SELECT 
-        oid
-    FROM 
-        pg_catalog.pg_class
-    INTO v_reloid 
-    WHERE 
-        relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
+    -- SELECT 
+    --     oid
+    -- FROM 
+    --     pg_catalog.pg_class
+    -- INTO v_reloid 
+    -- WHERE 
+    --     relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
 
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
-    IF NOT FOUND THEN
-        RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
-    END IF;
+    -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    -- IF NOT FOUND THEN
+    --     RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
+    -- END IF;
 
     RETURN QUERY SELECT 
         *
@@ -376,11 +382,11 @@ BEGIN
     WHERE 
         relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
 
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
 
-    IF NOT FOUND THEN
-        RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
-    END IF;
+    -- IF NOT FOUND THEN
+    --     RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
+    -- END IF;
  
     RETURN QUERY SELECT 
         *
@@ -428,11 +434,11 @@ BEGIN
     WHERE 
         relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
 
-    SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
+    -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
 
-    IF NOT FOUND THEN
-        RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
-    END IF;
+    -- IF NOT FOUND THEN
+    --     RAISE WARNING'relation %.% is not in offload metadata table', i_nspname, i_relname;
+    -- END IF;
  
     RETURN QUERY SELECT 
         *
