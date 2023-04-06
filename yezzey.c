@@ -92,15 +92,13 @@ PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata_seg);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata);
 
-
 /*
  * Perform XLogInsert of a XLOG_SMGR_CREATE record to WAL.
  */
 void yezzey_log_smgroffload(RelFileNode *rnode);
 
-
 Datum yezzey_init_metadata(PG_FUNCTION_ARGS) {
-    (void) YezzeyOffloadPolicyRelation();
+  (void)YezzeyOffloadPolicyRelation();
   PG_RETURN_VOID();
 }
 
@@ -117,6 +115,19 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
 static void ATExecSetTableSpace(Relation aorel, Oid reloid,
                                 Oid desttablespace_oid);
 
+/*
+ * yezzey_define_relation_offload_policy_internal:
+ * do all the work with initial relation offloading:
+ * 1) Open relation in exclusive mode
+ * 2) Create yezzey aux index relation for offload relation
+ * 3)
+ *   3.1) Do main offloading job on segments
+ *   3.2) On dispather, clear pre-assigned oids.
+ * 4) change relation tablespace to virtual tablespace
+ * 5) record entry in offload metadata to track and process
+ * in bgworker routines
+ * 6) add the dependency in pg_depend
+ */
 Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   Oid reloid;
   Oid yezzey_ext_oid;
@@ -145,7 +156,7 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
        reloid);
 
   /*
-   * Create auxularry yezzey table to track external storage
+   * 2) Create auxularry yezzey table to track external storage
    * chunks
    */
   aorel = relation_open(reloid, AccessExclusiveLock);
@@ -153,7 +164,12 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
 
   (void)YezzeyCreateAuxIndex(aorel);
 
+  /*
+   * @brief do main offload job on segments
+   *
+   */
   if (Gp_role != GP_ROLE_DISPATCH) {
+    /*  */
     if ((rc = yezzey_offload_relation_internal_rel(aorel, true, NULL)) < 0) {
       elog(ERROR,
            "failed to offload relation (oid=%d) to external storage: return "
@@ -162,15 +178,21 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
            reloid, rc);
     }
   } else {
+    /* clear all pre-assigned oids
+     * for auxularry yezzey table relation
+     *
+     * We need to do it, else we will get error
+     * about assigned, but not dispatched oids
+     */
     GetAssignedOidsForDispatch();
   }
 
   /* change relation tablespace */
-  (void) ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
+  (void)ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
 
   /* record entry in offload metadata */
 
-  (void) YezzeyOffloadPolicyInsert(reloid, 1 /* always external */);
+  (void)YezzeyOffloadPolicyInsert(reloid, 1 /* always external */);
 
   /*
    * OK, add the dependency.
@@ -184,6 +206,10 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   PG_RETURN_VOID();
 }
 
+/*
+ * yezzey_define_relation_offload_policy_internal_seg:
+ * Follow the query dispatcher logic
+ */
 Datum yezzey_define_relation_offload_policy_internal_seg(PG_FUNCTION_ARGS) {
   return yezzey_define_relation_offload_policy_internal(fcinfo);
 }
