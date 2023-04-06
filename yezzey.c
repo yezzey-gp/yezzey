@@ -55,6 +55,7 @@
 #include "catalog/oid_dispatch.h"
 
 #include "offload_policy.h"
+#include "offload.h"
 
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
@@ -106,8 +107,6 @@ Datum yezzey_init_metadata_seg(PG_FUNCTION_ARGS) {
   return yezzey_init_metadata(fcinfo);
 }
 
-int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
-                                         const char *external_storage_path);
 
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
@@ -314,7 +313,7 @@ static void ATExecSetTableSpace(Relation aorel, Oid reloid,
   /* Make sure the reltablespace change is visible */
   CommandCounterIncrement();
 
-  /* yezzey: do we ned to move indexes? */
+  /* yezzey: do we need to move indexes? */
   // /*
   //  * MPP-7996 - bitmap index subobjects w/Alter Table Set tablespace
   //  */
@@ -329,160 +328,11 @@ static void ATExecSetTableSpace(Relation aorel, Oid reloid,
   /* Clean up */
 }
 
-/*
- * yezzey_offload_relation_internal:
- * offloads relation segments data to external storage.
- * if remove_locally is true,
- * issues ATExecSetTableSpace(tablespace shange to virtual (yezzey) tablespace)
- * which will result in local-storage files drops (on both primary and mirror
- * segments)
- */
-int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
-                                     const char *external_storage_path) {
-  Relation aorel;
-  int rc;
-  /* need sanity checks */
-
-  /*  This mode guarantees that the holder is the only transaction accessing the
-   * table in any way. we need to be sure, thar no other transaction either
-   * reads or write to given relation because we are going to delete relation
-   * from local storage
-   */
-  aorel = relation_open(reloid, AccessExclusiveLock);
-  RelationOpenSmgr(aorel);
-
-  rc = yezzey_offload_relation_internal_rel(aorel, remove_locally,
-                                            external_storage_path);
-
-  relation_close(aorel, AccessExclusiveLock);
-  return rc;
-}
 
 /*
-
-        HeapTuple	tup;
-        Oid			operatorObjectId;
-
-        tup = SearchSysCache4(OPERNAMENSP,
-                                                  PointerGetDatum(operatorName),
-                                                  ObjectIdGetDatum(leftObjectId),
-                                                  ObjectIdGetDatum(rightObjectId),
-                                                  ObjectIdGetDatum(operatorNamespace));
-        if (HeapTupleIsValid(tup))
-        {
+* yezzey_load_relation_internal:
+* TBD: doc the logic
 */
-
-/*
- * yezzey_offload_relation_internal_rel: do the offloading job
- * aorel should be locked in AccessExclusiveLock
- */
-int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
-                                         const char *external_storage_path) {
-  int i;
-  int segno;
-  int total_segfiles;
-  FileSegInfo **segfile_array;
-  AOCSFileSegInfo **segfile_array_cs;
-  Snapshot appendOnlyMetaDataSnapshot;
-  int rc;
-  int nvp;
-  int64 modcount;
-  int64 logicalEof;
-  int pseudosegno;
-  int inat;
-
-  nvp = aorel->rd_att->natts;
-
-  /*
-   * Relation segments named base/DBOID/aorel->rd_node.*
-   */
-
-  elog(yezzey_log_level, "offloading relnode %d", aorel->rd_node.relNode);
-
-  /* for now, we locked relation */
-
-  /* GetAllFileSegInfo_pg_aoseg_rel */
-
-  /* acquire snapshot for aoseg table lookup */
-  appendOnlyMetaDataSnapshot = SnapshotSelf;
-
-  if (aorel->rd_rel->relstorage == 'a') {
-    /* Get information about all the file segments we need to scan */
-    segfile_array =
-        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
-
-    for (i = 0; i < total_segfiles; i++) {
-      segno = segfile_array[i]->segno;
-      modcount = segfile_array[i]->modcount;
-      logicalEof = segfile_array[i]->eof;
-
-      elog(yezzey_log_level,
-           "offloading segment no %d, modcount %ld up to logial eof %ld", segno,
-           modcount, logicalEof);
-
-      rc = offloadRelationSegment(aorel, segno, modcount, logicalEof,
-                                  external_storage_path);
-
-      if (rc < 0) {
-        elog(ERROR,
-             "failed to offload segment number %d, modcount %ld, up to %ld",
-             segno, modcount, logicalEof);
-      }
-      /* segment if offloaded */
-    }
-
-    if (segfile_array) {
-      FreeAllSegFileInfo(segfile_array, total_segfiles);
-      pfree(segfile_array);
-    }
-  } else if (aorel->rd_rel->relstorage == 'c') {
-    /* ao columns, relstorage == 'c' */
-    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
-                                             &total_segfiles);
-
-    for (inat = 0; inat < nvp; ++inat) {
-      for (i = 0; i < total_segfiles; i++) {
-        segno = segfile_array_cs[i]->segno;
-        /* in AOCS case actual *segno* differs from segfile_array_cs[i]->segno
-         * whis is logical number of segment. On physical level, each logical
-         * segno (segfile_array_cs[i]->segno) is represented by
-         * AOTupleId_MultiplierSegmentFileNum in storage (1 file per attribute)
-         */
-        pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
-        modcount = segfile_array_cs[i]->modcount;
-        logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
-        elog(yezzey_ao_log_level,
-             "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to "
-             "eof %ld",
-             segno, pseudosegno, modcount, logicalEof);
-
-        rc = offloadRelationSegment(aorel, pseudosegno, modcount, logicalEof,
-                                    external_storage_path);
-
-        if (rc < 0) {
-          elog(ERROR,
-               "failed to offload cs segment number %d, pseudosegno %d, up to "
-               "%ld",
-               segno, pseudosegno, logicalEof);
-        }
-        /* segment if offloaded */
-      }
-    }
-
-    if (segfile_array_cs) {
-      FreeAllAOCSSegFileInfo(segfile_array_cs, total_segfiles);
-      pfree(segfile_array_cs);
-    }
-  } else {
-    elog(ERROR, "wrong relation storage type, not AO/AOCS");
-  }
-
-  /* insert entry in relocate table, is no any */
-
-  /* cleanup */
-
-  return 0;
-}
 
 int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   Relation aorel;
@@ -524,7 +374,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   }
 
   /* Perform actual deletion of yezzey virtual index and metadata changes */
-  (void)ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
+  (void) ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
   if (aorel->rd_rel->relstorage == 'a') {
@@ -586,7 +436,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   */
 
   /* empty all track info */
-  (void)emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
+  (void) emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
 
   /* cleanup */
 

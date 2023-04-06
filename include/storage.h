@@ -1,29 +1,13 @@
 
 
-#ifndef EXTERNAL_STORAGE_H
-#define EXTERNAL_STORAGE_H
+#ifndef YEZZEY_STORAGE_H
+#define YEZZEY_STORAGE_H
 
 // XXX: todo proder interface for external storage offloading
 
 #include <unistd.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "stddef.h"
-
-#include "postgres.h"
-
-#include "access/aosegfiles.h"
-#include "access/htup_details.h"
-#include "utils/tqual.h"
-
-// For GpIdentity
-#include "cdb/cdbvars.h"
-
-#ifdef __cplusplus
-}
-#endif
+#include "pg.h"
 
 #include "gucs.h"
 
@@ -68,4 +52,4 @@ EXTERNC int statRelationSpaceUsagePerExternalChunk(
     size_t *local_bytes, size_t *local_commited_bytes, yezzeyChunkMeta **list,
     size_t *cnt_chunks);
 
-#endif /* EXTERNAL_STORAGE */
+#endif /* YEZZEY_STORAGE_H */

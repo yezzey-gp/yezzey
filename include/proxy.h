@@ -1,32 +1,10 @@
 #ifndef YEZZEY_PROXY_H
 #define YEZZEY_PROXY_H
 
-#ifdef __cplusplus
-extern "C" {
-
-#include "postgres.h"
-
-#if PG_VERSION_NUM >= 130000
-#include "postmaster/interrupt.h"
-#endif
-
-#if PG_VERSION_NUM >= 100000
-#include "common/file_perm.h"
-#else
-#include "access/xact.h"
-#endif
-
-#include "utils/elog.h"
-
-#ifdef GPBUILD
-#include "cdb/cdbvars.h"
-#endif
-}
+#include "pg.h"
 
 #include "gucs.h"
 #include "storage.h"
-
-#endif
 
 #ifdef __cplusplus
 #define EXTERNC extern "C"

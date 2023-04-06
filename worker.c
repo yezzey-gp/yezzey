@@ -12,6 +12,8 @@
 #include "miscadmin.h"
 #include "utils/snapmgr.h"
 
+#include "worker.h"
+
 #if PG_VERSION_NUM >= 130000
 #include "postmaster/interrupt.h"
 #endif
@@ -80,7 +82,6 @@ static bool yezzey_init_shmem(void);
 void yezzey_offload_databases(void);
 void yezzey_ProcessConfigFile(void);
 void yezzey_process_database(Datum main_arg);
-void processColdTables(void);
 
 /* Pointer to shared-memory state. */
 static YezzeySharedState *yezzey_state = NULL;
@@ -176,185 +177,6 @@ const char *yezzeyOffloadMetadataTableName = "offload_metadata";
 /* TODO: make this guc*/
 const int processTableLimit = 10;
 
-void processTables(void) {
-  int ret, i;
-  long unsigned int cnt;
-  TupleDesc tupdesc;
-  SPITupleTable *tuptable;
-  HeapTuple tuple;
-  char *tableOidRaw;
-  Oid tableOid;
-  StringInfoData buf;
-  int rc;
-
-  elog(yezzey_log_level,
-       "[YEZZEY_SMGR_BG] putting unprocessed tables in relocate table");
-
-  yezzey_prepare();
-
-  /*construct query string */
-
-  initStringInfo(&buf);
-
-  appendStringInfo(&buf, "SELECT * FROM %s.%s WHERE expiration_date <= NOW()",
-                   yezzeyBoostrapSchemaName, yezzeyRelocateTableName);
-
-  ret = SPI_execute(buf.data, true, processTableLimit);
-  if (ret != SPI_OK_SELECT) {
-    elog(FATAL,
-         "[YEZZEY_SMGR_BG] Error while trying to get unprocessed tables");
-  }
-
-  tupdesc = SPI_tuptable->tupdesc;
-  tuptable = SPI_tuptable;
-  cnt = SPI_processed;
-
-  elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %lu results", cnt);
-
-  for (i = 0; i < cnt; i++) {
-    /**
-     * @brief traverse pg_aoseg.pg_aoseg_<oid> relation
-     * and try to lock each segment. If there is any transaction
-     * in progress accessing some segment, lock attemt will fail,
-     * because transactions holds locks on pg_aoseg.pg_aoseg_<oid> rows
-     * and we are goind to lock row in X mode
-     */
-    tuple = tuptable->vals[i];
-    tableOidRaw = SPI_getvalue(tuple, tupdesc, 1);
-
-    /*
-     * Convert to desired data type
-     */
-    tableOid = strtoll(tableOidRaw, NULL, 10);
-
-    if ((rc = yezzey_offload_relation_internal(tableOid, false, NULL)) < 0) {
-      elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc,
-           tableOid);
-    }
-  }
-
-  yezzey_finish();
-}
-
-void processColdTables(void) {
-  int ret, i;
-  long unsigned int cnt;
-  TupleDesc tupdesc;
-  SPITupleTable *tuptable;
-  HeapTuple tuple;
-  char *tableOidRaw;
-  Oid tableOid;
-  StringInfoData buf;
-  int rc;
-
-  elog(yezzey_log_level,
-       "[YEZZEY_SMGR_BG] putting unprocessed tables in relocate table");
-
-  yezzey_prepare();
-
-  /*construct query string */
-
-  initStringInfo(&buf);
-
-  appendStringInfo(&buf,
-                   "SELECT * FROM %s.%s WHERE relpolicy = 'remote_always'",
-                   yezzeySchemaName, yezzeyOffloadMetadataTableName);
-
-  ret = SPI_execute(buf.data, true, processTableLimit);
-  if (ret != SPI_OK_SELECT) {
-    elog(FATAL,
-         "[YEZZEY_SMGR_BG] Error while trying to get unprocessed tables");
-  }
-
-  tupdesc = SPI_tuptable->tupdesc;
-  tuptable = SPI_tuptable;
-  cnt = SPI_processed;
-
-  elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %lu results", cnt);
-
-  for (i = 0; i < cnt; i++) {
-    /**
-     * @brief traverse pg_aoseg.pg_aoseg_<oid> relation
-     * and try to lock each segment. If there is any transaction
-     * in progress accessing some segment, lock attemt will fail,
-     * because transactions holds locks on pg_aoseg.pg_aoseg_<oid> rows
-     * and we are goind to lock row in X mode
-     */
-    tuple = tuptable->vals[i];
-    tableOidRaw = SPI_getvalue(tuple, tupdesc, 1);
-
-    /*
-     * Convert to desired data type
-     */
-    tableOid = strtoll(tableOidRaw, NULL, 10);
-
-    if ((rc = yezzey_offload_relation_internal(tableOid, false, NULL)) < 0) {
-      elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc,
-           tableOid);
-    }
-  }
-
-  yezzey_finish();
-}
-
-void offloadExpiredRelations(void) {
-  int ret, i;
-  long unsigned int cnt;
-  TupleDesc tupdesc;
-  SPITupleTable *tuptable;
-  HeapTuple tuple;
-  char *tableOidRaw;
-  Oid tableOid;
-  int rc;
-
-  elog(yezzey_log_level,
-       "[YEZZEY_SMGR_BG] putting unprocessed tables in relocate table");
-
-  yezzey_prepare();
-
-  ret = SPI_execute(
-      "SELECT * FROM yezzey.auto_offload_relations WHERE expire_date <= NOW()",
-      true, processTableLimit);
-  if (ret != SPI_OK_SELECT) {
-    elog(FATAL,
-         "[YEZZEY_SMGR_BG] Error while trying to get unprocessed tables");
-  }
-
-  tupdesc = SPI_tuptable->tupdesc;
-  tuptable = SPI_tuptable;
-  cnt = SPI_processed;
-
-  elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %lu results", cnt);
-
-  for (i = 0; i < cnt; i++) {
-    /**
-     * @brief traverse pg_aoseg.pg_aoseg_<oid> relation
-     * and try to lock each segment. If there is any transaction
-     * in progress accessing some segment, lock attemt will fail,
-     * because transactions holds locks on pg_aoseg.pg_aoseg_<oid> rows
-     * and we are goind to lock row in X mode
-     */
-    tuple = tuptable->vals[i];
-    tableOidRaw = SPI_getvalue(tuple, tupdesc, 1);
-
-    /*
-     * Convert to desired data type
-     */
-    tableOid = strtoll(tableOidRaw, NULL, 10);
-
-    if ((rc = yezzey_offload_relation_internal(tableOid, false, NULL)) < 0) {
-      elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc,
-           tableOid);
-    } else {
-      elog(yezzey_log_level,
-           "[YEZZEY_SMGR_BG] %s offloaded to external storage due expiration",
-           tableOidRaw);
-    }
-  }
-
-  yezzey_finish();
-}
-
 void yezzey_process_database(Datum main_arg) {
   Oid dboid;
 
@@ -367,7 +189,7 @@ void yezzey_process_database(Datum main_arg) {
   /*	 BackgroundWorkerInitializeConnectionByOid(dboid, InvalidOid, 0); */
   BackgroundWorkerInitializeConnectionByOid(dboid, InvalidOid);
 
-  processColdTables();
+  (void)processOffloadedRelations(dboid);
 }
 
 /*
