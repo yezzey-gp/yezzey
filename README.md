@@ -100,40 +100,4 @@ LockRelationAppendOnlySegmentFile -> LOCKACQUIRE_ALREADY_HELD
 
 
 Install:
-
-
-/*
-*/
-
-psql postgres -f ./gpcontrib/yezzey/test/regress/yezzey.sql
-
-gpconfig -c yezzey.storage_prefix -v 'wal-e/mdbtvdnna6t7oqaioeaj/6/segments_005'
-gpconfig -c yezzey.storage_bucket -v 'yandexcloud-dbaas-mdbtvdnna6t7oqaioeaj'
-
-gpconfig -c yezzey.storage_host -v 's3.mds.yandex.net'
-gpconfig -c yezzey.storage_config -v '/home/gpadmin/yezzey_conf/yezzey_s3.conf'
-
-
-gpconfig -c yezzey.storage_prefix -v "'wal-e/mdb8i7f8cr8ker9ec6a8/6/segments_005'"
-gpconfig -c yezzey.storage_bucket -v "'yandexcloud-dbaas-mdb8i7f8cr8ker9ec6a8'"
-gpconfig -c yezzey.storage_config -v "'/home/gpadmin/gpconfigs/yezzey.conf'"
-gpconfig -c yezzey.storage_host -v "'s3.mds.yandex.net'"
-gpconfig -c yezzey.walg_bin_path -v  "'/usr/bin/wal-g-gp'"
-gpconfig -c yezzey.walg_config_path -v  "'/etc/wal-g/wal-g.yaml'"
-
-gpconfig -c yezzey.gpg_key_id -v  "'4993C0545AF16F9F'"
-
-
-gpconfig -c yezzey.storage_prefix -v 'wal-e/mdb8i7f8cr8ker9ec6a8/6/segments_005'
-gpconfig -c yezzey.storage_bucket -v 'yandexcloud-dbaas-mdb8i7f8cr8ker9ec6a8'
-gpconfig -c yezzey.storage_config -v '/home/gpadmin/gpconfigs/yezzey.conf'
-gpconfig -c yezzey.storage_host -v 's3.mds.yandex.net'
-gpconfig -c yezzey.walg_bin_path -v  '/usr/bin/wal-g-gp'
-gpconfig -c yezzey.walg_config_path -v  '/etc/wal-g/wal-g.yaml'
-
-gpconfig -c yezzey.gpg_key_id -v  '4993C0545AF16F9F'
-
-
-gpconfig -c shared_preload_libraries -v yezzey
-
-gpstop -a -i && gpstart -a
+see dev-scrupt folder
