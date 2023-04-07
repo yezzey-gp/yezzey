@@ -1,32 +1,28 @@
 ## Yezzey
 
-Yezzey is greenplum extension, which makes data offloading in Greenplum easy.
+Yezzey is a GreenplumDB extension, which makes data offloading in GP easy.
 
-Yezzey extension defines API for creating data offloading policies and attach those policies to tables.
+Yezzey defines API for creating data offloading policies and attach these policies to tables.
 
-Data offloading means physical move of relation data to external storage, namely S3.
+Data offloading means physical move of relation data to external cloud storage, namely S3.
 
---- some more info here (TBD)
-
-Conditions:
+Difficulties:
 
 - no generic wal availabale in gp6 (pg 9.4)
 - no custom access method in pg9.4
 - no custom wal redo routines
 
-This means we need to
-
 # Design goals:
 
-Greenplum compatibility
+Greenplum 6 compatibility.
 
-Avoid binary incompatibily, meaning to avoid custom WAL record, which will be unredoable for vanil gp
+Avoid binary incompatibilities, such as custom WAL records, which will not be replayabe in upstream GP.
 
-Try to avoid custom relation forks, use of which need to be somehow WAL-logged or handled separately, meaning additional backup/restore complexity and corner cases to handle.
+Try to avoid custom relation forks, use of which need to be somehow WAL-logged or handled separately. This would mean additional backup/restore complexity and corner cases to handle.
 
 # API
 
-Yezzey defines custom smgr for AO/AOCS related storage operations
+Yezzey defines custom smgr for AO/AOCS related storage operations.
 
 ### Read-write operations
 
