@@ -10,12 +10,7 @@
  */
 int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
                                          const char *external_storage_path) {
-  int segno;
   int total_segfiles;
-  int rc;
-  int64 modcount;
-  int64 logicalEof;
-  int pseudosegno;
   FileSegInfo** segfile_array;
   AOCSFileSegInfo** segfile_array_cs;
 
@@ -25,11 +20,11 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
    * Relation segments named base/DBOID/aorel->rd_node.*
    */
 
-  elog(yezzey_log_level, "offloading relnode %d", aorel->rd_node.relNode);
+  elog(yezzey_log_level, "offloading relation %s, relnode %d", aorel->rd_rel->relname.data, aorel->rd_node.relNode);
 
   /* for now, we locked relation */
 
-  /* GetAllFileSegInfo_pg_aoseg_rel */
+  /* GetAllFileSegInfo_pg_aoseg_rel */  
 
   /* acquire snapshot for aoseg table lookup */
   auto appendOnlyMetaDataSnapshot = SnapshotSelf;
@@ -41,15 +36,15 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
     for (int i = 0; i < total_segfiles; i++) {
-      segno = segfile_array[i]->segno;
-      modcount = segfile_array[i]->modcount;
-      logicalEof = segfile_array[i]->eof;
+      auto segno = segfile_array[i]->segno;
+      auto modcount = segfile_array[i]->modcount;
+      auto logicalEof = segfile_array[i]->eof;
 
       elog(yezzey_log_level,
            "offloading segment no %d, modcount %ld up to logial eof %ld", segno,
            modcount, logicalEof);
 
-      rc = offloadRelationSegment(aorel, segno, modcount, logicalEof,
+      auto rc = offloadRelationSegment(aorel, segno, modcount, logicalEof,
                                   external_storage_path);
 
       if (rc < 0) {
@@ -72,21 +67,21 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
 
     for (int inat = 0; inat < nvp; ++inat) {
       for (int i = 0; i < total_segfiles; i++) {
-        segno = segfile_array_cs[i]->segno;
+        auto segno = segfile_array_cs[i]->segno;
         /* in AOCS case actual *segno* differs from segfile_array_cs[i]->segno
          * whis is logical number of segment. On physical level, each logical
          * segno (segfile_array_cs[i]->segno) is represented by
          * AOTupleId_MultiplierSegmentFileNum in storage (1 file per attribute)
          */
-        pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
-        modcount = segfile_array_cs[i]->modcount;
-        logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
+        auto pseudosegno = (inat * AOTupleId_MultiplierSegmentFileNum) + segno;
+        auto modcount = segfile_array_cs[i]->modcount;
+        auto logicalEof = segfile_array_cs[i]->vpinfo.entry[inat].eof;
         elog(yezzey_ao_log_level,
              "offloading cs segment no %d, pseudosegno %d, modcount %ld, up to "
              "eof %ld",
              segno, pseudosegno, modcount, logicalEof);
 
-        rc = offloadRelationSegment(aorel, pseudosegno, modcount, logicalEof,
+        auto rc = offloadRelationSegment(aorel, pseudosegno, modcount, logicalEof,
                                     external_storage_path);
 
         if (rc < 0) {

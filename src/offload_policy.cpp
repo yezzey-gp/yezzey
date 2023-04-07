@@ -1,22 +1,25 @@
 #include "offload_policy.h"
 
+PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
+
 /*
 
 CREATE TABLE yezzey.offload_metadata(
     reloid           OID,
     relpolicy        offload_policy INT --NOT NULL,
-    relext_date      DATE,
+    relext_time      TIMESTAMP,
     rellast_archived TIMESTAMP
 )
 DISTRIBUTED REPLICATED;
 */
+
+const char *offload_metadata_relname = "offload_metadata";
 
 void YezzeyOffloadPolicyRelation() {
   { /* check existed, if no, return */
   }
 
   Oid yezzey_offload_metadata_relid;
-  const char *offload_metadata_relname = "offload_metadata";
   TupleDesc tupdesc;
 
   ObjectAddress baseobject;
@@ -101,4 +104,9 @@ void YezzeyOffloadPolicyInsert(Oid reloid /* offload relation oid */,
 
   /* make changes visible */
   CommandCounterIncrement();
+}
+
+
+Datum yezzey_set_relation_expirity_seg(PG_FUNCTION_ARGS) {
+
 }

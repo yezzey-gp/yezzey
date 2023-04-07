@@ -125,11 +125,47 @@ BEGIN
     PERFORM yezzey_define_relation_offload_policy_internal(
         v_reloid
     );
-    -- IF i_policy == 'remote_always' THEN
-        -- INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 1, NULL, NOW());
-    -- ELSE
-        -- INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 2, NULL, NOW());
-    -- END IF;
+END;
+$$
+LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION yezzey_set_relation_expirity_seg(
+    i_reloid OID,
+    i_relpolicy INT,
+    i_relexp TIMESTAMP
+)
+ RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_set_relation_expirity(i_offload_nspname TEXT, i_offload_relname TEXT, i_relexp TIMESTAMP, 
+    i_relpolicy offload_policy DEFAULT 'remote_always')
+RETURNS VOID
+AS $$
+DECLARE
+    v_reloid OID;
+BEGIN
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = i_offload_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_offload_nspname);
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
+    END IF;
+
+    PERFORM yezzey_set_relation_expirity_seg(
+        v_reloid,
+        1,
+        i_relexp
+    );
 END;
 $$
 LANGUAGE PLPGSQL;

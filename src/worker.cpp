@@ -4,6 +4,12 @@
 #include "offload.h"
 #include "offload_policy.h"
 
+
+/*
+* processOffloadedRelations:
+* check all expired relations and move then to 
+* external storage
+*/
 void processOffloadedRelations(Oid dboid) {
   HeapTuple tup;
   int rc;
@@ -11,10 +17,18 @@ void processOffloadedRelations(Oid dboid) {
   HeapScanDesc desc;
   ScanKeyData skey[1];
 
-  elog(yezzey_log_level,
-       "[YEZZEY_SMGR_BG] putting unprocessed tables in relocate table");
-
   auto offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, AccessShareLock);
+
+  /*
+  * We cannot open yezzey offloaded relations metatable
+  * in scheme 'yezzey'. This is possible when
+  * this code executes on bgworker, which
+  * executes on shared library loading, BEFORE
+  * CREATE EXTENSION command was done.
+  */
+  if (!RelationIsValid(offrel)) {
+    return;
+  }
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
   {
@@ -36,8 +50,9 @@ void processOffloadedRelations(Oid dboid) {
        */
       if ((rc = yezzey_offload_relation_internal(meta->reloid, false, NULL)) <
           0) {
-        elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %u for relation %d", rc,
-             meta->reloid);
+        elog(yezzey_log_level,
+             "[YEZZEY_SMGR_BG] offloading relation (oid=%d) result: %d",
+             meta->reloid, rc);
       }
     }
 

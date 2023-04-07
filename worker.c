@@ -163,17 +163,6 @@ static void yezzey_sighup(SIGNAL_ARGS) {
   errno = save_errno;
 }
 
-/*
- * We cannot crate table in scheme 'yezzey', because
- * this boostrap executes on bgworker startup, which
- * executes on shared library loading, BEFORE
- * CREATE EXTENSION command will be executed
- */
-const char *yezzeyBoostrapSchemaName = "yezzey_boostrap";
-const char *yezzeyRelocateTableName = "relocate_table";
-
-const char *yezzeySchemaName = "yezzey";
-const char *yezzeyOffloadMetadataTableName = "offload_metadata";
 /* TODO: make this guc*/
 const int processTableLimit = 10;
 
