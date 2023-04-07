@@ -278,13 +278,13 @@ DECLARE
     v_tmp_relname yezzey.offload_metadata%rowtype;
     v_reloid OID;
 BEGIN
-    -- SELECT 
-    --     oid
-    -- FROM 
-    --     pg_catalog.pg_class
-    -- INTO v_reloid 
-    -- WHERE 
-    --     relname = load_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = load_nspname);
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = load_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = load_nspname);
 
     -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
     -- IF NOT FOUND THEN
@@ -358,13 +358,13 @@ DECLARE
     v_reloid OID;
 BEGIN
 
-    -- SELECT 
-    --     oid
-    -- FROM 
-    --     pg_catalog.pg_class
-    -- INTO v_reloid 
-    -- WHERE 
-    --     relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
+    SELECT 
+        oid
+    FROM 
+        pg_catalog.pg_class
+    INTO v_reloid 
+    WHERE 
+        relname = i_relname AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = i_nspname);
 
     -- SELECT * FROM yezzey.offload_metadata INTO v_tmp_relname WHERE reloid = v_reloid;
     -- IF NOT FOUND THEN

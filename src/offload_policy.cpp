@@ -1,7 +1,5 @@
 #include "offload_policy.h"
 
-PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
-
 /*
 
 CREATE TABLE yezzey.offload_metadata(
@@ -72,8 +70,12 @@ void YezzeyOffloadPolicyRelation() {
   CommandCounterIncrement();
 }
 
-void YezzeyOffloadPolicyInsert(Oid reloid /* offload relation oid */,
-                               int offload_policy) {
+void YezzeySetRelationExpiritySeg(
+  Oid i_reloid,
+  int i_relpolicy,
+  Timestamp i_relexp
+) {
+    /**/
   HeapTuple offtup;
   Relation offrel;
 
@@ -87,10 +89,9 @@ void YezzeyOffloadPolicyInsert(Oid reloid /* offload relation oid */,
 
   /* INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 1, NULL, NOW()); */
 
-  values[Anum_offload_metadata_reloid - 1] = reloid;
-  values[Anum_offload_metadata_relpolicy - 1] = offload_policy;
-  values[Anum_offload_metadata_relext_time - 1] =
-      TimestampTzGetDatum(GetCurrentTimestamp());
+  values[Anum_offload_metadata_reloid - 1] = i_reloid;
+  values[Anum_offload_metadata_relpolicy - 1] = i_relpolicy;
+  values[Anum_offload_metadata_relext_time - 1] = i_relexp;
   values[Anum_offload_metadata_rellast_archived - 1] =
       TimestampTzGetDatum(GetCurrentTimestamp());
 
@@ -104,9 +105,4 @@ void YezzeyOffloadPolicyInsert(Oid reloid /* offload relation oid */,
 
   /* make changes visible */
   CommandCounterIncrement();
-}
-
-
-Datum yezzey_set_relation_expirity_seg(PG_FUNCTION_ARGS) {
-
 }

@@ -43,6 +43,8 @@ typedef FormData_yezzey_offload_metadata *Form_yezzey_offload_metadata;
 
 EXTERNC void YezzeyOffloadPolicyRelation();
 
-EXTERNC
-void YezzeyOffloadPolicyInsert(Oid reloid /* offload relation oid */,
-                               int offload_policy);
+EXTERNC void YezzeySetRelationExpiritySeg(
+  Oid i_reloid /* offload relation oid */,
+  int i_relpolicy /* offload relation policy */,
+  Timestamp i_relexp
+);

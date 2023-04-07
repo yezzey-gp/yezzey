@@ -92,6 +92,8 @@ PG_FUNCTION_INFO_V1(yezzey_offload_relation_to_external_path);
 PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata_seg);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata);
+PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
+
 
 /*
  * Perform XLogInsert of a XLOG_SMGR_CREATE record to WAL.
@@ -191,7 +193,7 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
 
   /* record entry in offload metadata */
 
-  (void)YezzeyOffloadPolicyInsert(reloid, 1 /* always external */);
+  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */, GetCurrentTimestamp());
 
   /*
    * OK, add the dependency.
@@ -1207,4 +1209,25 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
 
   relation_close(aorel, AccessShareLock);
   PG_RETURN_DATUM(result);
+}
+
+Datum yezzey_set_relation_expirity_seg(PG_FUNCTION_ARGS) {
+  /* INSERT INFO yezzey.offload_metadata */
+  /*
+    0: i_reloid OID,
+    1: i_relpolicy INT,
+    2: i_relexp TIMESTAMP
+  */
+  Oid i_reloid;
+  int i_relpolicy;
+  Timestamp i_relexp;
+
+  i_reloid = PG_GETARG_OID(0);
+  i_relpolicy = PG_GETARG_INT32(1);
+  i_relexp = PG_GETARG_TIMESTAMP(2);
+
+  (void)YezzeySetRelationExpiritySeg(i_reloid, i_relpolicy /* always external */, i_relexp);
+
+
+  PG_RETURN_VOID();
 }
