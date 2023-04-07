@@ -9,33 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "pgstat.h"
-#include "utils/builtins.h"
-
-#include "access/aosegfiles.h"
-#include "access/htup_details.h"
-#include "utils/tqual.h"
-
-#include "catalog/pg_namespace.h"
-#include "catalog/pg_tablespace.h"
-#include "catalog/storage.h"
-#include "catalog/storage_xlog.h"
-#include "storage/smgr.h"
-#include "utils/catcache.h"
-#include "utils/syscache.h"
-
-// For GpIdentity
-#include "catalog/pg_tablespace.h"
-#include "cdb/cdbappendonlyxlog.h"
-#include "cdb/cdbvars.h"
-
-#ifdef __cplusplus
-}
-#endif
+#include "pg.h"
 
 #include "io.h"
 #include <iostream>

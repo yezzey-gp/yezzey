@@ -1,15 +1,11 @@
 #include "virtual_tablespace.h"
 
-
 /*
  * Execute ALTER TABLE SET TABLESPACE for cases where there is no tuple
  * rewriting to be done, so we just want to copy the data as fast as possible.
  */
 void YezzeyATExecSetTableSpace(Relation aorel, Oid reloid,
-                                Oid desttablespace_oid) {
-  Relation pg_class;
-  HeapTuple tuple;
-  Form_pg_class rd_rel;
+                               Oid desttablespace_oid) {
   /*
    * Need lock here in case we are recursing to toast table or index
    */
@@ -39,12 +35,12 @@ void YezzeyATExecSetTableSpace(Relation aorel, Oid reloid,
   // 	GetBitmapIndexAuxOids(rel, &relbmrelid, &relbmidxid);
 
   /* Get a modifiable copy of the relation's pg_class row */
-  pg_class = heap_open(RelationRelationId, RowExclusiveLock);
+  auto pg_class = heap_open(RelationRelationId, RowExclusiveLock);
 
-  tuple = SearchSysCacheCopy1(RELOID, ObjectIdGetDatum(reloid));
+  auto tuple = SearchSysCacheCopy1(RELOID, ObjectIdGetDatum(reloid));
   if (!HeapTupleIsValid(tuple))
     elog(ERROR, "cache lookup failed for relation %u", reloid);
-  rd_rel = (Form_pg_class)GETSTRUCT(tuple);
+  auto rd_rel = (Form_pg_class)GETSTRUCT(tuple);
 
   /*
    * Since we copy the file directly without looking at the shared buffers,

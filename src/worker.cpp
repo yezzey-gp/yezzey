@@ -27,9 +27,6 @@ void processOffloadedRelations(Oid dboid) {
   ereport(LOG, (errmsg("autovacuum: processing database \"%s\"", dbname)));
 
   /* And do an appropriate amount of work */
-  auto recentXid = ReadNewTransactionId();
-  auto recentMulti = ReadNextMultiXactId();
-
   StartTransactionCommand();
   (void)GetTransactionSnapshot();
 
@@ -71,7 +68,8 @@ void processOffloadedRelations(Oid dboid) {
        */
 
       YezzeyDefineOffloadPolicy(meta->reloid);
-      // if ((rc = yezzey_offload_relation_internal(meta->reloid, false, NULL)) <
+      // if ((rc = yezzey_offload_relation_internal(meta->reloid, false, NULL))
+      // <
       //     0) {
       //   elog(yezzey_log_level,
       //        "[YEZZEY_SMGR_BG] offloading relation (oid=%d) result: %d",

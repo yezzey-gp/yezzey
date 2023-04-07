@@ -10,6 +10,6 @@
 #endif
 
 EXTERNC void YezzeyATExecSetTableSpace(Relation aorel, Oid reloid,
-                                Oid desttablespace_oid);
+                                       Oid desttablespace_oid);
 
 #endif /* YEZZEY_VIRTUAL_TABLESPACE */

@@ -11,14 +11,10 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
     }
   }
 
-  Oid yezzey_ao_auxiliary_relid;
-  char yezzey_ao_auxiliary_relname[NAMEDATALEN];
-  TupleDesc tupdesc;
-
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
-  tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
+  auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index, "segno",
                      INT4OID, -1, 0);
@@ -31,11 +27,11 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_ext_path,
                      "external_path", TEXTOID, -1, 0);
 
-  snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
-           "%s_%u", "yezzey_virtual_index", RelationGetRelid(aorel));
+  auto yezzey_ao_auxiliary_relname = std::string("yezzey_virtual_index") +
+                                     std::to_string(RelationGetRelid(aorel));
 
-  yezzey_ao_auxiliary_relid = heap_create_with_catalog(
-      yezzey_ao_auxiliary_relname /* relname */,
+  auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
+      yezzey_ao_auxiliary_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
       GetNewObjectId() /* relid */, GetNewObjectId() /* reltype oid */,
       InvalidOid /* reloftypeid */, aorel->rd_rel->relowner /* owner */,
@@ -74,30 +70,27 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
 Oid YezzeyFindAuxIndex_internal(Oid reloid) {
   HeapTuple tup;
   Oid operatorObjectId;
-  char yezzey_ao_auxiliary_relname[NAMEDATALEN];
-  SysScanDesc scan;
   ScanKeyData skey[2];
-  Relation pg_class;
-  Oid yezzey_virtual_index_oid;
 
-  yezzey_virtual_index_oid = InvalidOid;
+  auto yezzey_virtual_index_oid = InvalidOid;
 
-  snprintf(yezzey_ao_auxiliary_relname, sizeof(yezzey_ao_auxiliary_relname),
-           "%s_%u", "yezzey_virtual_index", reloid);
+  auto yezzey_ao_auxiliary_relname =
+      std::string("yezzey_virtual_index") + std::to_string(reloid);
 
   /*
    * Check the pg_appendonly relation to be certain the ao table
    * is there.
    */
-  pg_class = heap_open(RelationRelationId, AccessShareLock);
+  auto pg_class = heap_open(RelationRelationId, AccessShareLock);
 
   ScanKeyInit(&skey[0], Anum_pg_class_relname, BTEqualStrategyNumber, F_NAMEEQ,
-              CStringGetDatum(yezzey_ao_auxiliary_relname));
+              CStringGetDatum(yezzey_ao_auxiliary_relname.c_str()));
 
   ScanKeyInit(&skey[1], Anum_pg_class_relnamespace, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(YEZZEY_AUX_NAMESPACE));
 
-  scan = systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 2, skey);
+  auto scan =
+      systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 2, skey);
 
   if (HeapTupleIsValid(tup = systable_getnext(scan))) {
     yezzey_virtual_index_oid = HeapTupleGetOid(tup);
@@ -113,23 +106,20 @@ Oid YezzeyFindAuxIndex(Oid reloid) {
   Oid yezzey_virtual_index_oid = YezzeyFindAuxIndex_internal(reloid);
   if (OidIsValid(yezzey_virtual_index_oid)) {
     return yezzey_virtual_index_oid;
-  } else {
-    elog(ERROR, "could not find yezzey virtual index oid for relation \"%d\"",
-         reloid);
   }
+  elog(ERROR, "could not find yezzey virtual index oid for relation \"%d\"",
+       reloid);
 }
 
 void emptyYezzeyIndex(Oid yezzey_index_oid) {
   HeapTuple tuple;
-  HeapScanDesc desc;
-  Relation rel;
 
   /* DELETE FROM yezzey.yezzey_virtual_index_<oid> */
-  rel = heap_open(yezzey_index_oid, RowExclusiveLock);
+  auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  desc = heap_beginscan(rel, snap, 0, NULL);
+  auto desc = heap_beginscan(rel, snap, 0, NULL);
 
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     simple_heap_delete(rel, &tuple->t_self);
@@ -147,9 +137,6 @@ void emptyYezzeyIndex(Oid yezzey_index_oid) {
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t segindx, int64_t modcount,
                               const std::string &ext_path) {
-  HeapTuple yandxtuple;
-  Relation yandxrel;
-
   bool nulls[Natts_yezzey_virtual_index];
   Datum values[Natts_yezzey_virtual_index];
 
@@ -159,7 +146,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   /* INSERT INTO  yezzey.yezzey_virtual_index_<oid> VALUES(segno, start_offset,
    * 0, modcount, external_path) */
 
-  yandxrel = heap_open(yandexoid, RowExclusiveLock);
+  auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
   values[Anum_yezzey_virtual_index - 1] = segindx;
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(0);
@@ -168,7 +155,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   values[Anum_yezzey_virtual_ext_path - 1] =
       CStringGetTextDatum(ext_path.c_str());
 
-  yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
+  auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
   simple_heap_insert(yandxrel, yandxtuple);
   CatalogUpdateIndexes(yandxrel, yandxtuple);

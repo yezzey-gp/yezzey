@@ -8,8 +8,9 @@ std::string craftStoragePath(const std::shared_ptr<YLister> &lister,
 
   /* Craft path in format
    *  handler->external_storage_prefix + seg_{segid} + ...
-   * example:
-   * wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
+   * example:           (prefix in wal-g compatable form) / tablespace oid /
+   * reloid / md5(schema + relname) / relfilenode / modcount
+   * wal-e/<cid>/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
    *
    */
 

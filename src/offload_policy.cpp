@@ -105,7 +105,6 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   CommandCounterIncrement();
 }
 
-
 /*
  * YezzeyDefineOffloadPolicy:
  * do all the work for relation offloading:
@@ -119,19 +118,15 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
  * in bgworker routines
  * 6) add the dependency in pg_depend
  */
-void
-YezzeyDefineOffloadPolicy(
-  Oid reloid) {
-  Oid yezzey_ext_oid;
+void YezzeyDefineOffloadPolicy(Oid reloid) {
   ObjectAddress relationAddr, extensionAddr;
   int rc;
-  Relation aorel;
 
   relationAddr.classId = RelationRelationId;
   relationAddr.objectId = reloid;
   relationAddr.objectSubId = 0;
 
-  yezzey_ext_oid = get_extension_oid("yezzey", false);
+  auto yezzey_ext_oid = get_extension_oid("yezzey", false);
 
   if (!yezzey_ext_oid) {
     elog(ERROR, "failed to get yezzey extnsion oid");
@@ -141,14 +136,14 @@ YezzeyDefineOffloadPolicy(
   extensionAddr.objectId = yezzey_ext_oid;
   extensionAddr.objectSubId = 0;
 
-//   elog(yezzey_log_level, "recording dependency on yezzey for relation %d",
-//        reloid);
+  //   elog(yezzey_log_level, "recording dependency on yezzey for relation %d",
+  //        reloid);
 
   /*
    * 2) Create auxularry yezzey table to track external storage
    * chunks
    */
-  aorel = relation_open(reloid, AccessExclusiveLock);
+  auto aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
 
   (void)YezzeyCreateAuxIndex(aorel);
@@ -177,11 +172,12 @@ YezzeyDefineOffloadPolicy(
   }
 
   /* change relation tablespace */
-  (void) YezzeyATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
+  (void)YezzeyATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
 
   /* record entry in offload metadata */
 
-  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */, GetCurrentTimestamp());
+  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
+                                     GetCurrentTimestamp());
 
   /*
    * OK, add the dependency.

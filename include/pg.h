@@ -97,8 +97,8 @@ extern "C" {
 #include "catalog/heap.h"
 #include "catalog/pg_namespace.h"
 
-#include "nodes/primnodes.h"
 #include "access/multixact.h"
+#include "nodes/primnodes.h"
 #include "utils/ps_status.h"
 
 #include "catalog/oid_dispatch.h"
