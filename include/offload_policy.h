@@ -2,6 +2,8 @@
 #pragma once
 
 #include "pg.h"
+#include "virtual_tablespace.h"
+#include "virtual_index.h"
 
 #ifdef __cplusplus
 #define EXTERNC extern "C"
@@ -43,8 +45,12 @@ typedef FormData_yezzey_offload_metadata *Form_yezzey_offload_metadata;
 
 EXTERNC void YezzeyOffloadPolicyRelation();
 
-EXTERNC void YezzeySetRelationExpiritySeg(
-  Oid i_reloid /* offload relation oid */,
-  int i_relpolicy /* offload relation policy */,
-  Timestamp i_relexp
-);
+EXTERNC void
+YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,
+                             int i_relpolicy /* offload relation policy */,
+                             Timestamp i_relexp);
+
+
+EXTERNC void
+YezzeyDefineOffloadPolicy(
+  Oid reloid) ;

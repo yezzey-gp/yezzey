@@ -57,6 +57,8 @@
 #include "offload_policy.h"
 #include "offload.h"
 
+#include "virtual_tablespace.h"
+
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
@@ -113,97 +115,12 @@ Datum yezzey_init_metadata_seg(PG_FUNCTION_ARGS) {
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
 
-static void ATExecSetTableSpace(Relation aorel, Oid reloid,
-                                Oid desttablespace_oid);
-
 /*
- * yezzey_define_relation_offload_policy_internal:
- * do all the work with initial relation offloading:
- * 1) Open relation in exclusive mode
- * 2) Create yezzey aux index relation for offload relation
- * 3)
- *   3.1) Do main offloading job on segments
- *   3.2) On dispather, clear pre-assigned oids.
- * 4) change relation tablespace to virtual tablespace
- * 5) record entry in offload metadata to track and process
- * in bgworker routines
- * 6) add the dependency in pg_depend
- */
+* yezzey_define_relation_offload_policy_internal:
+* do all the work with initial relation offloading
+*/
 Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
-  Oid reloid;
-  Oid yezzey_ext_oid;
-  ObjectAddress relationAddr, extensionAddr;
-  int rc;
-  Relation aorel;
-  Oid yandexoid;
-
-  reloid = PG_GETARG_OID(0);
-
-  relationAddr.classId = RelationRelationId;
-  relationAddr.objectId = reloid;
-  relationAddr.objectSubId = 0;
-
-  yezzey_ext_oid = get_extension_oid("yezzey", false);
-
-  if (!yezzey_ext_oid) {
-    elog(ERROR, "failed to get yezzey extnsion oid");
-  }
-
-  extensionAddr.classId = ExtensionRelationId;
-  extensionAddr.objectId = yezzey_ext_oid;
-  extensionAddr.objectSubId = 0;
-
-  elog(yezzey_log_level, "recording dependency on yezzey for relation %d",
-       reloid);
-
-  /*
-   * 2) Create auxularry yezzey table to track external storage
-   * chunks
-   */
-  aorel = relation_open(reloid, AccessExclusiveLock);
-  RelationOpenSmgr(aorel);
-
-  (void)YezzeyCreateAuxIndex(aorel);
-
-  /*
-   * @brief do main offload job on segments
-   *
-   */
-  if (Gp_role != GP_ROLE_DISPATCH) {
-    /*  */
-    if ((rc = yezzey_offload_relation_internal_rel(aorel, true, NULL)) < 0) {
-      elog(ERROR,
-           "failed to offload relation (oid=%d) to external storage: return "
-           "code "
-           "%d",
-           reloid, rc);
-    }
-  } else {
-    /* clear all pre-assigned oids
-     * for auxularry yezzey table relation
-     *
-     * We need to do it, else we will get error
-     * about assigned, but not dispatched oids
-     */
-    GetAssignedOidsForDispatch();
-  }
-
-  /* change relation tablespace */
-  (void)ATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
-
-  /* record entry in offload metadata */
-
-  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */, GetCurrentTimestamp());
-
-  /*
-   * OK, add the dependency.
-   */
-  // recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_EXTENSION);
-  // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_NORMAL);
-  recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_NORMAL);
-  // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_INTERNAL);
-  relation_close(aorel, AccessExclusiveLock);
-
+  (void) YezzeyDefineOffloadPolicy( PG_GETARG_OID(0));
   PG_RETURN_VOID();
 }
 
@@ -214,122 +131,6 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
 Datum yezzey_define_relation_offload_policy_internal_seg(PG_FUNCTION_ARGS) {
   return yezzey_define_relation_offload_policy_internal(fcinfo);
 }
-
-/*
- * Execute ALTER TABLE SET TABLESPACE for cases where there is no tuple
- * rewriting to be done, so we just want to copy the data as fast as possible.
- */
-static void ATExecSetTableSpace(Relation aorel, Oid reloid,
-                                Oid desttablespace_oid) {
-  Relation pg_class;
-  HeapTuple tuple;
-  Form_pg_class rd_rel;
-  /*
-   * Need lock here in case we are recursing to toast table or index
-   */
-
-  /*
-   * We cannot support moving mapped relations into different tablespaces.
-   * (In particular this eliminates all shared catalogs.)
-   */
-  if (RelationIsMapped(aorel))
-    ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                    errmsg("cannot move system relation \"%s\"",
-                           RelationGetRelationName(aorel))));
-
-  /*
-   * Don't allow moving temp tables of other backends ... their local buffer
-   * manager is not going to cope.
-   */
-  if (RELATION_IS_OTHER_TEMP(aorel))
-    ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                    errmsg("cannot move temporary tables of other sessions")));
-
-  /* Fetch the list of indexes on toast relation if necessary */
-  Assert(!OidIsValid(aorel->rd_rel->reltoastrelid));
-
-  // /* Get the bitmap sub objects */
-  // if (RelationIsBitmapIndex(rel))
-  // 	GetBitmapIndexAuxOids(rel, &relbmrelid, &relbmidxid);
-
-  /* Get a modifiable copy of the relation's pg_class row */
-  pg_class = heap_open(RelationRelationId, RowExclusiveLock);
-
-  tuple = SearchSysCacheCopy1(RELOID, ObjectIdGetDatum(reloid));
-  if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "cache lookup failed for relation %u", reloid);
-  rd_rel = (Form_pg_class)GETSTRUCT(tuple);
-
-  /*
-   * Since we copy the file directly without looking at the shared buffers,
-   * we'd better first flush out any pages of the source relation that are
-   * in shared buffers.  We assume no new changes will be made while we are
-   * holding exclusive lock on the rel.
-   */
-  FlushRelationBuffers(aorel);
-
-  /*
-   * Relfilenodes are not unique in databases across tablespaces, so we need
-   * to allocate a new one in the new tablespace.
-   */
-  /* Open old and new relation */
-  /*
-   * Create and copy all forks of the relation, and schedule unlinking of
-   * old physical files.
-   *
-   * NOTE: any conflict in relfilenode value will be caught in
-   * RelationCreateStorage().
-   */
-  /* data already copied */
-  /*
-   * Append-only tables now include init forks for unlogged tables, so we copy
-   * over all forks. AO tables, so far, do not have visimap or fsm forks.
-   */
-
-  /* drop old relation, and close new one */
-  RelationDropStorage(aorel);
-
-  /* update the pg_class row */
-  if (desttablespace_oid != YEZZEYTABLESPACE_OID) {
-    rd_rel->relfilenode = GetNewRelFileNode(desttablespace_oid, NULL,
-                                            aorel->rd_rel->relpersistence);
-  }
-  rd_rel->reltablespace = desttablespace_oid;
-  simple_heap_update(pg_class, &tuple->t_self, tuple);
-  CatalogUpdateIndexes(pg_class, tuple);
-
-  InvokeObjectPostAlterHook(RelationRelationId, RelationGetRelid(aorel), 0);
-
-  heap_freetuple(tuple);
-
-  heap_close(pg_class, RowExclusiveLock);
-
-  // yezzey: do we need this?
-  // /* MPP-6929: metadata tracking */
-  // if ((Gp_role == GP_ROLE_DISPATCH) && MetaTrackValidKindNsp(rel->rd_rel))
-  // 	MetaTrackUpdObject(RelationRelationId,
-  // 					   RelationGetRelid(rel),
-  // 					   GetUserId(),
-  // 					   "ALTER", "SET TABLESPACE");
-
-  /* Make sure the reltablespace change is visible */
-  CommandCounterIncrement();
-
-  /* yezzey: do we need to move indexes? */
-  // /*
-  //  * MPP-7996 - bitmap index subobjects w/Alter Table Set tablespace
-  //  */
-  // if (OidIsValid(relbmrelid))
-  // {
-  // 	Assert(!relaosegrelid);
-  // 	ATExecSetTableSpace(relbmrelid, newTableSpace, lockmode);
-  // }
-  // if (OidIsValid(relbmidxid))
-  // 	ATExecSetTableSpace(relbmidxid, newTableSpace, lockmode);
-
-  /* Clean up */
-}
-
 
 /*
 * yezzey_load_relation_internal:
@@ -376,7 +177,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   }
 
   /* Perform actual deletion of yezzey virtual index and metadata changes */
-  (void) ATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
+  (void) YezzeyATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
   if (aorel->rd_rel->relstorage == 'a') {

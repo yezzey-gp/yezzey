@@ -36,6 +36,7 @@ OBJS = \
 	src/worker.o \
 	src/offload_policy.o \
 	src/offload.o \
+	src/virtual_tablespace.o \
 	smgr.o worker.o yezzey.o \
 	../gpcloud_modified_for_yezzey/src/gpcloud.o ../gpcloud_modified_for_yezzey/lib/http_parser.o ../gpcloud_modified_for_yezzey/lib/ini.o $(addprefix ../gpcloud_modified_for_yezzey/src/,$(COMMON_OBJS))
 

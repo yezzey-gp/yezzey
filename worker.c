@@ -175,9 +175,6 @@ void yezzey_process_database(Datum main_arg) {
   // pqsignal(SIGTERM, die);
   BackgroundWorkerUnblockSignals();
 
-  /*	 BackgroundWorkerInitializeConnectionByOid(dboid, InvalidOid, 0); */
-  BackgroundWorkerInitializeConnectionByOid(dboid, InvalidOid);
-
   (void)processOffloadedRelations(dboid);
 }
 
@@ -186,6 +183,7 @@ void yezzey_process_database(Datum main_arg) {
  */
 static void yezzey_start_database_worker(Oid dboid) {
   BackgroundWorker worker;
+  BackgroundWorkerHandle *handle;
   elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
   memset(&worker, 0, sizeof(worker));
@@ -214,7 +212,7 @@ static void yezzey_start_database_worker(Oid dboid) {
   worker.bgw_notify_pid = 0;
 #endif
 
-  RegisterBackgroundWorker(&worker);
+  RegisterDynamicBackgroundWorker(&worker, &handle);
 
   elog(yezzey_log_level, "[YEZZEY_SMGR] started datbase worker");
 }

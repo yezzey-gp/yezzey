@@ -1,4 +1,5 @@
 #include "offload_policy.h"
+#include "offload.h"
 
 /*
 
@@ -70,12 +71,9 @@ void YezzeyOffloadPolicyRelation() {
   CommandCounterIncrement();
 }
 
-void YezzeySetRelationExpiritySeg(
-  Oid i_reloid,
-  int i_relpolicy,
-  Timestamp i_relexp
-) {
-    /**/
+void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
+                                  Timestamp i_relexp) {
+  /**/
   HeapTuple offtup;
   Relation offrel;
 
@@ -105,4 +103,92 @@ void YezzeySetRelationExpiritySeg(
 
   /* make changes visible */
   CommandCounterIncrement();
+}
+
+
+/*
+ * YezzeyDefineOffloadPolicy:
+ * do all the work for relation offloading:
+ * 1) Open relation in exclusive mode
+ * 2) Create yezzey aux index relation for offload relation
+ * 3)
+ *   3.1) Do main offloading job on segments
+ *   3.2) On dispather, clear pre-assigned oids.
+ * 4) change relation tablespace to virtual tablespace
+ * 5) record entry in offload metadata to track and process
+ * in bgworker routines
+ * 6) add the dependency in pg_depend
+ */
+void
+YezzeyDefineOffloadPolicy(
+  Oid reloid) {
+  Oid yezzey_ext_oid;
+  ObjectAddress relationAddr, extensionAddr;
+  int rc;
+  Relation aorel;
+
+  relationAddr.classId = RelationRelationId;
+  relationAddr.objectId = reloid;
+  relationAddr.objectSubId = 0;
+
+  yezzey_ext_oid = get_extension_oid("yezzey", false);
+
+  if (!yezzey_ext_oid) {
+    elog(ERROR, "failed to get yezzey extnsion oid");
+  }
+
+  extensionAddr.classId = ExtensionRelationId;
+  extensionAddr.objectId = yezzey_ext_oid;
+  extensionAddr.objectSubId = 0;
+
+//   elog(yezzey_log_level, "recording dependency on yezzey for relation %d",
+//        reloid);
+
+  /*
+   * 2) Create auxularry yezzey table to track external storage
+   * chunks
+   */
+  aorel = relation_open(reloid, AccessExclusiveLock);
+  RelationOpenSmgr(aorel);
+
+  (void)YezzeyCreateAuxIndex(aorel);
+
+  /*
+   * @brief do main offload job on segments
+   *
+   */
+  if (Gp_role != GP_ROLE_DISPATCH) {
+    /*  */
+    if ((rc = yezzey_offload_relation_internal_rel(aorel, true, NULL)) < 0) {
+      elog(ERROR,
+           "failed to offload relation (oid=%d) to external storage: return "
+           "code "
+           "%d",
+           reloid, rc);
+    }
+  } else {
+    /* clear all pre-assigned oids
+     * for auxularry yezzey table relation
+     *
+     * We need to do it, else we will get error
+     * about assigned, but not dispatched oids
+     */
+    GetAssignedOidsForDispatch();
+  }
+
+  /* change relation tablespace */
+  (void) YezzeyATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
+
+  /* record entry in offload metadata */
+
+  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */, GetCurrentTimestamp());
+
+  /*
+   * OK, add the dependency.
+   */
+  // recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_EXTENSION);
+  // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_NORMAL);
+  recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_NORMAL);
+  // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_INTERNAL);
+  relation_close(aorel, AccessExclusiveLock);
 }

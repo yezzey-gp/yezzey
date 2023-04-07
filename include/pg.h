@@ -98,6 +98,10 @@ extern "C" {
 #include "catalog/pg_namespace.h"
 
 #include "nodes/primnodes.h"
+#include "access/multixact.h"
+#include "utils/ps_status.h"
+
+#include "catalog/oid_dispatch.h"
 
 #ifdef __cplusplus
 }

@@ -11,8 +11,8 @@
 int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
                                          const char *external_storage_path) {
   int total_segfiles;
-  FileSegInfo** segfile_array;
-  AOCSFileSegInfo** segfile_array_cs;
+  FileSegInfo **segfile_array;
+  AOCSFileSegInfo **segfile_array_cs;
 
   auto nvp = aorel->rd_att->natts;
 
@@ -20,11 +20,12 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
    * Relation segments named base/DBOID/aorel->rd_node.*
    */
 
-  elog(yezzey_log_level, "offloading relation %s, relnode %d", aorel->rd_rel->relname.data, aorel->rd_node.relNode);
+  elog(yezzey_log_level, "offloading relation %s, relnode %d",
+       aorel->rd_rel->relname.data, aorel->rd_node.relNode);
 
   /* for now, we locked relation */
 
-  /* GetAllFileSegInfo_pg_aoseg_rel */  
+  /* GetAllFileSegInfo_pg_aoseg_rel */
 
   /* acquire snapshot for aoseg table lookup */
   auto appendOnlyMetaDataSnapshot = SnapshotSelf;
@@ -32,7 +33,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
   switch (aorel->rd_rel->relstorage) {
   case RELSTORAGE_AOROWS:
     /* Get information about all the file segments we need to scan */
-      segfile_array =
+    segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 
     for (int i = 0; i < total_segfiles; i++) {
@@ -45,7 +46,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
            modcount, logicalEof);
 
       auto rc = offloadRelationSegment(aorel, segno, modcount, logicalEof,
-                                  external_storage_path);
+                                       external_storage_path);
 
       if (rc < 0) {
         elog(ERROR,
@@ -62,8 +63,8 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
     break;
   case RELSTORAGE_AOCOLS:
     /* ao columns, relstorage == 'c' */
-    segfile_array_cs = GetAllAOCSFileSegInfo(
-        aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 
     for (int inat = 0; inat < nvp; ++inat) {
       for (int i = 0; i < total_segfiles; i++) {
@@ -81,8 +82,8 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
              "eof %ld",
              segno, pseudosegno, modcount, logicalEof);
 
-        auto rc = offloadRelationSegment(aorel, pseudosegno, modcount, logicalEof,
-                                    external_storage_path);
+        auto rc = offloadRelationSegment(aorel, pseudosegno, modcount,
+                                         logicalEof, external_storage_path);
 
         if (rc < 0) {
           elog(ERROR,
