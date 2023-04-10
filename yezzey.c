@@ -120,7 +120,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
 * do all the work with initial relation offloading
 */
 Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
-  (void) YezzeyDefineOffloadPolicy(PG_GETARG_OID(0), false);
+  (void) YezzeyDefineOffloadPolicy(PG_GETARG_OID(0));
   PG_RETURN_VOID();
 }
 

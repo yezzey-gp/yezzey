@@ -69,7 +69,6 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
 
 Oid YezzeyFindAuxIndex_internal(Oid reloid) {
   HeapTuple tup;
-  Oid operatorObjectId;
   ScanKeyData skey[2];
 
   auto yezzey_virtual_index_oid = InvalidOid;

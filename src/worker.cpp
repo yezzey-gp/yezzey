@@ -66,7 +66,7 @@ void processOffloadedRelations(Oid dboid) {
        * and we are goind to lock row in X mode
        */
 
-      YezzeyDefineOffloadPolicy(meta->reloid, true);
+      YezzeyDefineOffloadPolicy(meta->reloid);
       // if ((rc = yezzey_offload_relation_internal(meta->reloid, false, NULL))
       // <
       //     0) {

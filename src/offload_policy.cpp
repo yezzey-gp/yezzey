@@ -18,8 +18,6 @@ const std::string offload_metadata_relname_indx = "offload_metadata_indx";
 void YezzeyOffloadPolicyRelation() {
   { /* check existed, if no, return */
   }
-
-  Oid yezzey_offload_metadata_relid;
   TupleDesc tupdesc;
 
   ObjectAddress baseobject;
@@ -54,15 +52,14 @@ void YezzeyOffloadPolicyRelation() {
 
   /* ShareLock is not really needed here, but take it anyway */
   auto yezzey_rel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, ShareLock);
-
-
-  auto indexColNames = list_make1(makeString("reloid"));
+  char * colname = "reloid";
+  auto indexColNames = list_make1(makeString(colname));
 
   auto indexInfo = makeNode(IndexInfo);
 
-	Oid			collationObjectId[1];
-	Oid			classObjectId[1];
-	int16		coloptions[1];
+  Oid collationObjectId[1];
+  Oid classObjectId[1];
+  int16 coloptions[1];
 
   indexInfo->ii_NumIndexAttrs = 1;
   indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
@@ -72,7 +69,6 @@ void YezzeyOffloadPolicyRelation() {
   indexInfo->ii_PredicateState = NIL;
   indexInfo->ii_Unique = true;
   indexInfo->ii_Concurrent = false;
-
 
   collationObjectId[0] = InvalidOid;
   classObjectId[0] = OID_BTREE_OPS_OID;
@@ -116,8 +112,7 @@ void YezzeyOffloadPolicyRelation() {
 void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
                                   Timestamp i_relexp) {
   /**/
-  HeapTuple offtup;
-  Relation offrel;
+  ScanKeyData skey[1];
 
   bool nulls[Natts_offload_metadata];
   Datum values[Natts_offload_metadata];
@@ -125,12 +120,18 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   memset(nulls, 0, sizeof(nulls));
   memset(values, 0, sizeof(values));
 
-
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
+  auto offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
 
   /* INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 1, NULL, NOW()); */
+
+  ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(i_reloid));
+
+  auto scan = heap_beginscan(offrel, snap, 0, NULL);
+
+  auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
   values[Anum_offload_metadata_reloid - 1] = i_reloid;
   values[Anum_offload_metadata_relpolicy - 1] = i_relpolicy;
@@ -138,14 +139,28 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   values[Anum_offload_metadata_rellast_archived - 1] =
       TimestampTzGetDatum(GetCurrentTimestamp());
 
-  offtup = heap_form_tuple(RelationGetDescr(offrel), values, nulls);
+  if (HeapTupleIsValid(oldtuple)) {
+    auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(oldtuple);
 
-  simple_heap_insert(offrel, offtup);
-  CatalogUpdateIndexes(offrel, offtup);
+    values[Anum_offload_metadata_relpolicy - 1] = meta->relpolicy;
+    values[Anum_offload_metadata_relext_time - 1] = meta->relext_time;
 
-  heap_freetuple(offtup);
+    auto offtuple = heap_form_tuple(RelationGetDescr(offrel), values, nulls);
+
+    simple_heap_update(offrel, &oldtuple->t_self, offtuple);
+
+  heap_freetuple(offtuple);
+  } else {
+    auto offtuple = heap_form_tuple(RelationGetDescr(offrel), values, nulls);
+
+    simple_heap_insert(offrel, offtuple);
+
+  heap_freetuple(offtuple);
+  }
+
   heap_close(offrel, RowExclusiveLock);
 
+  heap_endscan(scan);
   UnregisterSnapshot(snap);
 
   /* make changes visible */
@@ -165,7 +180,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
  * in bgworker routines
  * 6) add the dependency in pg_depend
  */
-void YezzeyDefineOffloadPolicy(Oid reloid, bool skip_metadata) {
+void YezzeyDefineOffloadPolicy(Oid reloid) {
   ObjectAddress relationAddr, extensionAddr;
   int rc;
 
@@ -223,10 +238,8 @@ void YezzeyDefineOffloadPolicy(Oid reloid, bool skip_metadata) {
 
   /* record entry in offload metadata */
 
-  if (!skip_metadata) {
-    (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
-                                       GetCurrentTimestamp());
-  }
+  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
+                                     GetCurrentTimestamp());
 
   /*
    * OK, add the dependency.
