@@ -13,6 +13,7 @@
 
 #define YEZZEY_OFFLOAD_POLICY_RELATION 8600
 
+#define YEZZEY_OFFLOAD_POLICY_RELATION_INDX 8601
 /*
 
 CREATE TABLE yezzey.offload_metadata(
@@ -50,4 +51,4 @@ YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,
                              int i_relpolicy /* offload relation policy */,
                              Timestamp i_relexp);
 
-EXTERNC void YezzeyDefineOffloadPolicy(Oid reloid);
+EXTERNC void YezzeyDefineOffloadPolicy(Oid reloid, bool skip_metadata);

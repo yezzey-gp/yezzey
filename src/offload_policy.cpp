@@ -12,7 +12,8 @@ CREATE TABLE yezzey.offload_metadata(
 DISTRIBUTED REPLICATED;
 */
 
-const char *offload_metadata_relname = "offload_metadata";
+const std::string offload_metadata_relname = "offload_metadata";
+const std::string offload_metadata_relname_indx = "offload_metadata_indx";
 
 void YezzeyOffloadPolicyRelation() {
   { /* check existed, if no, return */
@@ -36,8 +37,8 @@ void YezzeyOffloadPolicyRelation() {
                      (AttrNumber)Anum_offload_metadata_rellast_archived,
                      "rellast_archived", TIMESTAMPOID, -1, 0);
 
-  yezzey_offload_metadata_relid = heap_create_with_catalog(
-      offload_metadata_relname /* relname */,
+  (void)heap_create_with_catalog(
+      offload_metadata_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
       YEZZEY_OFFLOAD_POLICY_RELATION /* relid */,
       GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
@@ -49,6 +50,47 @@ void YezzeyOffloadPolicyRelation() {
       false /* is part parent */);
 
   /* Make this table visible, else yezzey virtual index creation will fail */
+  CommandCounterIncrement();
+
+  /* ShareLock is not really needed here, but take it anyway */
+  auto yezzey_rel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, ShareLock);
+
+
+  auto indexColNames = list_make1(makeString("reloid"));
+
+  auto indexInfo = makeNode(IndexInfo);
+
+	Oid			collationObjectId[1];
+	Oid			classObjectId[1];
+	int16		coloptions[1];
+
+  indexInfo->ii_NumIndexAttrs = 1;
+  indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
+  indexInfo->ii_Expressions = NIL;
+  indexInfo->ii_ExpressionsState = NIL;
+  indexInfo->ii_Predicate = NIL;
+  indexInfo->ii_PredicateState = NIL;
+  indexInfo->ii_Unique = true;
+  indexInfo->ii_Concurrent = false;
+
+
+  collationObjectId[0] = InvalidOid;
+  classObjectId[0] = OID_BTREE_OPS_OID;
+  coloptions[0] = 0;
+
+  (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
+                     YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
+                     InvalidOid, InvalidOid, indexInfo, indexColNames,
+                     BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
+                     classObjectId, coloptions, (Datum)0, true, false, false,
+                     false, true, false, false, true, NULL);
+
+  /* Unlock target table -- no one can see it */
+  heap_close(yezzey_rel, ShareLock);
+
+  /* Unlock the index -- no one can see it anyway */
+  UnlockRelationOid(YEZZEY_OFFLOAD_POLICY_RELATION_INDX, AccessExclusiveLock);
+
   CommandCounterIncrement();
 
   /*
@@ -83,6 +125,9 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   memset(nulls, 0, sizeof(nulls));
   memset(values, 0, sizeof(values));
 
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
+
   offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
 
   /* INSERT INTO yezzey.offload_metadata VALUES(v_reloid, 1, NULL, NOW()); */
@@ -101,6 +146,8 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   heap_freetuple(offtup);
   heap_close(offrel, RowExclusiveLock);
 
+  UnregisterSnapshot(snap);
+
   /* make changes visible */
   CommandCounterIncrement();
 }
@@ -118,7 +165,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
  * in bgworker routines
  * 6) add the dependency in pg_depend
  */
-void YezzeyDefineOffloadPolicy(Oid reloid) {
+void YezzeyDefineOffloadPolicy(Oid reloid, bool skip_metadata) {
   ObjectAddress relationAddr, extensionAddr;
   int rc;
 
@@ -176,8 +223,10 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
 
   /* record entry in offload metadata */
 
-  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
-                                     GetCurrentTimestamp());
+  if (!skip_metadata) {
+    (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
+                                       GetCurrentTimestamp());
+  }
 
   /*
    * OK, add the dependency.

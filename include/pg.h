@@ -101,7 +101,10 @@ extern "C" {
 #include "nodes/primnodes.h"
 #include "utils/ps_status.h"
 
+#include "catalog/index.h"
 #include "catalog/oid_dispatch.h"
+
+#include "catalog/pg_opclass.h"
 
 #ifdef __cplusplus
 }

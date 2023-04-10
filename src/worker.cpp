@@ -24,7 +24,7 @@ void processOffloadedRelations(Oid dboid) {
   InitPostgres(NULL, dboid, NULL, InvalidOid, dbname, true);
   SetProcessingMode(NormalProcessing);
   set_ps_display(dbname, false);
-  ereport(LOG, (errmsg("autovacuum: processing database \"%s\"", dbname)));
+  ereport(LOG, (errmsg("yezzey bgworker: processing database \"%s\"", dbname)));
 
   /* And do an appropriate amount of work */
   StartTransactionCommand();
@@ -32,7 +32,6 @@ void processOffloadedRelations(Oid dboid) {
 
   HeapTuple tup;
 
-  HeapScanDesc desc;
   ScanKeyData skey[1];
 
   auto offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, AccessShareLock);
@@ -54,7 +53,7 @@ void processOffloadedRelations(Oid dboid) {
                 BTGreaterEqualStrategyNumber, F_TIMESTAMP_GT,
                 TimestampTzGetDatum(GetCurrentTimestamp()));
 
-    desc = heap_beginscan(offrel, snap, 0, NULL);
+    auto desc = heap_beginscan(offrel, snap, 0, NULL);
 
     while (HeapTupleIsValid(tup = heap_getnext(desc, ForwardScanDirection))) {
       auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(tup);
@@ -67,7 +66,7 @@ void processOffloadedRelations(Oid dboid) {
        * and we are goind to lock row in X mode
        */
 
-      YezzeyDefineOffloadPolicy(meta->reloid);
+      YezzeyDefineOffloadPolicy(meta->reloid, true);
       // if ((rc = yezzey_offload_relation_internal(meta->reloid, false, NULL))
       // <
       //     0) {
