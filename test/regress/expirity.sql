@@ -15,6 +15,11 @@ SELECT yezzey_set_relation_expirity('public', 'regaoty', (NOW() + '10 min'::INTE
 
 -- AOCS
 
+CREATE TABLE regaocsty(i INT, j INT) WITH (appendonly=true, orientation=column);
+INSERT INTO regaocsty SELECT * FROM generate_series(1, 1000000);
+
+SELECT yezzey_set_relation_expirity('public', 'regaocsty', (NOW() + '10 min'::INTERVAL)::TIMESTAMP);
+
 --\! echo AOCS simple test OK
 --\c postgres
 

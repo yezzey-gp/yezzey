@@ -44,9 +44,14 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx)
 #else
   reader_ = std::make_shared<EncryptedStorageReader>(adv_, segindx_);
 #endif
+  lister_ = std::make_shared<StorageLister>(adv_, segindx_);
 }
 
 bool YIO::io_read(char *buffer, size_t *amount) {
+  if (lister_.get() == nullptr) {
+    *amount = -1;
+    return false;
+  }
   if (reader_.get() == nullptr) {
     *amount = -1;
     return false;

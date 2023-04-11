@@ -234,8 +234,8 @@ void yezzey_offload_databases() {
    */
   initStringInfo(&buf);
   appendStringInfo(&buf, ""
-                         "SELECT oid FROM pg_database "
-                         "ORDER BY random() LIMIT 1;");
+                         "SELECT oid FROM pg_database WHERE datallowconn"
+                        " ORDER BY random() LIMIT 1;");
 
   pgstat_report_activity(STATE_RUNNING, buf.data);
   ret = SPI_execute(buf.data, true, 1);

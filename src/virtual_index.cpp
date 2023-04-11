@@ -147,7 +147,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
-  values[Anum_yezzey_virtual_index - 1] = segindx;
+  values[Anum_yezzey_virtual_index - 1] = Int64GetDatum(segindx);
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);

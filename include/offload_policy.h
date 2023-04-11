@@ -34,7 +34,7 @@ DISTRIBUTED REPLICATED;
 
 typedef struct {
   Oid reloid;                 /* OID of offloaded relation */
-  int32_t relpolicy;          /* offloading policy of relation */
+  int64_t relpolicy;          /* offloading policy of relation */
   Timestamp relext_time;      /* Relation (local) expiry time  */
   Timestamp rellast_archived; /* Relation last archived time */
 } FormData_yezzey_offload_metadata;

@@ -50,10 +50,10 @@ void processOffloadedRelations(Oid dboid) {
 
   {
     ScanKeyInit(&skey[0], Anum_offload_metadata_relext_time,
-                BTGreaterEqualStrategyNumber, F_TIMESTAMP_GT,
-                TimestampTzGetDatum(GetCurrentTimestamp()));
+                BTLessEqualStrategyNumber, F_TIMESTAMP_LT,
+                TimestampGetDatum(GetCurrentTimestamp()));
 
-    auto desc = heap_beginscan(offrel, snap, 0, NULL);
+    auto desc = heap_beginscan(offrel, snap, 1, skey);
 
     while (HeapTupleIsValid(tup = heap_getnext(desc, ForwardScanDirection))) {
       auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(tup);
@@ -67,13 +67,6 @@ void processOffloadedRelations(Oid dboid) {
        */
 
       YezzeyDefineOffloadPolicy(meta->reloid);
-      // if ((rc = yezzey_offload_relation_internal(meta->reloid, false, NULL))
-      // <
-      //     0) {
-      //   elog(yezzey_log_level,
-      //        "[YEZZEY_SMGR_BG] offloading relation (oid=%d) result: %d",
-      //        meta->reloid, rc);
-      // }
     }
 
     heap_endscan(desc);

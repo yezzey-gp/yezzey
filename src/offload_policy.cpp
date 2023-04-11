@@ -129,21 +129,21 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = heap_beginscan(offrel, snap, 0, NULL);
+  auto scan = heap_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
-  values[Anum_offload_metadata_reloid - 1] = i_reloid;
-  values[Anum_offload_metadata_relpolicy - 1] = i_relpolicy;
-  values[Anum_offload_metadata_relext_time - 1] = i_relexp;
+  values[Anum_offload_metadata_reloid - 1] = ObjectIdGetDatum(i_reloid);
+  values[Anum_offload_metadata_relpolicy - 1] = Int32GetDatum(i_relpolicy);
+  values[Anum_offload_metadata_relext_time - 1] = TimestampGetDatum(i_relexp);
   values[Anum_offload_metadata_rellast_archived - 1] =
-      TimestampTzGetDatum(GetCurrentTimestamp());
+      TimestampGetDatum(GetCurrentTimestamp());
 
   if (HeapTupleIsValid(oldtuple)) {
     auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(oldtuple);
 
-    values[Anum_offload_metadata_relpolicy - 1] = meta->relpolicy;
-    values[Anum_offload_metadata_relext_time - 1] = meta->relext_time;
+    values[Anum_offload_metadata_relpolicy - 1] =  Int32GetDatum(meta->relpolicy);
+    values[Anum_offload_metadata_relext_time - 1] = TimestampGetDatum(meta->relext_time);
 
     auto offtuple = heap_form_tuple(RelationGetDescr(offrel), values, nulls);
 
@@ -198,9 +198,6 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
   extensionAddr.objectId = yezzey_ext_oid;
   extensionAddr.objectSubId = 0;
 
-  //   elog(yezzey_log_level, "recording dependency on yezzey for relation %d",
-  //        reloid);
-
   /*
    * 2) Create auxularry yezzey table to track external storage
    * chunks
@@ -237,7 +234,7 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
   (void)YezzeyATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
 
   /* record entry in offload metadata */
-
+  /* Bump rellast acrhive, or insert proper metadata tuple */
   (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
                                      GetCurrentTimestamp());
 

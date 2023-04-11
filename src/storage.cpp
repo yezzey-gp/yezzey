@@ -16,18 +16,6 @@
 
 #include "virtual_index.h"
 
-int offloadFileToExternalStorage(Relation aorel, const std::string &spname,
-                                 const std::string &relname,
-                                 const relnodeCoord &coords, int64 modcount,
-                                 int64 logicalEof,
-                                 const std::string &xternal_storage_path);
-
-int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
-                               const std::string &relname,
-                               const relnodeCoord &coords, int64 modcount,
-                               int64 logicalEof,
-                               const std::string &external_storage_path);
-
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
 
@@ -39,12 +27,12 @@ bool ensureFilepathLocal(const std::string &filepath) {
   return (stat(filepath.c_str(), &buffer) == 0);
 }
 
-int offloadFileToExternalStorage(Relation aorel, const std::string &nspname,
-                                 const std::string &relname,
-                                 const relnodeCoord &coords, int64 modcount,
-                                 int64 logicalEof,
-                                 const std::string &external_storage_path) {
 
+int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
+                               const std::string &relname,
+                               const relnodeCoord &coords, int64 modcount,
+                               int64 logicalEof,
+                               const std::string &external_storage_path) {
   const std::string localPath = getlocalpath(coords);
 
   if (!ensureFilepathLocal(localPath)) {
@@ -276,21 +264,11 @@ std::string getlocalpath(const relnodeCoord &coords) {
   return getlocalpath(dbnode, relnode, segno);
 }
 
-int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
-                               const std::string &relname,
-                               const relnodeCoord &coords, int64 modcount,
-                               int64 logicalEof,
-                               const std::string &external_storage_path) {
-  return offloadFileToExternalStorage(aorel, nspname, relname, coords, modcount,
-                                      logicalEof, external_storage_path);
-}
-
 int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
                            int64 logicalEof,
                            const char *external_storage_path) {
   RelFileNode rnode = aorel->rd_node;
   int rc;
-  int64_t virtual_sz;
   HeapTuple tp;
 
   auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
@@ -306,7 +284,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
          aorel->rd_rel->relname.data);
   }
 
-  Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
+  auto nsptup = (Form_pg_namespace)GETSTRUCT(tp);
   auto nspname = std::string(NameStr(nsptup->nspname));
   auto relname = std::string(aorel->rd_rel->relname.data);
   auto storage_path =
@@ -330,11 +308,9 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
-  auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
+  auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
 
-  virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
-
-  elog(yezzey_ao_log_level,
+  elog(INFO,
        "yezzey: relation segment reached external storage (blkno=%ld), virtual "
        "size %ld, logical eof %ld",
        std::get<2>(coords), virtual_sz, logicalEof);
@@ -418,7 +394,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
          aorel->rd_rel->relname.data);
   }
 
-  Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
+  auto nsptup = (Form_pg_namespace)GETSTRUCT(tp);
   auto nspname = std::string(NameStr(nsptup->nspname));
   ReleaseSysCache(tp);
 
@@ -433,7 +409,8 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
-  auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
+  /* ro - handler */
+  auto iohandler = YIO(ioadv, GpIdentity.segindex);
 
   /* stat external storage usage */
 
