@@ -128,14 +128,12 @@ static const struct config_enum_entry loglevel_options[] = {
     {"log", LOG, false},         {"fatal", FATAL, false},
     {"panic", PANIC, false},     {NULL, 0, false}};
 
-void offloadExpiredRelations(void);
-
 void yezzey_prepare(void) {
   SetCurrentStatementStartTimestamp();
   StartTransactionCommand();
   SPI_connect();
   PushActiveSnapshot(GetTransactionSnapshot());
-  pgstat_report_activity(STATE_RUNNING, "initializing yezzey schema");
+  pgstat_report_activity(STATE_RUNNING, "proccess relations to offload to yezzey");
   SetCurrentStatementStartTimestamp();
 }
 
@@ -168,6 +166,7 @@ const int processTableLimit = 10;
 
 void yezzey_process_database(Datum main_arg) {
   Oid dboid;
+  char dbname[NAMEDATALEN];
 
   dboid = DatumGetObjectId(main_arg);
 
@@ -175,7 +174,19 @@ void yezzey_process_database(Datum main_arg) {
   // pqsignal(SIGTERM, die);
   BackgroundWorkerUnblockSignals();
 
-  (void)processOffloadedRelations(dboid);
+
+  Gp_session_role = GP_ROLE_UTILITY;
+  Gp_role = GP_ROLE_UTILITY;
+  InitPostgres(NULL, dboid, NULL, InvalidOid, dbname, true);
+  SetProcessingMode(NormalProcessing);
+  set_ps_display(dbname, false);
+  ereport(LOG, (errmsg("yezzey bgworker: processing database \"%s\"", dbname)));
+
+  if (Gp_role == GP_ROLE_EXECUTE) {
+    (void)processPartitionOffload();
+  } else if (Gp_role = GP_ROLE_DISPATCH) {
+    (void)processOffloadedRelations();
+  }
 }
 
 /*
@@ -240,7 +251,7 @@ void yezzey_offload_databases() {
   pgstat_report_activity(STATE_RUNNING, buf.data);
   ret = SPI_execute(buf.data, true, 1);
   if (ret != SPI_OK_SELECT) {
-    elog(FATAL, "Error while yezzey relocate table lookup");
+    elog(ERROR, "Error while selecting database list");
   }
 
   tupdesc = SPI_tuptable->tupdesc;
@@ -256,10 +267,6 @@ void yezzey_offload_databases() {
    */
   tuple = tuptable->vals[0];
   dbOidRaw = SPI_getvalue(tuple, tupdesc, 1);
-
-  elog(yezzey_log_level, "[YEZZEY_SMGR_BG] got %lu results, oid is %s", cnt,
-       dbOidRaw);
-
   /*
    * Convert to desired data type
    */
@@ -346,9 +353,6 @@ yezzey_main(Datum main_arg) {
 
   while (!got_sigterm) {
     int rc;
-
-    elog(yezzey_log_level, "[YEZZEY_SMGR_BG] waiting for processing tables");
-
     rc = WaitLatch(&MyProc->procLatch,
                    WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
 #if PG_VERSION_NUM < 100000
@@ -393,7 +397,9 @@ static void yezzey_start_launcher_worker(void) {
   MemSet(&worker, 0, sizeof(BackgroundWorker));
   worker.bgw_flags =
       BGWORKER_SHMEM_ACCESS | BGWORKER_BACKEND_DATABASE_CONNECTION;
+  /* to start */
   worker.bgw_start_time = BgWorkerStart_ConsistentState;
+  worker.bgw_restart_time = 10;
 
 #if PG_VERSION_NUM < 100000
   worker.bgw_main = yezzey_main;
@@ -407,33 +413,28 @@ static void yezzey_start_launcher_worker(void) {
   snprintf(worker.bgw_type, BGW_MAXLEN, "yezzey");
 #endif
 
-  worker.bgw_restart_time = 10;
-
 #if PG_VERSION_NUM >= 90400
   worker.bgw_notify_pid = 0;
 #endif
 
-  RegisterBackgroundWorker(&worker);
-
-  if (process_shared_preload_libraries_in_progress) {
-    RegisterBackgroundWorker(&worker);
-    return;
-  }
-
   /* must set notify PID to wait for startup */
-  worker.bgw_notify_pid = MyProcPid;
+  // worker.bgw_notify_pid = MyProcPid;
 
-  if (!RegisterDynamicBackgroundWorker(&worker, &handle))
-    ereport(ERROR, (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
-                    errmsg("could not register background process"),
-                    errhint("You may need to increase max_worker_processes.")));
+  if (Gp_role == GP_ROLE_DISPATCH) {
+    RegisterBackgroundWorker(&worker);
+  } else {
+    if (!RegisterDynamicBackgroundWorker(&worker, &handle))
+      ereport(ERROR, (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
+                      errmsg("could not register background process"),
+                      errhint("You may need to increase max_worker_processes.")));
 
-  status = WaitForBackgroundWorkerStartup(handle, &pid);
-  if (status != BGWH_STARTED)
-    ereport(ERROR,
-            (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
-             errmsg("could not start background process"),
-             errhint("More details may be available in the server log.")));
+    status = WaitForBackgroundWorkerStartup(handle, &pid);
+    if (status != BGWH_STARTED)
+      ereport(ERROR,
+              (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
+              errmsg("could not start background process"),
+              errhint("More details may be available in the server log.")));
+  }
 }
 
 /* GUC variables. */
@@ -506,7 +507,7 @@ void _PG_init(void) {
 
   elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
-  if (yezzey_autooffload) {
+  if (yezzey_autooffload&&false/*temp disable*/) {
     /* dispatch yezzey worker */
     yezzey_start_launcher_worker();
   }

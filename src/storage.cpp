@@ -349,9 +349,6 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(walg_bin_path), std::string(walg_config_path),
       use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
-
-  auto iohandler = YIO(ioadv, GpIdentity.segindex, modcount, "");
-
   /* stat external storage usage */
   virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
 

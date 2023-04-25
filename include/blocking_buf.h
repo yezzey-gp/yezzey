@@ -18,7 +18,7 @@ class BlockingBuffer {
   std::condition_variable cv_write_;
   // std::condition_variable cv_full_;
 
-  const size_t default_sz_ = 1 << 12;
+  const size_t default_sz_ = 1 << 24;
 
   bool closed_{false};
 

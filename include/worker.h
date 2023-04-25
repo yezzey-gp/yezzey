@@ -9,6 +9,7 @@
 #define EXTERNC
 #endif
 
-EXTERNC void processOffloadedRelations(Oid dboid);
+EXTERNC void processOffloadedRelations();
+EXTERNC void processPartitionOffload();
 
 #endif /*YEZZEY_WORKER_H*/

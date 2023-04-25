@@ -134,11 +134,23 @@ CREATE OR REPLACE FUNCTION yezzey_set_relation_expirity_seg(
     i_relpolicy INT,
     i_relexp TIMESTAMP
 )
- RETURNS void
+RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
-EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
+
+
+CREATE OR REPLACE FUNCTION yezzey_relation_expirity_seg(
+    i_reloid OID,
+    i_relpolicy INT,
+    i_relexp TIMESTAMP
+)
+RETURNS void
+AS $$ 
+SELECT yezzey_set_relation_expirity_seg(i_reloid, i_relpolicy, i_relexp);
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE SQL;
 
 
 CREATE OR REPLACE FUNCTION
@@ -161,7 +173,7 @@ BEGIN
         RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
     END IF;
 
-    PERFORM yezzey_set_relation_expirity_seg(
+    PERFORM yezzey_relation_expirity_seg(
         v_reloid,
         1,
         i_relexp
@@ -522,4 +534,24 @@ AS $$
     SELECT yezzey_auto_offload_relation('public', offload_relname, expire_date);
 $$
 LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION yezzey_part_date_eval(expression text) RETURNS DATE
+AS
+$$
+declare
+  result date;
+BEGIN
+  EXECUTE expression INTO result;
+  RETURN result;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION yezzey_check_part_exr(
+    i_node pg_node_tree
+)
+RETURNS BOOLEAN
+AS 'MODULE_PATHNAME'
+VOLATILE
+LANGUAGE C STRICT;
 

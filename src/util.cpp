@@ -31,7 +31,14 @@ const char *basebackupsPath = "/basebackups_005/aosegments/";
 std::string getYezzeyExtrenalStorageBucket(const char *host,
                                            const char *bucket) {
   std::string url = "s3://";
-  url += host;
+  std::string toErase = "https://";
+  std::string hostStr = host;
+  size_t pos = hostStr.find(toErase);
+  if (pos != std::string::npos)
+  {
+      hostStr.erase(pos, toErase.length());
+  }
+  url += hostStr;
   url += "/";
   url += bucket;
   url += "/";

@@ -59,6 +59,8 @@
 
 #include "virtual_tablespace.h"
 
+#include "partition.h"
+
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
@@ -95,6 +97,7 @@ PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata_seg);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata);
 PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
+PG_FUNCTION_INFO_V1(yezzey_check_part_exr);
 
 
 /*
@@ -148,7 +151,6 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   FileSegInfo **segfile_array;
   AOCSFileSegInfo **segfile_array_cs;
   Snapshot appendOnlyMetaDataSnapshot;
-  ObjectAddress object;
   Oid origrelfilenode;
   int rc;
 
@@ -1031,4 +1033,20 @@ Datum yezzey_set_relation_expirity_seg(PG_FUNCTION_ARGS) {
 
 
   PG_RETURN_VOID();
+}
+
+
+/* partition - related worker routines */
+
+/*
+* yezzey_check_part_exr
+*/
+Datum
+yezzey_check_part_exr(PG_FUNCTION_ARGS)
+{
+  /*
+    0: i_expr pg_node_tree,
+  */
+	text	   *expr = PG_GETARG_TEXT_P(0);
+	PG_RETURN_TEXT_P(yezzey_get_expr_worker(expr));
 }

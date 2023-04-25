@@ -4,27 +4,52 @@
 #include "offload.h"
 #include "offload_policy.h"
 
+#include "pg.h"
+
+void processPartitionOffload() {
+  SetCurrentStatementStartTimestamp();
+  StartTransactionCommand();
+  SPI_connect();
+  PushActiveSnapshot(GetTransactionSnapshot());
+  pgstat_report_activity(STATE_RUNNING, "proccess relations to offload to yezzey");
+  SetCurrentStatementStartTimestamp();
+  
+  auto query =  
+  "select yezzey_set_relation_expirity_seg("
+  "     parchildrelid,"
+  "     1,"
+  "      yezzey_part_date_eval('select '::text || pg_get_expr(parrangeend, 0))::timestamp"
+  " ) from pg_partition_rule WHERE yezzey_check_part_exr(parrangeend);";
+
+  auto ret = SPI_execute(query, true, 1);
+  if (ret != SPI_OK_SELECT) {
+    elog(ERROR, "Error while processing partitions");
+  }
+
+  auto tupdesc = SPI_tuptable->tupdesc;
+  auto tuptable = SPI_tuptable;
+  auto cnt = SPI_processed;
+
+
+  SPI_finish();
+  PopActiveSnapshot();
+  CommitTransactionCommand();
+  pgstat_report_activity(STATE_IDLE, NULL);
+  pgstat_report_stat(true);
+}
+
 /*
  * processOffloadedRelations:
  * check all expired relations and move then to
  * external storage
  */
-void processOffloadedRelations(Oid dboid) {
-
-  char dbname[NAMEDATALEN];
+void processOffloadedRelations() {
   /*
    * Connect to the selected database
    *
    * Note: if we have selected a just-deleted database (due to using
    * stale stats info), we'll fail and exit here.
    */
-
-  Gp_session_role = GP_ROLE_UTILITY;
-  Gp_role = GP_ROLE_UTILITY;
-  InitPostgres(NULL, dboid, NULL, InvalidOid, dbname, true);
-  SetProcessingMode(NormalProcessing);
-  set_ps_display(dbname, false);
-  ereport(LOG, (errmsg("yezzey bgworker: processing database \"%s\"", dbname)));
 
   /* And do an appropriate amount of work */
   StartTransactionCommand();
@@ -65,7 +90,7 @@ void processOffloadedRelations(Oid dboid) {
        * because transactions holds locks on pg_aoseg.pg_aoseg_<oid> rows
        * and we are goind to lock row in X mode
        */
-
+      elog(INFO, "process expired relation (oid=%d)", meta->reloid);
       YezzeyDefineOffloadPolicy(meta->reloid);
     }
 
