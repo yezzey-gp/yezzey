@@ -223,34 +223,47 @@ std::string make_yezzey_url(const std::string &prefix,
   return ret;
 }
 
+
+/* calc size of external files */
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                      int32_t segid) {
-  auto r = ExternalReader(adv, segid);
+  try {
+    auto r = ExternalReader(adv, segid);
 
-  int64_t sz = 0;
-  for (auto key : r.reader_->getKeyList().contents) {
-    sz += r.reader_->bucketReader.constructReaderParams(key).getKeySize();
+    int64_t sz = 0;
+    for (auto key : r.reader_->getKeyList().contents) {
+      sz += r.reader_->bucketReader.constructReaderParams(key).getKeySize();
+    }
+    /* external reader destruct */
+    return sz;
+  } catch (...) {
+    return -1;
   }
-  /* external reader destruct */
-  return sz;
 }
 
+
+/* calc total offset of external files */
 int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                           ssize_t segindx, ssize_t modcount,
                                           const std::string &storage_path) {
-  auto ioh = YIO(adv, segindx, modcount, storage_path);
-  int64_t sz = 0;
-  auto buf = std::vector<char>(1 << 20);
-  /* fix this */
-  for (;;) {
-    auto rc = buf.size();
-    if (!ioh.io_read(buf.data(), &rc)) {
-      break;
-    }
-    sz += rc;
-  }
 
-  ioh.io_close();
-  return sz;
+  try {
+    auto ioh = YIO(adv, segindx, modcount, storage_path);
+    int64_t sz = 0;
+    auto buf = std::vector<char>(1 << 20);
+    /* fix this */
+    for (;;) {
+      auto rc = buf.size();
+      if (!ioh.io_read(buf.data(), &rc)) {
+        break;
+      }
+      sz += rc;
+    }
+
+    ioh.io_close();
+    return sz;
+  } catch (...) {
+    return -1;
+  }
 }
 /*XXX: fix cleanup*/

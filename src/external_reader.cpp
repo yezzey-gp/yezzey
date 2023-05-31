@@ -38,7 +38,7 @@ void ExternalReader::createReaderHandle() {
                                               adv_->coords_, segindx_);
 
   // add config path FIXME
-  auto reader = reader_init(
+  auto reader = reader_init_unsafe(
       storage_url_add_options((getYezzeyExtrenalStorageBucket(
                                    adv_->host.c_str(), adv_->bucket.c_str()) +
                                prefix),
@@ -48,7 +48,8 @@ void ExternalReader::createReaderHandle() {
   if (reader == NULL) {
     /* error while external storage initialization */
     // throw here
-    return;
+    throw;
+    //return;
   }
 
   auto content = reader->getKeyList().contents;
@@ -82,7 +83,7 @@ bool ExternalReader::empty() { return reader_empty(reader_); }
 
 bool ExternalReader::close() {
   auto reader = &reader_;
-  auto res = reader_cleanup(reader);
+  auto res = reader_cleanup_unsafe(reader);
   return res;
 }
 

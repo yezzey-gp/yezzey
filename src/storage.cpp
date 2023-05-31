@@ -16,6 +16,9 @@
 
 #include "virtual_index.h"
 
+#include "gpreader.h"
+#include "s3memory_mgmt.h"
+
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
 
@@ -71,9 +74,12 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
    * size. this is needed to skip offloading of data already present in external
    * storage.
    */
-
   virtual_size = yezzey_calc_virtual_relation_size(
       ioadv, GpIdentity.segindex, modcount, external_storage_path);
+
+  if (virtual_size == -1) {
+    return -1;
+  }
 
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
   progress = virtual_size;
@@ -291,10 +297,18 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       !external_storage_path ? "" : std::string(external_storage_path);
   ReleaseSysCache(tp);
 
-  if ((rc = offloadRelationSegmentPath(aorel, nspname, relname, coords,
-                                       modcount, logicalEof, storage_path)) <
-      0) {
-    return rc;
+  try {
+    if ((rc = offloadRelationSegmentPath(aorel, nspname, relname, coords,
+                                        modcount, logicalEof, storage_path)) <
+        0) {
+      return rc;
+    }
+  } catch (S3Exception& e) {
+      elog(ERROR, ("reader_cleanup caught a " + e.getType() + " exception: " + e.getFullMessage()).c_str());
+      return -1;
+  } catch (...) {
+      elog(ERROR, "Caught an unexpected exception.");
+      return -1;
   }
 
   auto ioadv = std::make_shared<IOadv>(
@@ -309,6 +323,11 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   /* we dont need to interact with s3 while in recovery*/
 
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
+
+  if (virtual_sz == -1) {
+        elog(ERROR, "yezzey: failed to stat size of relation %s",
+         aorel->rd_rel->relname.data);
+  }
 
   elog(INFO,
        "yezzey: relation segment reached external storage (blkno=%ld), virtual "
@@ -328,7 +347,6 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
                             ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
   if (!HeapTupleIsValid(tp)) {
-
     elog(ERROR, "yezzey: failed to get namescape name of relation %s",
          aorel->rd_rel->relname.data);
   }
@@ -351,6 +369,10 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   /* we dont need to interact with s3 while in recovery*/
   /* stat external storage usage */
   virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
+  if (virtual_sz == -1) {
+        elog(ERROR, "yezzey: failed to stat size of relation %s",
+         aorel->rd_rel->relname.data);
+  }
 
   *external_bytes = virtual_sz;
 

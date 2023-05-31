@@ -62,10 +62,13 @@ int readprepare(std::shared_ptr<IOadv> ioadv, SMGRFile yezzey_fd) {
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
-
-  YVirtFD_cache[yezzey_fd].handler =
-      make_unique<YIO>(ioadv, GpIdentity.segindex);
-
+  try {
+    YVirtFD_cache[yezzey_fd].handler =
+        make_unique<YIO>(ioadv, GpIdentity.segindex);
+  } catch (...) {
+    return -1;
+  }
+  
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
@@ -74,9 +77,12 @@ int readprepare(std::shared_ptr<IOadv> ioadv, SMGRFile yezzey_fd) {
 
 int writeprepare(std::shared_ptr<IOadv> ioadv, int64_t modcount,
                  SMGRFile yezzey_fd) {
-
-  YVirtFD_cache[yezzey_fd].handler =
-      make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
+  try {
+    YVirtFD_cache[yezzey_fd].handler =
+        make_unique<YIO>(ioadv, GpIdentity.segindex, modcount, "");
+  } catch (...) {
+    return -1;
+  }
 
   elog(yezzey_ao_log_level, "prepared writer handle for modcount %ld",
        modcount);
