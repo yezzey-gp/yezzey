@@ -7,6 +7,7 @@
 #include "virtual_index.h"
 
 #include "util.h"
+#include <cassert>
 
 #include "io.h"
 #include "io_adv.h"
@@ -68,7 +69,7 @@ int readprepare(std::shared_ptr<IOadv> ioadv, SMGRFile yezzey_fd) {
   } catch (...) {
     return -1;
   }
-  
+
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
@@ -143,7 +144,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
        fileName, modcount);
 
   if (modcount != -1) {
-    /* advance modcount to the valu it will be after commit */
+    /* advance modcount to the value it will be after commit */
     ++modcount;
   }
 
@@ -177,6 +178,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
       YVirtFD_cache[yezzey_fd].fileFlags = fileFlags;
       YVirtFD_cache[yezzey_fd].fileMode = fileMode;
       YVirtFD_cache[yezzey_fd].modcount = modcount;
+      YVirtFD_cache[yezzey_fd].reloid = reloid;
 
       YVirtFD_cache[yezzey_fd].offloaded = offloaded;
 
@@ -194,33 +196,29 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
               std::string(storage_prefix /*prefix*/),
               YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
               std::string(walg_config_path), use_gpg_crypto);
-          switch (fileFlags) {
-          case O_RDONLY:
+
+          /*
+           * Ignore fileFlags here
+           * yezzey is able to write only if modcount is correctly set
+           */
+          if (modcount == -1) {
             /* allocate handle struct */
             if (readprepare(ioadv, yezzey_fd) == -1) {
               YVirtFD_cache.erase(yezzey_fd);
               return -1;
             }
-            break;
-          case O_RDWR:
-          /* fall */
-          case O_WRONLY:
+          } else {
             /* allocate handle struct */
             if (writeprepare(ioadv, modcount, yezzey_fd) == -1) {
               YVirtFD_cache.erase(yezzey_fd);
               return -1;
             }
             /* insert entry in yezzey index */
-            YVirtFD_cache[yezzey_fd].reloid = reloid;
             YezzeyVirtualIndexInsert(
                 YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
                 std::get<2>(ioadv->coords_) /* segindex*/, modcount,
                 YVirtFD_cache[yezzey_fd]
                     .handler->writer_->getExternalStoragePath());
-            break;
-          default:
-            break;
-            /* raise error */
           }
         }
       } else {
@@ -257,10 +255,9 @@ void yezzey_FileClose(SMGRFile file) {
 
   if (YVirtFD_cache[file].y_vfd == YEZZEY_OFFLOADED_FD) {
     if (!RecoveryInProgress()) {
-      Assert(YVirtFD_cache[file].handler);
+      assert(YVirtFD_cache[file].handler);
       if (!YVirtFD_cache[file].handler->io_close()) {
         // very bad
-
         elog(ERROR, "failed to complete external storage interfacrtion: fd %d",
              file);
       }
@@ -281,6 +278,7 @@ void yezzey_FileClose(SMGRFile file) {
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
+    assert(YVirtFD_cache[file].modcount);
 
     /* Assert here we are not in crash or regular recovery
      * If yes, simply skip this call as data is already
@@ -363,8 +361,14 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
      */
 
     if (!RecoveryInProgress()) {
-      (void)emptyYezzeyIndex(
-          YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid));
+      assert(YVirtFD_cache[yezzey_fd].handler);
+
+      /* Do it only on QE? */
+      if (Gp_role == GP_ROLE_EXECUTE) {
+        (void)emptyYezzeyIndexBlkno(
+            YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
+            std::get<2>(YVirtFD_cache[yezzey_fd].handler->adv_->coords_));
+      }
     }
     return 0;
   }

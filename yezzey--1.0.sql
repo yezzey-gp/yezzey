@@ -547,6 +547,20 @@ END;
 $$
 LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION yezzey_dump_virtual_index(i_relname text) 
+RETURNS TABLE(segno integer, offset_start bigint, offset_finish bigint, modcount bigint, external_path text)
+AS $$
+DECLARE
+    v_reloid OID;
+BEGIN
+    select oid from pg_class INTO v_reloid where relname = i_relname;
+    RETURN QUERY EXECUTE 'SELECT * FROM yezzey.yezzey_virtual_index'||v_reloid||';';
+END;
+$$
+EXECUTE ON ALL SEGMENTS
+LANGUAGE plpgsql;
+
+
 CREATE OR REPLACE FUNCTION yezzey_check_part_exr(
     i_node pg_node_tree
 )

@@ -16,8 +16,8 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
 
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index, "segno",
-                     INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_segno,
+                     "segno", INT4OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_start_off,
                      "offset_start", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_finish_off,
@@ -133,6 +133,33 @@ void emptyYezzeyIndex(Oid yezzey_index_oid) {
   CommandCounterIncrement();
 } /* end emptyYezzeyIndex */
 
+void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno) {
+  HeapTuple tuple;
+  ScanKeyData skey[1];
+
+  /* DELETE FROM yezzey.yezzey_virtual_index_<oid> WHERE segno = <blkno> */
+  auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
+
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
+              F_INT4EQ, Int32GetDatum(blkno));
+
+  auto desc = heap_beginscan(rel, snap, 1, skey);
+
+  while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
+    simple_heap_delete(rel, &tuple->t_self);
+  }
+
+  heap_endscan(desc);
+  heap_close(rel, RowExclusiveLock);
+
+  UnregisterSnapshot(snap);
+
+  /* make changes visible*/
+  CommandCounterIncrement();
+} /* end emptyYezzeyIndexBlkno */
+
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t segindx, int64_t modcount,
                               const std::string &ext_path) {
@@ -147,7 +174,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
-  values[Anum_yezzey_virtual_index - 1] = Int64GetDatum(segindx);
+  values[Anum_yezzey_virtual_index_segno - 1] = Int64GetDatum(segindx);
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);

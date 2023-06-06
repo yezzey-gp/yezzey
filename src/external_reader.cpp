@@ -49,7 +49,7 @@ void ExternalReader::createReaderHandle() {
     /* error while external storage initialization */
     // throw here
     throw;
-    //return;
+    // return;
   }
 
   auto content = reader->getKeyList().contents;

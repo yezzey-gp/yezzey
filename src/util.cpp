@@ -34,9 +34,8 @@ std::string getYezzeyExtrenalStorageBucket(const char *host,
   std::string toErase = "https://";
   std::string hostStr = host;
   size_t pos = hostStr.find(toErase);
-  if (pos != std::string::npos)
-  {
-      hostStr.erase(pos, toErase.length());
+  if (pos != std::string::npos) {
+    hostStr.erase(pos, toErase.length());
   }
   url += hostStr;
   url += "/";
@@ -223,7 +222,6 @@ std::string make_yezzey_url(const std::string &prefix,
   return ret;
 }
 
-
 /* calc size of external files */
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                      int32_t segid) {
@@ -240,7 +238,6 @@ int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
     return -1;
   }
 }
-
 
 /* calc total offset of external files */
 int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,

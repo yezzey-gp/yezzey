@@ -30,7 +30,6 @@ bool ensureFilepathLocal(const std::string &filepath) {
   return (stat(filepath.c_str(), &buffer) == 0);
 }
 
-
 int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
                                const std::string &relname,
                                const relnodeCoord &coords, int64 modcount,
@@ -299,16 +298,18 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
 
   try {
     if ((rc = offloadRelationSegmentPath(aorel, nspname, relname, coords,
-                                        modcount, logicalEof, storage_path)) <
+                                         modcount, logicalEof, storage_path)) <
         0) {
       return rc;
     }
-  } catch (S3Exception& e) {
-      elog(ERROR, ("reader_cleanup caught a " + e.getType() + " exception: " + e.getFullMessage()).c_str());
-      return -1;
+  } catch (S3Exception &e) {
+    elog(ERROR, ("reader_cleanup caught a " + e.getType() +
+                 " exception: " + e.getFullMessage())
+                    .c_str());
+    return -1;
   } catch (...) {
-      elog(ERROR, "Caught an unexpected exception.");
-      return -1;
+    elog(ERROR, "Caught an unexpected exception.");
+    return -1;
   }
 
   auto ioadv = std::make_shared<IOadv>(
@@ -325,7 +326,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
 
   if (virtual_sz == -1) {
-        elog(ERROR, "yezzey: failed to stat size of relation %s",
+    elog(ERROR, "yezzey: failed to stat size of relation %s",
          aorel->rd_rel->relname.data);
   }
 
@@ -370,7 +371,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   /* stat external storage usage */
   virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
   if (virtual_sz == -1) {
-        elog(ERROR, "yezzey: failed to stat size of relation %s",
+    elog(ERROR, "yezzey: failed to stat size of relation %s",
          aorel->rd_rel->relname.data);
   }
 

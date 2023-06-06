@@ -52,7 +52,7 @@ void YezzeyOffloadPolicyRelation() {
 
   /* ShareLock is not really needed here, but take it anyway */
   auto yezzey_rel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, ShareLock);
-  char * colname = "reloid";
+  char *colname = "reloid";
   auto indexColNames = list_make1(makeString(colname));
 
   auto indexInfo = makeNode(IndexInfo);
@@ -142,20 +142,22 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   if (HeapTupleIsValid(oldtuple)) {
     auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(oldtuple);
 
-    values[Anum_offload_metadata_relpolicy - 1] =  Int32GetDatum(meta->relpolicy);
-    values[Anum_offload_metadata_relext_time - 1] = TimestampGetDatum(meta->relext_time);
+    values[Anum_offload_metadata_relpolicy - 1] =
+        Int32GetDatum(meta->relpolicy);
+    values[Anum_offload_metadata_relext_time - 1] =
+        TimestampGetDatum(meta->relext_time);
 
     auto offtuple = heap_form_tuple(RelationGetDescr(offrel), values, nulls);
 
     simple_heap_update(offrel, &oldtuple->t_self, offtuple);
 
-  heap_freetuple(offtuple);
+    heap_freetuple(offtuple);
   } else {
     auto offtuple = heap_form_tuple(RelationGetDescr(offrel), values, nulls);
 
     simple_heap_insert(offrel, offtuple);
 
-  heap_freetuple(offtuple);
+    heap_freetuple(offtuple);
   }
 
   heap_close(offrel, RowExclusiveLock);
