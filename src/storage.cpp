@@ -88,7 +88,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
 
   YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(aorel->rd_id),
                            std::get<2>(ioadv->coords_) /* segindex*/, modcount,
-                           iohandler.writer_->getExternalStoragePath());
+                           InvalidXLogRecPtr);
 
   while (progress < logicalEof) {
     curr_read_chunk = chunkSize;

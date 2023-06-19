@@ -26,4 +26,3 @@ gpstop -a -i && gpstart -a
 
 
 createdb $USER
-psql postgres -f ./gpcontrib/yezzey/test/regress/yezzey.sql

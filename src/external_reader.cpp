@@ -22,7 +22,7 @@
 #include "io_adv.h"
 
 ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
-                               const std::vector<std::string> &order,
+                               const std::vector<ChunkInfo> &order,
                                ssize_t segindx)
     : adv_(adv), order_(order), segindx_(segindx) {
 

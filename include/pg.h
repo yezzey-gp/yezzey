@@ -106,6 +106,8 @@ extern "C" {
 
 #include "catalog/pg_opclass.h"
 
+#include "utils/pg_lsn.h"
+
 #ifdef __cplusplus
 }
 #endif

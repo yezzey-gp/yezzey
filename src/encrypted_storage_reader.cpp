@@ -2,7 +2,7 @@
 #include "meta.h"
 
 EncryptedStorageReader::EncryptedStorageReader(
-    std::shared_ptr<IOadv> adv, const std::vector<std::string> &order,
+    std::shared_ptr<IOadv> adv, const std::vector<ChunkInfo> &order,
     ssize_t segindx)
     : adv_(adv), order_(order), segindx_(segindx) {
   buf_ = std::make_shared<BlockingBuffer>(1 << 12);

@@ -218,8 +218,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
             YezzeyVirtualIndexInsert(
                 YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
                 std::get<2>(ioadv->coords_) /* segindex*/, modcount,
-                YVirtFD_cache[yezzey_fd]
-                    .handler->writer_->getExternalStoragePath());
+                InvalidXLogRecPtr);
           }
         }
       } else {

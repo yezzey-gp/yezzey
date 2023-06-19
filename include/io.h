@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+#include <chunkinfo.h>
+
 #include "ylister.h"
 #include "yreader.h"
 #include "ywriter.h"
@@ -28,7 +30,7 @@ struct YIO {
   ssize_t modcount_;
 
   /* order of external storage chunk to read */
-  std::vector<std::string> order_;
+  std::vector<ChunkInfo> order_;
 
   // constructor
   YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,

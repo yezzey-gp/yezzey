@@ -5,13 +5,16 @@
 #include "yreader.h"
 #include <memory>
 
+
+#include "chunkinfo.h"
+
 #include "gpreader.h"
 
 class ExternalReader : public YReader, public YLister {
 public:
   friend class ExternalWriter;
   explicit ExternalReader(std::shared_ptr<IOadv> adv,
-                          const std::vector<std::string> &order,
+                          const std::vector<ChunkInfo> &order,
                           ssize_t segindx);
 
   ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx);
@@ -37,6 +40,6 @@ protected:
 
 private:
   std::shared_ptr<IOadv> adv_;
-  const std::vector<std::string> order_;
+  const std::vector<ChunkInfo> order_;
   ssize_t segindx_;
 };

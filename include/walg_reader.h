@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "chunkinfo.h"
 
 class WALGReader : public YReader {
 public:
@@ -40,7 +41,7 @@ class WALGSTReader : public YReader {
 public:
   friend class ExternalWriter;
   explicit WALGSTReader(std::shared_ptr<IOadv> adv, ssize_t segindx,
-                        std::vector<std::string> order);
+                        std::vector<ChunkInfo> order);
   ~WALGSTReader();
 
 public:
@@ -59,9 +60,8 @@ protected:
 private:
   std::shared_ptr<IOadv> adv_;
   ssize_t segindx_;
-  std::string cmd_;
   int64_t order_ptr_{0};
-  const std::vector<std::string> order_;
+  const std::vector<ChunkInfo> order_;
 
   std::unique_ptr<redi::ipstream> wal_g_{nullptr};
 };

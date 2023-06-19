@@ -31,6 +31,7 @@ OBJS = \
 	src/virtual_index.o \
 	src/walg_reader.o \
 	src/walg_writer.o \
+	src/walg_st_reader.o \
 	src/util.o \
 	src/url.o \
 	src/worker.o \
