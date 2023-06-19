@@ -30,7 +30,7 @@ typedef struct YVirtFD {
   int fileFlags;
   int fileMode;
 
-  Oid reloid;
+  int64 reloid;
 
   int64 offset;
   int64 virtualSize;
@@ -194,7 +194,8 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
               std::string(storage_host /*host*/),
               std::string(storage_bucket /*bucket*/),
               std::string(storage_prefix /*prefix*/),
-              YVirtFD_cache[yezzey_fd].filepath, std::string(walg_bin_path),
+              YVirtFD_cache[yezzey_fd].filepath /* coords */,
+              reloid /* reloid */, std::string(walg_bin_path),
               std::string(walg_config_path), use_gpg_crypto);
 
           /*

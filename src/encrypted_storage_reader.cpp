@@ -1,11 +1,14 @@
 #include "encrypted_storage_reader.h"
 #include "meta.h"
 
-EncryptedStorageReader::EncryptedStorageReader(std::shared_ptr<IOadv> adv,
-                                               ssize_t segindx)
-    : adv_(adv), segindx_(segindx) {
+EncryptedStorageReader::EncryptedStorageReader(
+    std::shared_ptr<IOadv> adv, const std::vector<std::string> &order,
+    ssize_t segindx)
+    : adv_(adv), order_(order), segindx_(segindx) {
   buf_ = std::make_shared<BlockingBuffer>(1 << 12);
-  reader_ = std::make_shared<ExternalReader>(adv_, segindx_);
+
+  /* TODO: with order */
+  reader_ = std::make_shared<ExternalReader>(adv_, order_, segindx_);
   crypter_ = make_unique<Crypter>(adv_, reader_, buf_);
 }
 

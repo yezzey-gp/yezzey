@@ -8,7 +8,7 @@ export PATH=$PATH:/usr/local/gpdb/bin
 
 make clean && make -j32 install
 make destroy-demo-cluster && make create-demo-cluster
-gpconfig -c yezzey.storage_prefix -v "'wal-e/mdbrhqjnl6k5duk7loi2/6/segments_005'"
+gpconfig -c yezzey.storage_prefix -v "'wal-e/mdbrhqjnl6k5duk7loi2/6'"
 gpconfig -c yezzey.storage_bucket -v "'gptest'"
 gpconfig -c yezzey.storage_config -v "'/home/reshke/s3test.conf'"
 gpconfig -c yezzey.storage_host -v "'https://storage.yandexcloud.net'"

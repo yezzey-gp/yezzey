@@ -97,9 +97,16 @@ getYezzeyRelationUrl_internal(const std::string &nspname,
                               const std::string &relname,
                               const std::string &external_storage_prefix,
                               relnodeCoord coords, int32_t segid) {
+  return external_storage_prefix +
+         yezzey_block_file_path(nspname, relname, coords, segid);
+}
 
-  std::string url = external_storage_prefix + "/seg" + std::to_string(segid) +
-                    basebackupsPath;
+std::string yezzey_block_file_path(const std::string &nspname,
+                                   const std::string &relname,
+                                   relnodeCoord coords, int32_t segid) {
+
+  std::string url =
+      "segments_005/seg" + std::to_string(segid) + basebackupsPath;
 
   int64_t dboid, tableoid, relation_segment;
   dboid = std::get<0>(coords);
@@ -206,20 +213,8 @@ std::vector<int64_t> parseModcounts(const std::string &prefix,
   return res;
 }
 
-std::string make_yezzey_url(const std::string &prefix,
-                            const std::vector<int64_t> &modcounts) {
-  auto ret = prefix;
-
-  for (size_t i = 0; i < modcounts.size(); ++i) {
-    ret += std::to_string(modcounts[i]);
-    if (i + 1 != modcounts.size()) {
-      ret += "_D_";
-    }
-  }
-
-  ret += "_aoseg_yezzey";
-
-  return ret;
+std::string make_yezzey_url(const std::string &prefix, int64_t modcount) {
+  return prefix + ("_DY_" + std::to_string(modcount)) + "_aoseg_yezzey";
 }
 
 /* calc size of external files */

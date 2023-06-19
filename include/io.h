@@ -21,12 +21,14 @@ struct YIO {
 
   //   reader and writer
   std::shared_ptr<YReader> reader_{nullptr};
-  std::shared_ptr<YLister> lister_{nullptr};
   std::shared_ptr<YWriter> writer_{nullptr};
 
   std::shared_ptr<IOadv> adv_;
   ssize_t segindx_;
   ssize_t modcount_;
+
+  /* order of external storage chunk to read */
+  std::vector<std::string> order_;
 
   // constructor
   YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,

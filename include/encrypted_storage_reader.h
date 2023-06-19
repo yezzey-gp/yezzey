@@ -8,7 +8,9 @@
 // decrypt all data with gpg
 class EncryptedStorageReader : public YReader {
 public:
-  explicit EncryptedStorageReader(std::shared_ptr<IOadv> adv, ssize_t segindx);
+  explicit EncryptedStorageReader(std::shared_ptr<IOadv> adv,
+                                  const std::vector<std::string> &order,
+                                  ssize_t segindx);
 
   virtual ~EncryptedStorageReader();
 
@@ -24,6 +26,7 @@ protected:
   std::unique_ptr<Crypter> crypter_;
   std::shared_ptr<YReader> reader_{nullptr};
   bool read_initialized_{false};
+  std::vector<std::string> order_;
 
 private:
   std::shared_ptr<IOadv> adv_;

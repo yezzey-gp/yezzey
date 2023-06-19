@@ -12,8 +12,7 @@ class EncryptedStorageWriter : public YWriter {
 public:
   explicit EncryptedStorageWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                                   ssize_t modcount,
-                                  const std::string &storage_path,
-                                  std::shared_ptr<YLister> lister_);
+                                  const std::string &storage_path);
 
   virtual ~EncryptedStorageWriter();
 
@@ -36,8 +35,7 @@ private:
   const std::string storage_path_;
 
 protected:
-  std::unique_ptr<Crypter> crypter_;
-  std::shared_ptr<YLister> lister_{nullptr};
+  std::unique_ptr<Crypter> crypter_{nullptr};
   std::shared_ptr<YWriter> writer_{nullptr};
   bool write_initialized_{false};
 };

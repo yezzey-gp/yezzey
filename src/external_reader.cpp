@@ -21,6 +21,14 @@
 
 #include "io_adv.h"
 
+ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
+                               const std::vector<std::string> &order,
+                               ssize_t segindx)
+    : adv_(adv), order_(order), segindx_(segindx) {
+
+  createReaderHandle();
+}
+
 ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx)
     : adv_(adv), segindx_(segindx) {
 

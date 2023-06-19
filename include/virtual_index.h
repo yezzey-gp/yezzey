@@ -5,6 +5,7 @@
 #ifdef __cplusplus
 
 #include <string>
+#include <vector>
 #endif
 
 #ifdef __cplusplus
@@ -17,6 +18,15 @@
  *		compiler constants for pg_database
  * ----------------
  */
+
+typedef struct {
+  int segno;             /* AO relation block file no */
+  int64_t start_offset;  /* start_offset of block file chunk */
+  int64_t finish_offset; /* finish_offset of block file chunk */
+  int64_t modcount;      /* modcount of block file chunk */
+  char *ext_path;        /* Chunk external storage path */
+} FormData_yezzey_virtual_index;
+
 #define Natts_yezzey_virtual_index 5
 #define Anum_yezzey_virtual_index_segno 1
 #define Anum_yezzey_virtual_start_off 2
@@ -36,5 +46,8 @@ EXTERNC void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno);
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t segindx, int64_t modcount,
                               const std::string &ext_path);
+
+std::vector<std::string>
+YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno);
 #else
 #endif

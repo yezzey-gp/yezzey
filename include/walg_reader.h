@@ -4,6 +4,8 @@
 #include "pstreams/pstream.h"
 #include "yreader.h"
 #include <memory>
+#include <string>
+#include <vector>
 
 class WALGReader : public YReader {
 public:
@@ -31,4 +33,35 @@ private:
 
   std::unique_ptr<redi::ipstream> wal_g_{nullptr};
   bool initialized_{false};
+};
+
+/* wal-g reader useing only wal-g st */
+class WALGSTReader : public YReader {
+public:
+  friend class ExternalWriter;
+  explicit WALGSTReader(std::shared_ptr<IOadv> adv, ssize_t segindx,
+                        std::vector<std::string> order);
+  ~WALGSTReader();
+
+public:
+  virtual bool close();
+  virtual bool read(char *buffer, size_t *amount);
+  virtual void BumpArenda(size_t count);
+
+  virtual bool empty();
+
+public:
+protected:
+  /* prepare command dispatch */
+
+  int prepare();
+
+private:
+  std::shared_ptr<IOadv> adv_;
+  ssize_t segindx_;
+  std::string cmd_;
+  int64_t order_ptr_{0};
+  const std::vector<std::string> order_;
+
+  std::unique_ptr<redi::ipstream> wal_g_{nullptr};
 };

@@ -15,8 +15,7 @@ class ExternalWriter : public YWriter {
 
 public:
   explicit ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
-                          ssize_t modcount, const std::string &storage_path,
-                          std::shared_ptr<YLister> lister_);
+                          ssize_t modcount, const std::string &storage_path);
 
   virtual ~ExternalWriter();
 
@@ -36,7 +35,6 @@ private:
 
 protected:
   GPWriter *writer_{nullptr};
-  std::shared_ptr<YLister> lister_{nullptr};
   bool cleaned_{false};
 
 private:

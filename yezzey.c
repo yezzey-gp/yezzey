@@ -54,8 +54,8 @@
 
 #include "catalog/oid_dispatch.h"
 
-#include "offload_policy.h"
 #include "offload.h"
+#include "offload_policy.h"
 
 #include "virtual_tablespace.h"
 
@@ -99,7 +99,6 @@ PG_FUNCTION_INFO_V1(yezzey_init_metadata);
 PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
 PG_FUNCTION_INFO_V1(yezzey_check_part_exr);
 
-
 /*
  * Perform XLogInsert of a XLOG_SMGR_CREATE record to WAL.
  */
@@ -114,16 +113,15 @@ Datum yezzey_init_metadata_seg(PG_FUNCTION_ARGS) {
   return yezzey_init_metadata(fcinfo);
 }
 
-
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
 
 /*
-* yezzey_define_relation_offload_policy_internal:
-* do all the work with initial relation offloading
-*/
+ * yezzey_define_relation_offload_policy_internal:
+ * do all the work with initial relation offloading
+ */
 Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
-  (void) YezzeyDefineOffloadPolicy(PG_GETARG_OID(0));
+  (void)YezzeyDefineOffloadPolicy(PG_GETARG_OID(0));
   PG_RETURN_VOID();
 }
 
@@ -136,9 +134,9 @@ Datum yezzey_define_relation_offload_policy_internal_seg(PG_FUNCTION_ARGS) {
 }
 
 /*
-* yezzey_load_relation_internal:
-* TBD: doc the logic
-*/
+ * yezzey_load_relation_internal:
+ * TBD: doc the logic
+ */
 
 int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   Relation aorel;
@@ -179,7 +177,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   }
 
   /* Perform actual deletion of yezzey virtual index and metadata changes */
-  (void) YezzeyATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
+  (void)YezzeyATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
   if (aorel->rd_rel->relstorage == 'a') {
@@ -241,7 +239,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   */
 
   /* empty all track info */
-  (void) emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
+  (void)emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
 
   /* cleanup */
 
@@ -1029,24 +1027,21 @@ Datum yezzey_set_relation_expirity_seg(PG_FUNCTION_ARGS) {
   i_relpolicy = PG_GETARG_INT32(1);
   i_relexp = PG_GETARG_TIMESTAMP(2);
 
-  (void)YezzeySetRelationExpiritySeg(i_reloid, i_relpolicy /* always external */, i_relexp);
-
+  (void)YezzeySetRelationExpiritySeg(
+      i_reloid, i_relpolicy /* always external */, i_relexp);
 
   PG_RETURN_VOID();
 }
 
-
 /* partition - related worker routines */
 
 /*
-* yezzey_check_part_exr
-*/
-Datum
-yezzey_check_part_exr(PG_FUNCTION_ARGS)
-{
+ * yezzey_check_part_exr
+ */
+Datum yezzey_check_part_exr(PG_FUNCTION_ARGS) {
   /*
     0: i_expr pg_node_tree,
   */
-	text	   *expr = PG_GETARG_TEXT_P(0);
-	PG_RETURN_TEXT_P(yezzey_get_expr_worker(expr));
+  text *expr = PG_GETARG_TEXT_P(0);
+  PG_RETURN_TEXT_P(yezzey_get_expr_worker(expr));
 }

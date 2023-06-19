@@ -1,6 +1,8 @@
 
 #include "virtual_index.h"
 
+#include "algorithm"
+
 Oid YezzeyFindAuxIndex_internal(Oid reloid);
 
 Oid YezzeyCreateAuxIndex(Relation aorel) {
@@ -190,4 +192,48 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   heap_close(yandxrel, RowExclusiveLock);
 
   CommandCounterIncrement();
+}
+
+std::vector<std::string>
+YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
+
+  /* SELECT external_path FROM yezzey.yezzey_virtual_index_<oid> WHERE segno =
+   * <>; */
+  HeapTuple tuple;
+  ScanKeyData skey[1];
+
+  std::vector<std::pair<int64_t, std::string>> tmp;
+
+  auto rel = heap_open(yandexoid, RowExclusiveLock);
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
+
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
+              F_INT4EQ, Int32GetDatum(blkno));
+
+  /* TBD: Read index  */
+  auto desc = heap_beginscan(rel, snap, 1, skey);
+
+  while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
+    auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
+    tmp.push_back({ytup->modcount, std::string(ytup->ext_path)});
+  }
+
+  heap_endscan(desc);
+  heap_close(rel, RowExclusiveLock);
+
+  UnregisterSnapshot(snap);
+
+  /* make changes visible*/
+  CommandCounterIncrement();
+
+  /* sort by modcount - they are unic */
+  std::sort(tmp.begin(), tmp.end());
+
+  std::vector<std::string> res(tmp.size());
+  for (auto el : tmp) {
+    res.push_back(el.second);
+  }
+
+  return std::move(res);
 }

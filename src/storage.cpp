@@ -63,8 +63,9 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, localPath /* filename */, walg_bin_path,
-      walg_config_path, use_gpg_crypto);
+      storage_prefix /*prefix*/, localPath /* filename */,
+      aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
+      use_gpg_crypto);
 
   auto iohandler =
       YIO(ioadv, GpIdentity.segindex, modcount, external_storage_path);
@@ -144,8 +145,8 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, coords /* filename */, walg_bin_path,
-      walg_config_path, use_gpg_crypto);
+      storage_prefix /*prefix*/, coords /* filename */, rel->rd_id /* reloid */,
+      walg_bin_path, walg_config_path, use_gpg_crypto);
 
   /*
    * Create external storage reader handle to read segment files
@@ -318,9 +319,9 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       std::string(aorel->rd_rel->relname.data),
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
-      std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path), std::string(walg_config_path),
-      use_gpg_crypto);
+      std::string(storage_prefix /*prefix*/), coords /* coordinates */,
+      aorel->rd_id /* reloid */, std::string(walg_bin_path),
+      std::string(walg_config_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
@@ -364,9 +365,9 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(aorel->rd_rel->relname.data),
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
-      std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path), std::string(walg_config_path),
-      use_gpg_crypto);
+      std::string(storage_prefix /*prefix*/), coords /* coords */,
+      aorel->rd_id /* reloid */, std::string(walg_bin_path),
+      std::string(walg_config_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
   /* stat external storage usage */
   virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
@@ -424,9 +425,9 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(aorel->rd_rel->relname.data),
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
-      std::string(storage_prefix /*prefix*/), coords,
-      std::string(walg_bin_path), std::string(walg_config_path),
-      use_gpg_crypto);
+      std::string(storage_prefix /*prefix*/), coords /* coords */,
+      aorel->rd_id /* reloid */, std::string(walg_bin_path),
+      std::string(walg_config_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
 
   /* ro - handler */

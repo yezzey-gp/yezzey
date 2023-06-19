@@ -13,8 +13,7 @@ class WALGWriter : public YWriter {
 
 public:
   explicit WALGWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
-                      ssize_t modcount, const std::string &storage_path,
-                      std::shared_ptr<YLister> lister_);
+                      ssize_t modcount, const std::string &storage_path);
 
   virtual ~WALGWriter();
 
@@ -31,7 +30,4 @@ private:
   bool initialized_{false};
 
   ssize_t modcount_;
-
-protected:
-  std::shared_ptr<YLister> lister_{nullptr};
 };

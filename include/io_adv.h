@@ -1,6 +1,7 @@
 #ifndef YEZZEY_IO_ADV_H
 #define YEZZEY_IO_ADV_H
 
+#include "pg.h"
 #include "types.h"
 #include <string>
 
@@ -30,6 +31,8 @@ struct IOadv {
   // base/5/12345.1
   const relnodeCoord coords_;
 
+  const Oid reloid;
+
   // /usr/bin/wal-g-gp
   const std::string walg_bin_path;
   const std::string walg_config_path;
@@ -40,7 +43,7 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
-        /*unparse coords*/ const std::string &fileName,
+        /*unparse coords*/ const std::string &fileName, const Oid reloid,
         const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto);
 
@@ -48,8 +51,9 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
-        const relnodeCoord &coords, const std::string &walg_bin_path,
-        const std::string &walg_config_path, bool use_gpg_crypto);
+        const relnodeCoord &coords, const Oid reloid,
+        const std::string &walg_bin_path, const std::string &walg_config_path,
+        bool use_gpg_crypto);
 };
 
 #endif /*YEZZEY_IO_ADV_H*/

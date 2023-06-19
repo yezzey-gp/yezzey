@@ -133,7 +133,8 @@ void yezzey_prepare(void) {
   StartTransactionCommand();
   SPI_connect();
   PushActiveSnapshot(GetTransactionSnapshot());
-  pgstat_report_activity(STATE_RUNNING, "proccess relations to offload to yezzey");
+  pgstat_report_activity(STATE_RUNNING,
+                         "proccess relations to offload to yezzey");
   SetCurrentStatementStartTimestamp();
 }
 
@@ -173,7 +174,6 @@ void yezzey_process_database(Datum main_arg) {
   /* Establish signal handlers; once that's done, unblock signals. */
   // pqsignal(SIGTERM, die);
   BackgroundWorkerUnblockSignals();
-
 
   Gp_session_role = GP_ROLE_UTILITY;
   Gp_role = GP_ROLE_UTILITY;
@@ -246,7 +246,7 @@ void yezzey_offload_databases() {
   initStringInfo(&buf);
   appendStringInfo(&buf, ""
                          "SELECT oid FROM pg_database WHERE datallowconn"
-                        " ORDER BY random() LIMIT 1;");
+                         " ORDER BY random() LIMIT 1;");
 
   pgstat_report_activity(STATE_RUNNING, buf.data);
   ret = SPI_execute(buf.data, true, 1);
@@ -424,16 +424,17 @@ static void yezzey_start_launcher_worker(void) {
     RegisterBackgroundWorker(&worker);
   } else {
     if (!RegisterDynamicBackgroundWorker(&worker, &handle))
-      ereport(ERROR, (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
-                      errmsg("could not register background process"),
-                      errhint("You may need to increase max_worker_processes.")));
+      ereport(ERROR,
+              (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
+               errmsg("could not register background process"),
+               errhint("You may need to increase max_worker_processes.")));
 
     status = WaitForBackgroundWorkerStartup(handle, &pid);
     if (status != BGWH_STARTED)
       ereport(ERROR,
               (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
-              errmsg("could not start background process"),
-              errhint("More details may be available in the server log.")));
+               errmsg("could not start background process"),
+               errhint("More details may be available in the server log.")));
   }
 }
 
@@ -507,7 +508,7 @@ void _PG_init(void) {
 
   elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
-  if (yezzey_autooffload&&false/*temp disable*/) {
+  if (yezzey_autooffload && false /*temp disable*/) {
     /* dispatch yezzey worker */
     yezzey_start_launcher_worker();
   }

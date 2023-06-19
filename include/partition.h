@@ -9,9 +9,6 @@
 #define EXTERNC
 #endif
 
-
-EXTERNC bool
-yezzey_get_expr_worker(text *expr);
-
+EXTERNC bool yezzey_get_expr_worker(text *expr);
 
 #endif /* YEZZEY_PARTITION_H */

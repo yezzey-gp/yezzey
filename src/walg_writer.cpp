@@ -18,23 +18,21 @@ std::string craftStoragePath(const std::shared_ptr<YLister> &lister,
 &prefix);
 */
 
-std::string craftString(const std::shared_ptr<YLister> &lister,
-                        const std::shared_ptr<IOadv> &adv, ssize_t segindx,
+std::string craftString(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                         ssize_t modcount) {
 
   std::string cmd = adv->walg_bin_path;
 
   cmd += " --config=" + adv->walg_config_path;
   cmd += " aosegfile-offload ";
-  cmd += craftStoragePath(lister, adv, segindx, modcount, "segments_005");
+  cmd += craftStoragePath(adv, segindx, modcount, "segments_005");
   return cmd;
 }
 
 WALGWriter::WALGWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
-                       ssize_t modcount, const std::string &storage_path,
-                       std::shared_ptr<YLister> lister)
-    : adv_(adv), segindx_(segindx), lister_(lister), modcount_(modcount),
-      cmd_(craftString(lister, adv, segindx, modcount)) {}
+                       ssize_t modcount, const std::string &storage_path)
+    : adv_(adv), segindx_(segindx), modcount_(modcount),
+      cmd_(craftString(adv, segindx, modcount)) {}
 
 WALGWriter::~WALGWriter() { close(); }
 

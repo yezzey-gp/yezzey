@@ -1,15 +1,20 @@
 #pragma once
 
-#include "gpreader.h"
 #include "io_adv.h"
 #include "ylister.h"
 #include "yreader.h"
 #include <memory>
 
+#include "gpreader.h"
+
 class ExternalReader : public YReader, public YLister {
 public:
   friend class ExternalWriter;
-  explicit ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx);
+  explicit ExternalReader(std::shared_ptr<IOadv> adv,
+                          const std::vector<std::string> &order,
+                          ssize_t segindx);
+
+  ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx);
 
 public:
   virtual ~ExternalReader();
@@ -32,5 +37,6 @@ protected:
 
 private:
   std::shared_ptr<IOadv> adv_;
+  const std::vector<std::string> order_;
   ssize_t segindx_;
 };

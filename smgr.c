@@ -264,10 +264,10 @@ typedef struct f_smgr_ao {
         int64       (*smgr_NonVirtualCurSeek) (SMGRFile file);
         int64 		(*smgr_FileSeek) (SMGRFile file, int64 offset, int
 whence); void 		(*smgr_FileClose)(SMGRFile file); SMGRFile
-(*smgr_AORelOpenSegFile) (Oid reloid, char * nspname, char * relname, FileName fileName, int
-fileFlags, int fileMode, int64 modcount); int         (*smgr_FileWrite)(SMGRFile
-file, char *buffer, int amount); int         (*smgr_FileRead)(SMGRFile file,
-char *buffer, int amount); } f_smgr_ao;
+(*smgr_AORelOpenSegFile) (Oid reloid, char * nspname, char * relname, FileName
+fileName, int fileFlags, int fileMode, int64 modcount); int
+(*smgr_FileWrite)(SMGRFile file, char *buffer, int amount); int
+(*smgr_FileRead)(SMGRFile file, char *buffer, int amount); } f_smgr_ao;
 */
 
 static const struct f_smgr_ao yezzey_smgr_ao = {
