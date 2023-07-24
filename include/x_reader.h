@@ -26,6 +26,7 @@ public:
 
 public:
   GPReader * createReaderHandle(const char* x_path);
+  GPReader * recreateReaderHandle(const char* x_path,  std::shared_ptr<PreAllocatedMemory> prealloc);
 
   bool empty();
 

@@ -192,7 +192,7 @@ void Crypter::io_dispatch_decrypt() {
       if (err) {
         buf_->close();
         auto errstr = gpgme_strerror(err);
-        std::cerr << "failed to dipatch decrypt " << errstr << '\n';
+        std::cerr << "failed to dispatch decrypt " << errstr << '\n';
         return;
         // bad
       }

@@ -36,8 +36,23 @@ ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
 
 GPReader *ExternalReader::createReaderHandle(const char *x_path) {
   // throw if initialization error?
-  return reader_init_unsafe(
-     (getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) + storage_url_add_options(x_path, adv_->config_path.c_str())).c_str());
+  try {
+    return reader_init_unsafe(
+      (getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) + storage_url_add_options(x_path, adv_->config_path.c_str())).c_str());
+  } catch (...) {
+    elog(ERROR, "failed to prepare x-storage reader for chunk");
+  }
+}
+
+GPReader * ExternalReader::recreateReaderHandle(const char* x_path,  std::shared_ptr<PreAllocatedMemory> prealloc) {
+  // throw if initialization error?
+  try {
+    return reader_reinit_unsafe(
+      (getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) + storage_url_add_options(x_path, adv_->config_path.c_str())).c_str()
+      , prealloc);
+  } catch (...) {
+    elog(ERROR, "failed to prepare x-storage reader for chunk");
+  }
 }
 
 bool ExternalReader::read(char *buffer, size_t *amount) {
@@ -48,6 +63,7 @@ bool ExternalReader::read(char *buffer, size_t *amount) {
   if (reader_empty(reader_)) {
     /**/
     auto reader = &reader_;
+    auto prealloc = reader_->getParams().getMemoryContext().prealloc;
     auto res = reader_cleanup_unsafe(reader);
     if (!res) {
       *amount = 0;
@@ -59,7 +75,10 @@ bool ExternalReader::read(char *buffer, size_t *amount) {
       return true;
     }
 
-    reader_ = createReaderHandle(order_[order_ptr_].x_path);
+    reader_ = recreateReaderHandle(order_[order_ptr_].x_path, prealloc);
+    /* return zero byte to indocate file end */
+    *amount = 0;
+    return true;
   }
   int inner_amount = *amount;
   auto res = reader_transfer_data(reader_, buffer, inner_amount);

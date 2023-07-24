@@ -219,7 +219,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
     // unpack text to str
-    res.push_back(ChunkInfo(ytup->modcount, ytup->lsn, text_to_cstring(&ytup->x_path)));
+    res.push_back(ChunkInfo(ytup->lsn, ytup->modcount, text_to_cstring(&ytup->x_path)));
   }
 
   heap_endscan(desc);
