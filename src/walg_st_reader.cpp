@@ -4,25 +4,26 @@
 #include "walg_reader.h"
 
 /*
+sample:
 wal-g
-    --config=./conf.yaml aosegfile-stream
-    --segno=1
-    --relationName='aot_sample'
-    --schemaName='public'
-    --tablespaceOid=1663 (base/ tablespace)
-    --dbOid=x
-    --relOid=y
-    --blockno=z
+--config conf.yaml
+st cat --decrypt
+segments_005/seg1/basebackups_005/aosegments/1663_16384_41a9e377c1b0698523e79969eecc4998_16384_1__DY_1_aoseg_yezzey
 */
 
-std::string craftString(std::shared_ptr<IOadv> adv, int64_t modcount,
+std::string craftString(std::shared_ptr<IOadv> adv, const char *x_path,
                         size_t segindx) {
   std::string cmd = adv->walg_bin_path;
 
   cmd += " --config=" + adv->walg_config_path;
-  cmd += " st cat ";
+  cmd += " st cat --decrypt  ";
 
-  cmd += craftWalgStoragePath(adv, segindx, modcount);
+  auto modified_x_path = std::string(x_path);
+  modified_x_path.erase(modified_x_path.begin(),
+                        modified_x_path.begin() +
+                            adv->external_storage_prefix.size());
+
+  cmd += modified_x_path;
   return cmd;
 }
 
@@ -45,7 +46,7 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
     if (order_ptr_ == order_.size()) {
       return false;
     }
-    cmd_ = craftString(adv_, order_[order_ptr_].modcount, GpIdentity.segindex);
+    cmd_ = craftString(adv_, order_[order_ptr_].x_path, GpIdentity.segindex);
     wal_g_ = make_unique<redi::ipstream>(cmd_);
     ++order_ptr_;
   }

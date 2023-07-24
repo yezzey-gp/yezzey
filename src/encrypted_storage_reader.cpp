@@ -1,5 +1,6 @@
 #include "encrypted_storage_reader.h"
 #include "meta.h"
+#include <iostream>
 
 EncryptedStorageReader::EncryptedStorageReader(
     std::shared_ptr<IOadv> adv, const std::vector<ChunkInfo> &order,

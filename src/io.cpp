@@ -13,10 +13,10 @@
 #include "virtual_index.h"
 
 #define USE_WLG_WRITER 0
-#define USE_WLG_READER 0
+#define USE_WLG_READER 1
 #if HAVE_CRYPTO
 #else
-#define USE_WLG_READER 0
+#define USE_WLG_READER 1
 #endif
 
 YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
@@ -25,9 +25,9 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
       order_(YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
                                    std::get<2>(adv->coords_))) {
 #if USE_WLG_READER
-  // reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
+  reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
 
-  reader_ = std::make_shared<WALGReader>(adv_, segindx_);
+  // reader_ = std::make_shared<WALGReader>(adv_, segindx_);
 #else
   reader_ = std::make_shared<EncryptedStorageReader>(adv_, order_, segindx_);
 #endif
@@ -46,9 +46,9 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx)
       order_(YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
                                    std::get<2>(adv->coords_))) {
 #if USE_WLG_READER
-  // reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
+  reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
 
-  reader_ = std::make_shared<WALGReader>(adv_, segindx_);
+  // reader_ = std::make_shared<WALGReader>(adv_, segindx_);
 #else
   reader_ = std::make_shared<EncryptedStorageReader>(adv_, order_, segindx_);
 #endif

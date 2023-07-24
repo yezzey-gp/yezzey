@@ -26,7 +26,7 @@ ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
                                ssize_t segindx)
     : adv_(adv), order_(order), segindx_(segindx), order_ptr_(0) {
   if (order_.size()) {
-    reader_ =  createReaderHandle(order_[0].x_path);
+    reader_ = createReaderHandle(order_[0].x_path);
   }
 }
 
@@ -38,18 +38,25 @@ GPReader *ExternalReader::createReaderHandle(const char *x_path) {
   // throw if initialization error?
   try {
     return reader_init_unsafe(
-      (getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) + storage_url_add_options(x_path, adv_->config_path.c_str())).c_str());
+        (getYezzeyExtrenalStorageBucket(adv_->host.c_str(),
+                                        adv_->bucket.c_str()) +
+         storage_url_add_options(x_path, adv_->config_path.c_str()))
+            .c_str());
   } catch (...) {
     elog(ERROR, "failed to prepare x-storage reader for chunk");
   }
 }
 
-GPReader * ExternalReader::recreateReaderHandle(const char* x_path,  std::shared_ptr<PreAllocatedMemory> prealloc) {
+GPReader *ExternalReader::recreateReaderHandle(
+    const char *x_path, std::shared_ptr<PreAllocatedMemory> prealloc) {
   // throw if initialization error?
   try {
     return reader_reinit_unsafe(
-      (getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) + storage_url_add_options(x_path, adv_->config_path.c_str())).c_str()
-      , prealloc);
+        (getYezzeyExtrenalStorageBucket(adv_->host.c_str(),
+                                        adv_->bucket.c_str()) +
+         storage_url_add_options(x_path, adv_->config_path.c_str()))
+            .c_str(),
+        prealloc);
   } catch (...) {
     elog(ERROR, "failed to prepare x-storage reader for chunk");
   }
@@ -86,7 +93,9 @@ bool ExternalReader::read(char *buffer, size_t *amount) {
   return res;
 }
 
-bool ExternalReader::empty() { return order_ptr_ + 1 == order_.size() && reader_empty(reader_); }
+bool ExternalReader::empty() {
+  return order_ptr_ + 1 == order_.size() && reader_empty(reader_);
+}
 
 /*XXX: fix cleanup*/
 

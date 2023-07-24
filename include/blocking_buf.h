@@ -10,9 +10,6 @@ class BlockingBuffer {
   char *buffer_;
   size_t sz_;
   size_t offset_;
-  size_t tot_write{0};
-  size_t tot_read{0};
-
   std::mutex mu_;
   std::condition_variable cv_read_;
   std::condition_variable cv_write_;
@@ -23,6 +20,10 @@ class BlockingBuffer {
   bool closed_{false};
 
 public:
+
+  size_t tot_write{0};
+  size_t tot_read{0};
+
   // // Non-copyable
   BlockingBuffer(const BlockingBuffer &buf) {
     sz_ = buf.sz_;

@@ -183,7 +183,8 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
   values[Anum_yezzey_virtual_lsn - 1] = LSNGetDatum(lsn);
-  values[Anum_yezzey_virtual_x_path - 1] = PointerGetDatum(cstring_to_text(x_path));
+  values[Anum_yezzey_virtual_x_path - 1] =
+      PointerGetDatum(cstring_to_text(x_path));
 
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
@@ -219,7 +220,8 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
     // unpack text to str
-    res.push_back(ChunkInfo(ytup->lsn, ytup->modcount, text_to_cstring(&ytup->x_path)));
+    res.push_back(
+        ChunkInfo(ytup->lsn, ytup->modcount, text_to_cstring(&ytup->x_path)));
   }
 
   heap_endscan(desc);

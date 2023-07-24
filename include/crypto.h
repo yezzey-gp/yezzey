@@ -57,6 +57,8 @@ public:
   // handler thread
   std::unique_ptr<std::thread> wt{nullptr};
 
+  int64_t tot_read{0};
+
   //
 
   std::shared_ptr<IOadv> adv_;

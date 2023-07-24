@@ -12,6 +12,7 @@ ssize_t yezzey_crypto_stream_dec_read(void *handler, void *buffer,
   auto y_handler = (Crypter *)handler;
   size_t inner_amount = size;
   auto res = y_handler->reader_->read((char *)buffer, &inner_amount);
+  y_handler->tot_read += inner_amount;
   if (!res) {
     return -1;
   }
@@ -197,7 +198,6 @@ void Crypter::io_dispatch_decrypt() {
         // bad
       }
     }
-
     buf_->close();
     // fail_if_err (err);
   });
