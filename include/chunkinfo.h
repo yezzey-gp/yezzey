@@ -7,9 +7,10 @@
 struct ChunkInfo {
     XLogRecPtr lsn;
     int64_t modcount;
+    const char * x_path;
 
     ChunkInfo() {}
 
-    ChunkInfo(XLogRecPtr lsn, int64_t modcount)
-    : lsn(lsn), modcount(modcount) {} 
+    ChunkInfo(XLogRecPtr lsn, int64_t modcount, const char * x_path)
+    : lsn(lsn), modcount(modcount), x_path(x_path) {} 
 };

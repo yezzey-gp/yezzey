@@ -1,8 +1,13 @@
 #include "storage_lister.h"
+#include "virtual_index.h"
 
 StorageLister::StorageLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
     : adv_(adv), segindx_(segindx) {
-  reader_ = std::make_shared<ExternalReader>(adv_, segindx_);
+  reader_ = std::make_shared<ExternalReader>(
+      adv_,
+      YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
+                            std::get<2>(adv->coords_)),
+      segindx_);
 }
 
 StorageLister::~StorageLister() { close(); }

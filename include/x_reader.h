@@ -16,9 +16,6 @@ public:
   explicit ExternalReader(std::shared_ptr<IOadv> adv,
                           const std::vector<ChunkInfo> &order,
                           ssize_t segindx);
-
-  ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx);
-
 public:
   virtual ~ExternalReader();
 
@@ -29,7 +26,7 @@ public:
   virtual void BumpArenda(size_t count);
 
 public:
-  void createReaderHandle();
+  GPReader * createReaderHandle(const char* x_path);
 
   bool empty();
 
@@ -41,5 +38,6 @@ protected:
 private:
   std::shared_ptr<IOadv> adv_;
   const std::vector<ChunkInfo> order_;
+  ssize_t order_ptr_;
   ssize_t segindx_;
 };

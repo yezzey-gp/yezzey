@@ -28,14 +28,16 @@ typedef struct {
   int64_t finish_offset; /* finish_offset of block file chunk */
   int64_t modcount;      /* modcount of block file chunk */
   XLogRecPtr lsn;        /* Chunk lsn */
+  char * x_path;       /* external path */
 } FormData_yezzey_virtual_index;
 
-#define Natts_yezzey_virtual_index 5
+#define Natts_yezzey_virtual_index 6
 #define Anum_yezzey_virtual_index_segno 1
 #define Anum_yezzey_virtual_start_off 2
 #define Anum_yezzey_virtual_finish_off 3
 #define Anum_yezzey_virtual_modcount 4
 #define Anum_yezzey_virtual_lsn 5
+#define Anum_yezzey_virtual_x_path 5
 
 EXTERNC Oid YezzeyCreateAuxIndex(Relation aorel);
 
@@ -48,7 +50,7 @@ EXTERNC void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno);
 #ifdef __cplusplus
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t segindx, int64_t modcount,
-                              XLogRecPtr lsn);
+                              XLogRecPtr lsn, const char * x_path /* external path */);
 
 std::vector<ChunkInfo>
 YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno);

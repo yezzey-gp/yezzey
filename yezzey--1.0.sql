@@ -548,7 +548,7 @@ $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION yezzey_dump_virtual_index(i_relname text) 
-RETURNS TABLE(segno integer, offset_start bigint, offset_finish bigint, modcount bigint, external_path text)
+RETURNS TABLE(segno integer, offset_start bigint, offset_finish bigint, modcount bigint, lsn pg_lsn)
 AS $$
 DECLARE
     v_reloid OID;

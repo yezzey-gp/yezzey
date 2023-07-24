@@ -26,8 +26,8 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
                      "offset_finish", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_modcount,
                      "modcount", INT8OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_lsn,
-                     "lsn", LSNOID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_lsn, "lsn",
+                     LSNOID, -1, 0);
 
   auto yezzey_ao_auxiliary_relname = std::string("yezzey_virtual_index") +
                                      std::to_string(RelationGetRelid(aorel));
@@ -163,8 +163,8 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno) {
 } /* end emptyYezzeyIndexBlkno */
 
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
-                              int64_t segindx, int64_t modcount,
-                               XLogRecPtr lsn) {
+                              int64_t segindx, int64_t modcount, XLogRecPtr lsn,
+                              const char *x_path /* external path */) {
   bool nulls[Natts_yezzey_virtual_index];
   Datum values[Natts_yezzey_virtual_index];
 
@@ -181,6 +181,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
   values[Anum_yezzey_virtual_lsn - 1] = LSNGetDatum(lsn);
+  values[Anum_yezzey_virtual_x_path - 1] = CStringGetDatum(x_path);
 
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
@@ -201,7 +202,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
   HeapTuple tuple;
   ScanKeyData skey[1];
 
-  std::vector<std::pair<int64_t, XLogRecPtr>> tmp;
+  std::vector<ChunkInfo> res;
 
   auto rel = heap_open(yandexoid, RowExclusiveLock);
 
@@ -210,12 +211,12 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
   ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
-  /* TBD: Read index  */
+  /* TBD: Read index */
   auto desc = heap_beginscan(rel, snap, 1, skey);
 
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
-    tmp.push_back({ytup->modcount, ytup->lsn});
+    res.push_back(ChunkInfo(ytup->modcount, ytup->lsn, ytup->x_path));
   }
 
   heap_endscan(desc);
@@ -227,12 +228,10 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
   CommandCounterIncrement();
 
   /* sort by modcount - they are unic */
-  std::sort(tmp.begin(), tmp.end());
-
-  std::vector<ChunkInfo> res(tmp.size());
-  for (auto el : tmp) {
-    res.push_back(ChunkInfo(el.second, el.first));
-  }
+  std::sort(res.begin(), res.end(),
+            [](const ChunkInfo &lhs, const ChunkInfo &rhs) {
+              return lhs.modcount < rhs.modcount;
+            });
 
   return std::move(res);
 }

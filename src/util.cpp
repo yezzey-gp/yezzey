@@ -20,9 +20,11 @@
 #include "gpreader.h"
 #include "gpwriter.h"
 
-#include "external_reader.h"
+#include "virtual_index.h"
+
 #include "io.h"
 #include "io_adv.h"
+#include "x_reader.h"
 
 #define DEFAULTTABLESPACE_OID 1663 /* FIXME */
 
@@ -106,7 +108,7 @@ std::string yezzey_block_file_path(const std::string &nspname,
                                    relnodeCoord coords, int32_t segid) {
 
   std::string url =
-      "segments_005/seg" + std::to_string(segid) + basebackupsPath;
+      "/segments_005/seg" + std::to_string(segid) + basebackupsPath;
 
   int64_t dboid, tableoid, relation_segment;
   dboid = std::get<0>(coords);
@@ -221,7 +223,11 @@ std::string make_yezzey_url(const std::string &prefix, int64_t modcount) {
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                      int32_t segid) {
   try {
-    auto r = ExternalReader(adv, segid);
+    auto r =
+        ExternalReader(adv,
+                       YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
+                                             std::get<2>(adv->coords_)),
+                       segid);
 
     int64_t sz = 0;
     for (auto key : r.reader_->getKeyList().contents) {

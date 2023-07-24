@@ -1,6 +1,6 @@
 #include "meta.h"
-#include "util.h"
 #include "url.h"
+#include "util.h"
 #include "walg_reader.h"
 
 /*
@@ -28,8 +28,7 @@ std::string craftString(std::shared_ptr<IOadv> adv, int64_t modcount,
 
 WALGSTReader::WALGSTReader(std::shared_ptr<IOadv> adv, ssize_t segindx,
                            const std::vector<ChunkInfo> order)
-    : adv_(adv), segindx_(segindx), order_ptr_(0), order_(order) {
-}
+    : adv_(adv), segindx_(segindx), order_ptr_(0), order_(order) {}
 
 WALGSTReader::~WALGSTReader() { close(); }
 
@@ -46,7 +45,8 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
     if (order_ptr_ == order_.size()) {
       return false;
     }
-    wal_g_ = make_unique<redi::ipstream>(craftString(adv_, order_[order_ptr_].modcount,  GpIdentity.segindex));
+    cmd_ = craftString(adv_, order_[order_ptr_].modcount, GpIdentity.segindex);
+    wal_g_ = make_unique<redi::ipstream>(cmd_);
     ++order_ptr_;
   }
 

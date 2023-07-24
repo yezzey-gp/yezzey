@@ -11,7 +11,7 @@
  *
  */
 
-#include "external_reader.h"
+#include "x_reader.h"
 
 #include <map>
 #include <string>
@@ -24,61 +24,36 @@
 ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
                                const std::vector<ChunkInfo> &order,
                                ssize_t segindx)
-    : adv_(adv), order_(order), segindx_(segindx) {
-
-  createReaderHandle();
-}
-
-ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv, ssize_t segindx)
-    : adv_(adv), segindx_(segindx) {
-
-  createReaderHandle();
+    : adv_(adv), order_(order), segindx_(segindx), order_ptr_(0) {
+  if (order_.size()) {
+    reader_ = createReaderHandle(order_[0].x_path);
+  }
 }
 
 /*
  * fileName is in form 'base=DEFAULTTABLESPACE_OID/<dboid>/<tableoid>.<seg>'
  */
 
-void ExternalReader::createReaderHandle() {
-
-  auto prefix = getYezzeyRelationUrl_internal(adv_->nspname, adv_->relname,
-                                              adv_->external_storage_prefix,
-                                              adv_->coords_, segindx_);
-
-  // add config path FIXME
-  auto reader = reader_init_unsafe(
-      storage_url_add_options((getYezzeyExtrenalStorageBucket(
-                                   adv_->host.c_str(), adv_->bucket.c_str()) +
-                               prefix),
-                              adv_->config_path.c_str())
-          .c_str());
-
-  if (reader == NULL) {
-    /* error while external storage initialization */
-    // throw here
-    throw;
-    // return;
-  }
-
-  auto content = reader->getKeyList().contents;
-  std::map<std::string, std::vector<int64_t>> cache;
-
-  std::sort(
-      content.begin(), content.end(),
-      [&cache, &prefix](const BucketContent &c1, const BucketContent &c2) {
-        auto v1 = cache[c1.getName()] =
-            cache.count(c1.getName()) ? cache[c1.getName()]
-                                      : parseModcounts(prefix, c1.getName());
-        auto v2 = cache[c2.getName()] =
-            cache.count(c2.getName()) ? cache[c2.getName()]
-                                      : parseModcounts(prefix, c2.getName());
-        return v1 < v2;
-      });
-
-  reader_ = reader;
+GPReader *ExternalReader::createReaderHandle(const char *x_path) {
+  // throw if initialization error?
+  return reader_init_unsafe(
+      storage_url_add_options(x_path, adv_->config_path.c_str()).c_str());
 }
 
 bool ExternalReader::read(char *buffer, size_t *amount) {
+  if (order_ptr_ == order_.size()) {
+    *amount = 0;
+    return false;
+  }
+  if (reader_empty(reader_)) {
+    ++order_ptr_;
+    if (order_ptr_ == order_.size()) {
+      *amount = 0;
+      return false;
+    }
+
+    reader_ = createReaderHandle(order_[order_ptr_].x_path);
+  }
   int inner_amount = *amount;
   auto res = reader_transfer_data(reader_, buffer, inner_amount);
   *amount = inner_amount;

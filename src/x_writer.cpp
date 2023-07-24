@@ -11,7 +11,7 @@
  *
  */
 
-#include "external_writer.h"
+#include "x_writer.h"
 
 #include "url.h"
 #include "util.h"

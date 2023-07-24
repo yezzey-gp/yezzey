@@ -62,6 +62,7 @@ private:
   ssize_t segindx_;
   int64_t order_ptr_{0};
   const std::vector<ChunkInfo> order_;
+  std::string cmd_;
 
   std::unique_ptr<redi::ipstream> wal_g_{nullptr};
 };

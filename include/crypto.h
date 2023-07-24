@@ -2,7 +2,7 @@
 #pragma once
 
 #include "blocking_buf.h"
-#include "external_reader.h"
+#include "x_reader.h"
 #include "io_adv.h"
 #include "yreader.h"
 #include "ywriter.h"

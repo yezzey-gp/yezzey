@@ -15,6 +15,9 @@ SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
 SELECT count(1) FROM regaoty;
+
+SELECT * FROM yezzey_dump_virtual_index('regaoty');
+
 SELECT * FROM regaoty LIMIT 5;
 INSERT INTO regaoty SELECT * FROM generate_series(1, 100000);
 SELECT count(1) FROM regaoty;
