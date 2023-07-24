@@ -26,7 +26,7 @@ ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
                                ssize_t segindx)
     : adv_(adv), order_(order), segindx_(segindx), order_ptr_(0) {
   if (order_.size()) {
-    reader_ = createReaderHandle(order_[0].x_path);
+    reader_ =  createReaderHandle(order_[0].x_path);
   }
 }
 
@@ -37,7 +37,7 @@ ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
 GPReader *ExternalReader::createReaderHandle(const char *x_path) {
   // throw if initialization error?
   return reader_init_unsafe(
-      storage_url_add_options(x_path, adv_->config_path.c_str()).c_str());
+     (getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str()) + storage_url_add_options(x_path, adv_->config_path.c_str())).c_str());
 }
 
 bool ExternalReader::read(char *buffer, size_t *amount) {
@@ -46,10 +46,17 @@ bool ExternalReader::read(char *buffer, size_t *amount) {
     return false;
   }
   if (reader_empty(reader_)) {
+    /**/
+    auto reader = &reader_;
+    auto res = reader_cleanup_unsafe(reader);
+    if (!res) {
+      *amount = 0;
+      return res;
+    }
     ++order_ptr_;
     if (order_ptr_ == order_.size()) {
       *amount = 0;
-      return false;
+      return true;
     }
 
     reader_ = createReaderHandle(order_[order_ptr_].x_path);
@@ -60,11 +67,14 @@ bool ExternalReader::read(char *buffer, size_t *amount) {
   return res;
 }
 
-bool ExternalReader::empty() { return reader_empty(reader_); }
+bool ExternalReader::empty() { return order_ptr_ + 1 == order_.size() && reader_empty(reader_); }
 
 /*XXX: fix cleanup*/
 
 bool ExternalReader::close() {
+  if (!reader_) {
+    return true;
+  }
   auto reader = &reader_;
   auto res = reader_cleanup_unsafe(reader);
   return res;
@@ -91,7 +101,3 @@ std::vector<std::string> ExternalReader::list_chunk_names() {
   }
   return rv;
 }
-
-void ExternalReader::BumpArenda(size_t count) {
-  return reader_->BumpArenda(count);
-};

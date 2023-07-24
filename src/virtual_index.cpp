@@ -28,6 +28,8 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
                      "modcount", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_lsn, "lsn",
                      LSNOID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_x_path, "x_path",
+                     TEXTOID, -1, 0);
 
   auto yezzey_ao_auxiliary_relname = std::string("yezzey_virtual_index") +
                                      std::to_string(RelationGetRelid(aorel));
@@ -181,7 +183,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
   values[Anum_yezzey_virtual_lsn - 1] = LSNGetDatum(lsn);
-  values[Anum_yezzey_virtual_x_path - 1] = CStringGetDatum(x_path);
+  values[Anum_yezzey_virtual_x_path - 1] = PointerGetDatum(cstring_to_text(x_path));
 
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
@@ -216,7 +218,8 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
 
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
-    res.push_back(ChunkInfo(ytup->modcount, ytup->lsn, ytup->x_path));
+    // unpack text to str
+    res.push_back(ChunkInfo(ytup->modcount, ytup->lsn, text_to_cstring(&ytup->x_path)));
   }
 
   heap_endscan(desc);

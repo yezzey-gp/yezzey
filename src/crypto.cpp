@@ -12,7 +12,7 @@ ssize_t yezzey_crypto_stream_dec_read(void *handler, void *buffer,
   auto y_handler = (Crypter *)handler;
   size_t inner_amount = size;
   auto res = y_handler->reader_->read((char *)buffer, &inner_amount);
-  if (!res || inner_amount <= 0) {
+  if (!res) {
     return -1;
   }
   return inner_amount;
@@ -185,7 +185,6 @@ void Crypter::waitio() {
 void Crypter::io_dispatch_decrypt() {
   wt = make_unique<std::thread>([&]() {
     for (; !reader_->empty();) {
-      reader_->BumpArenda(1);
       /* operation per file */
       gpgme_error_t err;
       err = gpgme_op_decrypt(crypto_ctx, crypto_in, crypto_out);

@@ -261,7 +261,7 @@ void yezzey_FileClose(SMGRFile file) {
       assert(YVirtFD_cache[file].handler);
       if (!YVirtFD_cache[file].handler->io_close()) {
         // very bad
-        elog(ERROR, "failed to complete external storage interfacrtion: fd %d",
+        elog(ERROR, "failed to complete external storage interaction: fd %d",
              file);
       }
     } else {

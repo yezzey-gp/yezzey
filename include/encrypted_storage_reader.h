@@ -20,8 +20,6 @@ public:
   virtual bool read(char *buffer, size_t *amount);
   virtual bool empty();
 
-  virtual void BumpArenda(size_t count);
-
   int prepare();
 
 protected:

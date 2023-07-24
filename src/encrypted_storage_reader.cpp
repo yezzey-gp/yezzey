@@ -50,7 +50,3 @@ bool EncryptedStorageReader::close() {
 }
 
 bool EncryptedStorageReader::empty() { return reader_->empty(); }
-
-void EncryptedStorageReader::BumpArenda(size_t count) {
-  return reader_->BumpArenda(count);
-};

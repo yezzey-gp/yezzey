@@ -60,8 +60,6 @@ bool WALGReader::read(char *buffer, size_t *amount) {
 }
 int WALGReader::prepare() { return 0; }
 
-void WALGReader::BumpArenda(size_t /*count*/) {}
-
 bool WALGReader::empty() {
   if (!initialized_)
     return false;

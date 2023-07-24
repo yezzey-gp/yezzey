@@ -23,7 +23,6 @@ public:
   virtual bool read(char *buffer, size_t *amount);
   virtual std::vector<storageChunkMeta> list_relation_chunks();
   virtual std::vector<std::string> list_chunk_names();
-  virtual void BumpArenda(size_t count);
 
 public:
   GPReader * createReaderHandle(const char* x_path);

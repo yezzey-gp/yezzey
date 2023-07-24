@@ -17,7 +17,6 @@ public:
 public:
   virtual bool close();
   virtual bool read(char *buffer, size_t *amount);
-  virtual void BumpArenda(size_t count);
 
   virtual bool empty();
 
@@ -47,7 +46,6 @@ public:
 public:
   virtual bool close();
   virtual bool read(char *buffer, size_t *amount);
-  virtual void BumpArenda(size_t count);
 
   virtual bool empty();
 

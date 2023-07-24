@@ -56,8 +56,6 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
 }
 int WALGSTReader::prepare() { return 0; }
 
-void WALGSTReader::BumpArenda(size_t /*count*/) {}
-
 bool WALGSTReader::empty() {
   if (wal_g_ == nullptr)
     return false;

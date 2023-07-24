@@ -28,7 +28,7 @@ typedef struct {
   int64_t finish_offset; /* finish_offset of block file chunk */
   int64_t modcount;      /* modcount of block file chunk */
   XLogRecPtr lsn;        /* Chunk lsn */
-  char * x_path;       /* external path */
+  text x_path;       /* external path */
 } FormData_yezzey_virtual_index;
 
 #define Natts_yezzey_virtual_index 6
@@ -37,7 +37,7 @@ typedef struct {
 #define Anum_yezzey_virtual_finish_off 3
 #define Anum_yezzey_virtual_modcount 4
 #define Anum_yezzey_virtual_lsn 5
-#define Anum_yezzey_virtual_x_path 5
+#define Anum_yezzey_virtual_x_path 6
 
 EXTERNC Oid YezzeyCreateAuxIndex(Relation aorel);
 
