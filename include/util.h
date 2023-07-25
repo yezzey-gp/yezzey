@@ -51,7 +51,8 @@ std::string storage_url_add_options(const std::string &s3path,
 std::string getYezzeyExtrenalStorageBucket(const char *host,
                                            const char *bucket);
 
-std::string make_yezzey_url(const std::string &prefix, int64_t modcounts);
+std::string make_yezzey_url(const std::string &prefix, int64_t modcounts, 
+                             XLogRecPtr current_recptr);
 
 std::vector<int64_t> parseModcounts(const std::string &prefix,
                                     std::string name);

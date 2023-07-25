@@ -25,7 +25,8 @@ std::string craftString(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
 
   cmd += " --config=" + adv->walg_config_path;
   cmd += " aosegfile-offload ";
-  cmd += craftStoragePath(adv, segindx, modcount, "segments_005");
+  cmd += craftStoragePath(adv, segindx, modcount, "segments_005",
+                          InvalidXLogRecPtr /* fix ths */);
   return cmd;
 }
 

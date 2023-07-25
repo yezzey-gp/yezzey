@@ -3,7 +3,8 @@
 
 std::string craftStoragePath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                              ssize_t modcount,
-                             const std::string &storage_prefix) {
+                             const std::string &storage_prefix,
+                             XLogRecPtr current_recptr) {
 
   /* Craft path in format
    *  handler->external_storage_prefix + seg_{segid} + ...
@@ -16,7 +17,7 @@ std::string craftStoragePath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
   auto prefix = getYezzeyRelationUrl_internal(
       adv->nspname, adv->relname, storage_prefix, adv->coords_, segindx);
 
-  return make_yezzey_url(prefix, modcount);
+  return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
 std::string craftWalgStoragePath(const std::shared_ptr<IOadv> &adv,
@@ -33,13 +34,33 @@ std::string craftWalgStoragePath(const std::shared_ptr<IOadv> &adv,
   auto prefix =
       yezzey_block_file_path(adv->nspname, adv->relname, adv->coords_, segindx);
 
-  return make_yezzey_url(prefix, modcount);
+  return make_yezzey_url(prefix, modcount, InvalidXLogRecPtr);
+}
+
+std::string craftUrlXpath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
+                     ssize_t modcount) {
+                    
+  XLogRecPtr current_recptr;
+
+  if (RecoveryInProgress())
+    ereport(
+        ERROR,
+        (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+         errmsg("recovery is in progress"),
+         errhint("WAL control functions cannot be executed during recovery.")));
+
+  current_recptr = GetXLogWriteRecPtr();
+
+ return craftStoragePath(adv, segindx, modcount,
+                               adv->external_storage_prefix, current_recptr);
+
 }
 
 std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                      ssize_t modcount) {
-  auto path =
-      craftStoragePath(adv, segindx, modcount, adv->external_storage_prefix);
+
+
+                         auto path = craftUrlXpath(adv, segindx, modcount);
 
   auto url =
       getYezzeyExtrenalStorageBucket(adv->host.c_str(), adv->bucket.c_str()) +

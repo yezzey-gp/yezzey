@@ -6,8 +6,11 @@
 std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                      ssize_t modcount);
 
+std::string craftUrlXpath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
+                     ssize_t modcount);
+
 std::string craftStoragePath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                             ssize_t modcount, const std::string &prefix);
+                             ssize_t modcount, const std::string &prefix, XLogRecPtr	current_recptr);
 
 std::string craftWalgStoragePath(const std::shared_ptr<IOadv> &adv,
                                  ssize_t segindx, ssize_t modcount);

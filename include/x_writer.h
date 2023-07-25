@@ -24,8 +24,9 @@ public:
   virtual bool write(const char *buffer, size_t *amount);
 
 private:
-  void createWriterHandleToPath();
-  void createWriterHandle();
+  std::string createWriterHandleToPath();
+  std::string createWriterHandle();
+  std::string InitWriter();
 
 private:
   std::shared_ptr<IOadv> adv_;
