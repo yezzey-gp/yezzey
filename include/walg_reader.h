@@ -50,6 +50,8 @@ public:
   virtual bool empty();
 
 public:
+  std::string craftString(std::string x_path,
+                        size_t segindx);
 protected:
   /* prepare command dispatch */
 

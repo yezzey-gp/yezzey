@@ -170,6 +170,7 @@ void Crypter::io_dispatch_encrypt() {
     if (err) {
       auto errstr = gpgme_strerror(err);
       std::cerr << "failed to dipatch encrypt " << errstr << '\n';
+      elog(ERROR, "encrypt failed");
       return;
       // bad
     }
@@ -194,7 +195,7 @@ void Crypter::io_dispatch_decrypt() {
         buf_->close();
         auto errstr = gpgme_strerror(err);
         std::cerr << "failed to dispatch decrypt " << errstr << '\n';
-        return;
+        elog(ERROR, "decrypt failed");
         // bad
       }
     }

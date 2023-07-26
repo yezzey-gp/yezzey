@@ -24,4 +24,6 @@ SELECT * FROM regaoty LIMIT 5 OFFSET 7823;
 
 SELECT * FROM yezzey_dump_virtual_index('regaoty');
 
+\c postgres
+
 DROP DATABASE testreg;

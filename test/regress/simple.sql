@@ -19,4 +19,5 @@ SELECT count(1) FROM regaoty;
 
 SELECT * FROM regaoty LIMIT 5 OFFSET 7823;
 
+\c postgres
 DROP DATABASE testreg;

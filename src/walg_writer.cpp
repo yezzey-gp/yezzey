@@ -18,21 +18,48 @@ std::string craftStoragePath(const std::shared_ptr<YLister> &lister,
 &prefix);
 */
 
-std::string craftString(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
+std::string WALGWriter::craftString(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                         ssize_t modcount) {
 
   std::string cmd = adv->walg_bin_path;
 
   cmd += " --config=" + adv->walg_config_path;
   cmd += " aosegfile-offload ";
-  cmd += craftStoragePath(adv, segindx, modcount, "segments_005",
-                          InvalidXLogRecPtr /* fix ths */);
+
+
+  auto modified_x_path = std::string(storage_path_);
+  modified_x_path.erase(modified_x_path.begin(),
+                        modified_x_path.begin() +
+                            adv->external_storage_prefix.size());
+  
+  cmd += modified_x_path;
   return cmd;
 }
 
+
+
+std::string WALGWriter::createXPath() {
+  XLogRecPtr current_recptr;
+
+  if (RecoveryInProgress())
+    ereport(
+        ERROR,
+        (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+         errmsg("recovery is in progress"),
+         errhint("WAL control functions cannot be executed during recovery.")));
+
+  current_recptr = GetXLogWriteRecPtr();
+
+  return craftStoragePath(adv_, segindx_, modcount_, adv_->external_storage_prefix,
+                          current_recptr);
+}
+
+
+
+
 WALGWriter::WALGWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                        ssize_t modcount, const std::string &storage_path)
-    : adv_(adv), segindx_(segindx), modcount_(modcount),
+    : adv_(adv), segindx_(segindx), modcount_(modcount), storage_path_(createXPath()),
       cmd_(craftString(adv, segindx, modcount)) {}
 
 WALGWriter::~WALGWriter() { close(); }
@@ -52,7 +79,8 @@ bool WALGWriter::write(const char *buffer, size_t *amount) {
 
   wal_g_->write(buffer, *amount);
   if (wal_g_->fail()) {
-    return -1;
+    *amount = 0;
+    return false;
   }
-  return *amount;
+  return true;
 }

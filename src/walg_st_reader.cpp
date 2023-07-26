@@ -2,6 +2,7 @@
 #include "url.h"
 #include "util.h"
 #include "walg_reader.h"
+#include <iostream>
 
 /*
 sample:
@@ -11,17 +12,18 @@ st cat --decrypt
 segments_005/seg1/basebackups_005/aosegments/1663_16384_41a9e377c1b0698523e79969eecc4998_16384_1__DY_1_aoseg_yezzey
 */
 
-std::string craftString(std::shared_ptr<IOadv> adv, const char *x_path,
+std::string WALGSTReader::craftString(std::string x_path,
                         size_t segindx) {
-  std::string cmd = adv->walg_bin_path;
+  std::string cmd = adv_->walg_bin_path;
 
-  cmd += " --config=" + adv->walg_config_path;
+  cmd += " --config=" + adv_->walg_config_path;
   cmd += " st cat --decrypt  ";
+  std::cerr << x_path << "\n";
 
-  auto modified_x_path = std::string(x_path);
+  auto modified_x_path = x_path;
   modified_x_path.erase(modified_x_path.begin(),
                         modified_x_path.begin() +
-                            adv->external_storage_prefix.size());
+                            adv_->external_storage_prefix.size());
   
   cmd += modified_x_path;
   return cmd;
@@ -46,7 +48,7 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
     if (order_ptr_ == order_.size()) {
       return false;
     }
-    cmd_ = craftString(adv_, order_[order_ptr_].x_path, GpIdentity.segindex);
+    cmd_ = craftString(order_[order_ptr_].x_path, GpIdentity.segindex);
     wal_g_ = make_unique<redi::ipstream>(cmd_);
     ++order_ptr_;
   }

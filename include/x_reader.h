@@ -25,8 +25,8 @@ public:
   virtual std::vector<std::string> list_chunk_names();
 
 public:
-  GPReader * createReaderHandle(const char* x_path);
-  GPReader * recreateReaderHandle(const char* x_path,  std::shared_ptr<PreAllocatedMemory> prealloc);
+  GPReader * createReaderHandle(std::string x_path);
+  GPReader * recreateReaderHandle(std::string x_path,  std::shared_ptr<PreAllocatedMemory> prealloc);
 
   bool empty();
 

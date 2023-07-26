@@ -34,7 +34,7 @@ ExternalReader::ExternalReader(std::shared_ptr<IOadv> adv,
  * fileName is in form 'base=DEFAULTTABLESPACE_OID/<dboid>/<tableoid>.<seg>'
  */
 
-GPReader *ExternalReader::createReaderHandle(const char *x_path) {
+GPReader *ExternalReader::createReaderHandle(std::string x_path) {
   // throw if initialization error?
   try {
     return reader_init_unsafe(
@@ -48,7 +48,7 @@ GPReader *ExternalReader::createReaderHandle(const char *x_path) {
 }
 
 GPReader *ExternalReader::recreateReaderHandle(
-    const char *x_path, std::shared_ptr<PreAllocatedMemory> prealloc) {
+    std::string x_path, std::shared_ptr<PreAllocatedMemory> prealloc) {
   // throw if initialization error?
   try {
     return reader_reinit_unsafe(
