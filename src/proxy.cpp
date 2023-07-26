@@ -217,7 +217,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
             /* insert entry in yezzey index */
             YezzeyVirtualIndexInsert(
                 YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
-                std::get<2>(ioadv->coords_) /* segindex*/, modcount,
+                ioadv->coords_.blkno /* blkno*/,ioadv->coords_.filenode, modcount,
                 InvalidXLogRecPtr,
                 YVirtFD_cache[yezzey_fd]
                     .handler->writer_->getExternalStoragePath()
@@ -370,7 +370,8 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
       if (Gp_role == GP_ROLE_EXECUTE) {
         (void)emptyYezzeyIndexBlkno(
             YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
-            std::get<2>(YVirtFD_cache[yezzey_fd].handler->adv_->coords_));
+            YVirtFD_cache[yezzey_fd].handler->adv_->coords_.blkno,
+            YVirtFD_cache[yezzey_fd].handler->adv_->coords_.filenode);
       }
     }
     return 0;

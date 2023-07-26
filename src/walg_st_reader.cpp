@@ -22,7 +22,7 @@ std::string craftString(std::shared_ptr<IOadv> adv, const char *x_path,
   modified_x_path.erase(modified_x_path.begin(),
                         modified_x_path.begin() +
                             adv->external_storage_prefix.size());
-
+  
   cmd += modified_x_path;
   return cmd;
 }

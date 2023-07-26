@@ -20,6 +20,8 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_segno,
                      "segno", INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_filenode,
+                     "filenode", OIDOID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_start_off,
                      "offset_start", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_finish_off,
@@ -137,9 +139,9 @@ void emptyYezzeyIndex(Oid yezzey_index_oid) {
   CommandCounterIncrement();
 } /* end emptyYezzeyIndex */
 
-void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno) {
+void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
   HeapTuple tuple;
-  ScanKeyData skey[1];
+  ScanKeyData skey[2];
 
   /* DELETE FROM yezzey.yezzey_virtual_index_<oid> WHERE segno = <blkno> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
@@ -148,6 +150,10 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno) {
 
   ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
+
+
+  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(blkno));
 
   auto desc = heap_beginscan(rel, snap, 1, skey);
 
@@ -165,7 +171,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno) {
 } /* end emptyYezzeyIndexBlkno */
 
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
-                              int64_t segindx, int64_t modcount, XLogRecPtr lsn,
+                              int64_t segindx, Oid relfilenodeOid, int64_t modcount, XLogRecPtr lsn,
                               const char *x_path /* external path */) {
   bool nulls[Natts_yezzey_virtual_index];
   Datum values[Natts_yezzey_virtual_index];
@@ -179,6 +185,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
   values[Anum_yezzey_virtual_index_segno - 1] = Int64GetDatum(segindx);
+  values[Anum_yezzey_virtual_index_filenode - 1] = ObjectIdGetDatum(relfilenodeOid);
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
@@ -198,12 +205,12 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 }
 
 std::vector<ChunkInfo>
-YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
+YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno, Oid relfilenode) {
 
   /* SELECT external_path FROM yezzey.yezzey_virtual_index_<oid> WHERE segno =
    * <>; */
   HeapTuple tuple;
-  ScanKeyData skey[1];
+  ScanKeyData skey[2];
 
   std::vector<ChunkInfo> res;
 
@@ -213,6 +220,10 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno) {
 
   ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
+
+  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(relfilenode));
+
 
   /* TBD: Read index */
   auto desc = heap_beginscan(rel, snap, 1, skey);

@@ -88,7 +88,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
 
   YezzeyVirtualIndexInsert(
       YezzeyFindAuxIndex(aorel->rd_id),
-      std::get<2>(ioadv->coords_) /* segindex*/, modcount, InvalidXLogRecPtr,
+      ioadv->coords_.blkno /* blkno*/, ioadv->coords_.filenode, modcount, InvalidXLogRecPtr,
       iohandler.writer_->getExternalStoragePath().c_str() /* path */);
 
   while (progress < logicalEof) {
@@ -265,10 +265,7 @@ std::string getlocalpath(Oid dbnode, Oid relNode, int segno) {
 }
 
 std::string getlocalpath(const relnodeCoord &coords) {
-  auto dbnode = std::get<0>(coords);
-  auto relnode = std::get<1>(coords);
-  auto segno = std::get<2>(coords);
-  return getlocalpath(dbnode, relnode, segno);
+  return getlocalpath(coords.dboid, coords.filenode, coords.blkno);
 }
 
 int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
@@ -335,7 +332,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   elog(INFO,
        "yezzey: relation segment reached external storage (blkno=%ld), virtual "
        "size %ld, logical eof %ld",
-       std::get<2>(coords), virtual_sz, logicalEof);
+       coords.blkno, virtual_sz, logicalEof);
   return 0;
 }
 

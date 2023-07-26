@@ -1,6 +1,13 @@
 #pragma once
 #include <tuple>
 
-typedef std::tuple<int64_t, int64_t, int64_t> relnodeCoord;
+struct relnodeCoord {
+    Oid dboid;
+    Oid filenode;
+    int64_t blkno;
+
+    relnodeCoord(Oid dboid, Oid filenode, int64_t blkno) : dboid(dboid), filenode(filenode), blkno(blkno) {
+    }
+};
 
 relnodeCoord getRelnodeCoordinate(const std::string &fileName);

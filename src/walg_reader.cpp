@@ -21,9 +21,9 @@ std::string craftString(std::shared_ptr<IOadv> adv, size_t segindx) {
   cmd += " --config=" + adv->walg_config_path;
   cmd += " aosegfile-stream ";
   auto coords = adv->coords_;
-  auto dbOid = std::get<0>(coords);
-  auto relOid = std::get<1>(coords);
-  auto relBlck = std::get<2>(coords);
+  auto dbOid = coords.dboid;
+  auto relOid = coords.filenode;
+  auto relBlck = coords.blkno;
   cmd += " --segno=" + std::to_string(segindx);
   cmd += " --relationName=" + adv->relname;
   cmd += " --schemaName=" + adv->nspname;

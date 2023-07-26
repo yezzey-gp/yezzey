@@ -60,8 +60,8 @@ std::string storage_url_add_options(const std::string &s3path,
 
 relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
 
-  int64_t dboid = 0, tableoid = 0;
-  int64_t relation_segment = 0;
+  Oid dbOid = 0, relfilenodeOid = 0;
+  int64_t blkno = 0;
 
   auto len = fileName.size();
 
@@ -70,28 +70,28 @@ relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
       ++it;
       continue;
     }
-    if (dboid && tableoid && relation_segment) {
+    if (dbOid && relfilenodeOid && blkno) {
       break; // seg num follows
     }
-    if (dboid == 0) {
+    if (dbOid == 0) {
       while (it < len && isdigit(fileName[it])) {
-        dboid *= 10;
-        dboid += fileName[it++] - '0';
+        dbOid *= 10;
+        dbOid += fileName[it++] - '0';
       }
-    } else if (tableoid == 0) {
+    } else if (relfilenodeOid == 0) {
       while (it < len && isdigit(fileName[it])) {
-        tableoid *= 10;
-        tableoid += fileName[it++] - '0';
+        relfilenodeOid *= 10;
+        relfilenodeOid += fileName[it++] - '0';
       }
-    } else if (relation_segment == 0) {
+    } else if (blkno == 0) {
       while (it < len && isdigit(fileName[it])) {
-        relation_segment *= 10;
-        relation_segment += fileName[it++] - '0';
+        blkno *= 10;
+        blkno += fileName[it++] - '0';
       }
     }
   }
 
-  return {dboid, tableoid, relation_segment};
+  return relnodeCoord(dbOid, relfilenodeOid, blkno);
 }
 
 std::string
@@ -109,16 +109,11 @@ std::string yezzey_block_file_path(const std::string &nspname,
 
   std::string url =
       "/segments_005/seg" + std::to_string(segid) + basebackupsPath;
-
-  int64_t dboid, tableoid, relation_segment;
-  dboid = std::get<0>(coords);
-  tableoid = std::get<1>(coords);
-  relation_segment = std::get<2>(coords);
-
+      
   unsigned char md[MD5_DIGEST_LENGTH];
 
   url +=
-      std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(dboid) + "_";
+      std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(coords.dboid) + "_";
 
   std::string full_name = nspname + "." + relname;
   /* compute AO/AOCS relation name, just like walg does*/
@@ -131,8 +126,8 @@ std::string yezzey_block_file_path(const std::string &nspname,
     url += chunk[1];
   }
 
-  url += "_" + std::to_string(tableoid) + "_" +
-         std::to_string(relation_segment) + "_";
+  url += "_" + std::to_string(coords.filenode) + "_" +
+         std::to_string(coords.blkno) + "_";
 
   return url;
 }
@@ -231,7 +226,7 @@ int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
     auto r =
         ExternalReader(adv,
                        YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
-                                             std::get<2>(adv->coords_)),
+                                              adv->coords_.blkno, adv->coords_.filenode),
                        segid);
 
     int64_t sz = 0;
