@@ -365,6 +365,12 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
     if (!RecoveryInProgress()) {
       assert(YVirtFD_cache[yezzey_fd].handler);
 
+      /* if truncatetoeof, do nothing */
+      /* we need addintinal checks that offset == virtual_size */
+      if (offset) {
+        return 0;
+      }
+
       /* Do it only on QE? */
       if (Gp_role == GP_ROLE_EXECUTE) {
         (void)emptyYezzeyIndexBlkno(
