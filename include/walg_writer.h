@@ -31,6 +31,7 @@ private:
   std::shared_ptr<IOadv> adv_;
   ssize_t segindx_;
   ssize_t modcount_;
+  XLogRecPtr insertion_rec_ptr_;
   std::string storage_path_;
   std::string cmd_;
 
@@ -40,4 +41,6 @@ private:
 
 public:
   std::string getExternalStoragePath() { return storage_path_; }
+
+  XLogRecPtr getInsertionStorageLsn() { return insertion_rec_ptr_; }
 };

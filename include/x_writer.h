@@ -33,6 +33,7 @@ private:
   ssize_t segindx_;
   ssize_t modcount_;
   const std::string storage_path_;
+  XLogRecPtr insertion_rec_ptr_;
 
 protected:
   GPWriter *writer_{nullptr};
@@ -43,4 +44,6 @@ private:
 
 public:
   std::string getExternalStoragePath() { return storage_offload_path_; }
+
+  XLogRecPtr getInsertionStorageLsn() { return insertion_rec_ptr_; }
 };

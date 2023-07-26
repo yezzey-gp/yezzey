@@ -23,7 +23,7 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
          const std::string &storage_path)
     : adv_(adv), segindx_(segindx), modcount_(modcount),
       order_(YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
-                                    adv->coords_.blkno, adv->coords_.filenode)) {
+                                   adv->coords_.blkno, adv->coords_.filenode)) {
 #if USE_WLG_READER
   reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
 

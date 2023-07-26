@@ -17,4 +17,5 @@ public:
   virtual bool close() = 0;
 
   virtual std::string getExternalStoragePath() = 0;
+  virtual XLogRecPtr getInsertionStorageLsn() = 0;
 };

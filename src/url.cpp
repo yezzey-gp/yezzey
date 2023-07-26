@@ -38,29 +38,15 @@ std::string craftWalgStoragePath(const std::shared_ptr<IOadv> &adv,
 }
 
 std::string craftUrlXpath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                     ssize_t modcount) {
-                    
-  XLogRecPtr current_recptr;
-
-  if (RecoveryInProgress())
-    ereport(
-        ERROR,
-        (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-         errmsg("recovery is in progress"),
-         errhint("WAL control functions cannot be executed during recovery.")));
-
-  current_recptr = GetXLogWriteRecPtr();
-
- return craftStoragePath(adv, segindx, modcount,
-                               adv->external_storage_prefix, current_recptr);
-
+                          ssize_t modcount, XLogRecPtr current_recptr) {
+  return craftStoragePath(adv, segindx, modcount, adv->external_storage_prefix,
+                          current_recptr);
 }
 
 std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                     ssize_t modcount) {
+                     ssize_t modcount, XLogRecPtr insertion_rec_ptr) {
 
-
-                         auto path = craftUrlXpath(adv, segindx, modcount);
+  auto path = craftUrlXpath(adv, segindx, modcount, insertion_rec_ptr);
 
   auto url =
       getYezzeyExtrenalStorageBucket(adv->host.c_str(), adv->bucket.c_str()) +

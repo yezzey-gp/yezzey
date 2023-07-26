@@ -109,11 +109,11 @@ std::string yezzey_block_file_path(const std::string &nspname,
 
   std::string url =
       "/segments_005/seg" + std::to_string(segid) + basebackupsPath;
-      
+
   unsigned char md[MD5_DIGEST_LENGTH];
 
-  url +=
-      std::to_string(DEFAULTTABLESPACE_OID) + "_" + std::to_string(coords.dboid) + "_";
+  url += std::to_string(DEFAULTTABLESPACE_OID) + "_" +
+         std::to_string(coords.dboid) + "_";
 
   std::string full_name = nspname + "." + relname;
   /* compute AO/AOCS relation name, just like walg does*/
@@ -210,9 +210,9 @@ std::vector<int64_t> parseModcounts(const std::string &prefix,
   return res;
 }
 
-std::string make_yezzey_url(const std::string &prefix, int64_t modcount, 
-                             XLogRecPtr current_recptr) {
-  auto rv =  prefix + ("_DY_" + std::to_string(modcount)) + "_aoseg_yezzey";
+std::string make_yezzey_url(const std::string &prefix, int64_t modcount,
+                            XLogRecPtr current_recptr) {
+  auto rv = prefix + ("_DY_" + std::to_string(modcount)) + "_aoseg_yezzey";
   if (current_recptr != InvalidXLogRecPtr) {
     rv += "_xlog_" + std::to_string(current_recptr);
   }
@@ -223,11 +223,11 @@ std::string make_yezzey_url(const std::string &prefix, int64_t modcount,
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                      int32_t segid) {
   try {
-    auto r =
-        ExternalReader(adv,
-                       YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
-                                              adv->coords_.blkno, adv->coords_.filenode),
-                       segid);
+    auto r = ExternalReader(
+        adv,
+        YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
+                              adv->coords_.blkno, adv->coords_.filenode),
+        segid);
 
     int64_t sz = 0;
     for (auto key : r.reader_->getKeyList().contents) {
@@ -265,3 +265,14 @@ int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
   }
 }
 /*XXX: fix cleanup*/
+
+XLogRecPtr yezzeyGetXStorageInsertLsn(void) {
+  if (RecoveryInProgress())
+    ereport(
+        ERROR,
+        (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+         errmsg("recovery is in progress"),
+         errhint("WAL control functions cannot be executed during recovery.")));
+
+  return GetXLogWriteRecPtr();
+}

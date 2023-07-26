@@ -214,14 +214,13 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
               YVirtFD_cache.erase(yezzey_fd);
               return -1;
             }
+            auto writer = YVirtFD_cache[yezzey_fd].handler->writer_;
             /* insert entry in yezzey index */
             YezzeyVirtualIndexInsert(
                 YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
-                ioadv->coords_.blkno /* blkno*/,ioadv->coords_.filenode, modcount,
-                InvalidXLogRecPtr,
-                YVirtFD_cache[yezzey_fd]
-                    .handler->writer_->getExternalStoragePath()
-                    .c_str() /* path ? */);
+                ioadv->coords_.blkno /* blkno*/, ioadv->coords_.filenode,
+                modcount, writer->getInsertionStorageLsn(),
+                writer->getExternalStoragePath().c_str() /* path ? */);
           }
         }
       } else {

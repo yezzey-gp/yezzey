@@ -151,9 +151,8 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
   ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
-
-  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(blkno));
+  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
+              BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(blkno));
 
   auto desc = heap_beginscan(rel, snap, 1, skey);
 
@@ -171,7 +170,8 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
 } /* end emptyYezzeyIndexBlkno */
 
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
-                              int64_t segindx, Oid relfilenodeOid, int64_t modcount, XLogRecPtr lsn,
+                              int64_t segindx, Oid relfilenodeOid,
+                              int64_t modcount, XLogRecPtr lsn,
                               const char *x_path /* external path */) {
   bool nulls[Natts_yezzey_virtual_index];
   Datum values[Natts_yezzey_virtual_index];
@@ -185,7 +185,8 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
   values[Anum_yezzey_virtual_index_segno - 1] = Int64GetDatum(segindx);
-  values[Anum_yezzey_virtual_index_filenode - 1] = ObjectIdGetDatum(relfilenodeOid);
+  values[Anum_yezzey_virtual_index_filenode - 1] =
+      ObjectIdGetDatum(relfilenodeOid);
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
@@ -205,7 +206,8 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 }
 
 std::vector<ChunkInfo>
-YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno, Oid relfilenode) {
+YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
+                      Oid relfilenode) {
 
   /* SELECT external_path FROM yezzey.yezzey_virtual_index_<oid> WHERE segno =
    * <>; */
@@ -221,9 +223,8 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno, O
   ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
-  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(relfilenode));
-
+  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
+              BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
 
   /* TBD: Read index */
   auto desc = heap_beginscan(rel, snap, 1, skey);

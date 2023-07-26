@@ -5,8 +5,8 @@ StorageLister::StorageLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
     : adv_(adv), segindx_(segindx) {
   reader_ = std::make_shared<ExternalReader>(
       adv_,
-      YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
-                             adv->coords_.blkno, adv->coords_.filenode),
+      YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid), adv->coords_.blkno,
+                            adv->coords_.filenode),
       segindx_);
 }
 

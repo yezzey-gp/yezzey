@@ -25,8 +25,11 @@ ExternalWriter::ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                                ssize_t modcount,
                                const std::string &storage_path)
     : adv_(adv), segindx_(segindx), modcount_(modcount),
-      storage_path_(storage_path), storage_offload_path_(craftUrlXpath(adv, segindx, modcount)) {
-    InitWriter();
+      storage_path_(storage_path),
+      insertion_rec_ptr_(yezzeyGetXStorageInsertLsn()),
+      storage_offload_path_(
+          craftUrlXpath(adv, segindx, modcount, insertion_rec_ptr_)) {
+  InitWriter();
 }
 
 // pass yreader
@@ -34,18 +37,18 @@ std::string ExternalWriter::InitWriter() {
   /* this sets storage_offload_path_ */
   if (storage_path_.size()) {
     return createWriterHandleToPath();
-  } 
-    return createWriterHandle();
+  }
+  return createWriterHandle();
 }
 
 // pass yreader
 std::string ExternalWriter::createWriterHandle() {
-  auto url = craftUrl(adv_, segindx_, modcount_);
+  auto url = craftUrl(adv_, segindx_, modcount_, insertion_rec_ptr_);
   writer_ = writer_init(url.c_str());
   return url;
 }
 
-std::string  ExternalWriter::createWriterHandleToPath() {
+std::string ExternalWriter::createWriterHandleToPath() {
   std::string url =
       getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str());
 
