@@ -60,7 +60,7 @@ int WALGSTReader::prepare() { return 0; }
 
 bool WALGSTReader::empty() {
   if (wal_g_ == nullptr)
-    return false;
+    return order_ptr_ == order_.size();
   else
     return order_ptr_ == order_.size() && wal_g_->eof();
 };
