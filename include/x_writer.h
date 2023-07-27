@@ -1,9 +1,9 @@
 #pragma once
 
-#include "x_reader.h"
 #include "gpwriter.h"
 #include "io_adv.h"
 #include "util.h"
+#include "x_reader.h"
 #include "ylister.h"
 #include "ywriter.h"
 #include <memory>

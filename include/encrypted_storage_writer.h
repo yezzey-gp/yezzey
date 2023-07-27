@@ -27,7 +27,9 @@ public:
     return writer_->getExternalStoragePath();
   }
 
-  XLogRecPtr getInsertionStorageLsn() { return writer_->getInsertionStorageLsn(); }
+  XLogRecPtr getInsertionStorageLsn() {
+    return writer_->getInsertionStorageLsn();
+  }
 
 private:
   std::shared_ptr<IOadv> adv_;

@@ -5,12 +5,12 @@
 #include <string>
 
 struct ChunkInfo {
-    XLogRecPtr lsn;
-    int64_t modcount;
-    std::string x_path;
+  XLogRecPtr lsn;
+  int64_t modcount;
+  std::string x_path;
 
-    ChunkInfo() {}
+  ChunkInfo() {}
 
-    ChunkInfo(XLogRecPtr lsn, int64_t modcount, const char * x_path)
-    : lsn(lsn), modcount(modcount), x_path(x_path) {} 
+  ChunkInfo(XLogRecPtr lsn, int64_t modcount, const char *x_path)
+      : lsn(lsn), modcount(modcount), x_path(x_path) {}
 };

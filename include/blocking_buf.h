@@ -20,7 +20,6 @@ class BlockingBuffer {
   bool closed_{false};
 
 public:
-
   size_t tot_write{0};
   size_t tot_read{0};
 

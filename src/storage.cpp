@@ -19,6 +19,8 @@
 #include "gpreader.h"
 #include "s3memory_mgmt.h"
 
+#include "storage_lister.h"
+
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
 
@@ -342,7 +344,6 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
                            int64 logicalEof, size_t *local_bytes,
                            size_t *local_commited_bytes,
                            size_t *external_bytes) {
-  size_t virtual_sz;
   auto rnode = aorel->rd_node;
 
   auto tp = SearchSysCache1(NAMESPACEOID,
@@ -370,7 +371,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(walg_config_path), use_gpg_crypto);
   /* we dont need to interact with s3 while in recovery*/
   /* stat external storage usage */
-  virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
+  auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
   if (virtual_sz == -1) {
     elog(ERROR, "yezzey: failed to stat size of relation %s",
          aorel->rd_rel->relname.data);
@@ -431,11 +432,11 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   /* we dont need to interact with s3 while in recovery*/
 
   /* ro - handler */
-  auto iohandler = YIO(ioadv, GpIdentity.segindex);
+  auto lister = StorageLister(ioadv, GpIdentity.segindex);
 
   /* stat external storage usage */
 
-  auto meta = iohandler.list_relation_chunks();
+  auto meta = lister.list_relation_chunks();
   *cnt_chunks = meta.size();
 
   Assert((*cnt_chunks) >= 0);

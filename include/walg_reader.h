@@ -1,12 +1,12 @@
 #pragma once
 
+#include "chunkinfo.h"
 #include "io_adv.h"
 #include "pstreams/pstream.h"
 #include "yreader.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "chunkinfo.h"
 
 class WALGReader : public YReader {
 public:
@@ -50,8 +50,8 @@ public:
   virtual bool empty();
 
 public:
-  std::string craftString(std::string x_path,
-                        size_t segindx);
+  std::string craftString(std::string x_path, size_t segindx);
+
 protected:
   /* prepare command dispatch */
 

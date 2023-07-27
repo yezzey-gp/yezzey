@@ -240,6 +240,27 @@ int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
   }
 }
 
+/* calc size of external files */
+int64_t yezzey_virtual_relation_chunks(std::shared_ptr<IOadv> adv,
+                                       int32_t segid) {
+  try {
+    auto r = ExternalReader(
+        adv,
+        YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
+                              adv->coords_.blkno, adv->coords_.filenode),
+        segid);
+
+    int64_t sz = 0;
+    for (auto key : r.reader_->getKeyList().contents) {
+      sz += r.reader_->bucketReader.constructReaderParams(key).getKeySize();
+    }
+    /* external reader destruct */
+    return sz;
+  } catch (...) {
+    return -1;
+  }
+}
+
 /* calc total offset of external files */
 int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                           ssize_t segindx, ssize_t modcount,

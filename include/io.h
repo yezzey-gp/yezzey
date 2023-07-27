@@ -47,8 +47,6 @@ struct YIO {
 
   bool reader_empty();
 
-  std::vector<storageChunkMeta> list_relation_chunks();
-
   bool io_read(char *buffer, size_t *amount);
   bool io_write(char *buffer, size_t *amount);
   bool io_close();

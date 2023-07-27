@@ -5,7 +5,6 @@
 #include "yreader.h"
 #include <memory>
 
-
 #include "chunkinfo.h"
 
 #include "gpreader.h"
@@ -14,8 +13,8 @@ class ExternalReader : public YReader, public YLister {
 public:
   friend class ExternalWriter;
   explicit ExternalReader(std::shared_ptr<IOadv> adv,
-                          const std::vector<ChunkInfo> &order,
-                          ssize_t segindx);
+                          const std::vector<ChunkInfo> &order, ssize_t segindx);
+
 public:
   virtual ~ExternalReader();
 
@@ -25,8 +24,9 @@ public:
   virtual std::vector<std::string> list_chunk_names();
 
 public:
-  GPReader * createReaderHandle(std::string x_path);
-  GPReader * recreateReaderHandle(std::string x_path,  std::shared_ptr<PreAllocatedMemory> prealloc);
+  GPReader *createReaderHandle(std::string x_path);
+  GPReader *recreateReaderHandle(std::string x_path,
+                                 std::shared_ptr<PreAllocatedMemory> prealloc);
 
   bool empty();
 

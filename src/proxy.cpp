@@ -157,7 +157,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
     if (!YVirtFD_cache.count(yezzey_fd)) {
       YVirtFD_cache[yezzey_fd] = YVirtFD();
 
-      YVirtFD & yfd = YVirtFD_cache[yezzey_fd];
+      YVirtFD &yfd = YVirtFD_cache[yezzey_fd];
       // memset(&YVirtFD_cache[file], 0, sizeof(YVirtFD));
       yfd.filepath = std::string(fileName);
       std::string spcPref = "";
@@ -243,7 +243,7 @@ void yezzey_FileClose(SMGRFile file) {
   if (!YVirtFD_cache.count(file)) {
     return;
   }
-  YVirtFD& yfd = YVirtFD_cache[file];
+  YVirtFD &yfd = YVirtFD_cache[file];
   if (yfd.y_vfd != -1 && yfd.y_vfd != YEZZEY_OFFLOADED_FD) {
 
     elog(yezzey_ao_log_level, "file close with %d actual %d", file, yfd.y_vfd);
@@ -264,8 +264,8 @@ void yezzey_FileClose(SMGRFile file) {
       if (yfd.op_write) {
         /* insert entry in yezzey index */
         YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(yfd.reloid),
-                                 yfd.coord.blkno /* blkno*/,
-                                 yfd.coord.filenode, yfd.modcount,
+                                 yfd.coord.blkno /* blkno*/, yfd.coord.filenode,
+                                 yfd.modcount,
                                  yfd.handler->writer_->getInsertionStorageLsn(),
                                  yfd.handler->writer_->getExternalStoragePath()
                                      .c_str() /* path ? */);
@@ -285,7 +285,7 @@ void yezzey_FileClose(SMGRFile file) {
 #define ALLOW_MODIFY_EXTERNAL_TABLE
 
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
-  YVirtFD & yfd = YVirtFD_cache[file];
+  YVirtFD &yfd = YVirtFD_cache[file];
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     assert(yfd.modcount);
@@ -330,7 +330,7 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
 
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
   size_t curr = amount;
-  YVirtFD & yfd = YVirtFD_cache[file];
+  YVirtFD &yfd = YVirtFD_cache[file];
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     if (yfd.handler->reader_empty()) {
@@ -363,7 +363,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 }
 
 int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
-  YVirtFD & yfd = YVirtFD_cache[yezzey_fd];
+  YVirtFD &yfd = YVirtFD_cache[yezzey_fd];
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     /* Leave external storage file untouched

@@ -21,11 +21,9 @@ public:
 
   virtual bool write(const char *buffer, size_t *amount);
 
-  
-
 private:
   std::string craftString(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                        ssize_t modcount);
+                          ssize_t modcount);
   std::string createXPath();
 
   std::shared_ptr<IOadv> adv_;
@@ -37,7 +35,6 @@ private:
 
   std::unique_ptr<redi::pstream> wal_g_{nullptr};
   bool initialized_{false};
-
 
 public:
   std::string getExternalStoragePath() { return storage_path_; }

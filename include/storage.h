@@ -1,5 +1,3 @@
-
-
 #ifndef YEZZEY_STORAGE_H
 #define YEZZEY_STORAGE_H
 

@@ -89,6 +89,3 @@ YIO::~YIO() { io_close(); }
 bool YIO::reader_empty() {
   return reader_.get() == nullptr ? true : reader_->empty();
 }
-
-/* TODO: fix */
-std::vector<storageChunkMeta> YIO::list_relation_chunks() { return {}; }
