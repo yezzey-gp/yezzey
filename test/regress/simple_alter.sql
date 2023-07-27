@@ -22,7 +22,10 @@ ALTER TABLE regaoty ADD COLUMN j INT;
 SELECT count(1) FROM regaoty;
 SELECT * FROM regaoty LIMIT 5 OFFSET 7823;
 
+INSERT INTO regaoty SELECT *, 1 FROM generate_series(1, 100000);
+
 SELECT * FROM yezzey_dump_virtual_index('regaoty');
+SELECT count(1) FROM regaoty;
 
 \c postgres
 

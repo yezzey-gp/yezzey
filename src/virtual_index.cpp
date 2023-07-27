@@ -209,10 +209,16 @@ std::vector<ChunkInfo>
 YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
                       Oid relfilenode) {
 
-  /* SELECT external_path FROM yezzey.yezzey_virtual_index_<oid> WHERE segno =
+  /* SELECT external_path
+   * FROM yezzey.yezzey_virtual_index_<oid> 
+   * WHERE segno = .. and filenode = ..
    * <>; */
   HeapTuple tuple;
-  ScanKeyData skey[2];
+
+  /* Update this settings if where clause expr changes */
+#define YezzeyVirtualIndexScanCols 2
+
+  ScanKeyData skey[YezzeyVirtualIndexScanCols];
 
   std::vector<ChunkInfo> res;
 
@@ -227,7 +233,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
               BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
 
   /* TBD: Read index */
-  auto desc = heap_beginscan(rel, snap, 1, skey);
+  auto desc = heap_beginscan(rel, snap, YezzeyVirtualIndexScanCols, skey);
 
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));

@@ -35,4 +35,6 @@ INSERT INTO regaotylol SELECT * FROM generate_series(1, 100000);
 VACUUM regaotylol;
 SELECT count(1) FROM regaotylol;
 
+\c postgres
+
 DROP DATABASE testreg;
