@@ -139,9 +139,13 @@ void emptyYezzeyIndex(Oid yezzey_index_oid) {
   CommandCounterIncrement();
 } /* end emptyYezzeyIndex */
 
+/* Update this settings if where clause expr changes */
+#define YezzeyVirtualIndexScanCols 2
+
 void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
+
   HeapTuple tuple;
-  ScanKeyData skey[2];
+  ScanKeyData skey[YezzeyVirtualIndexScanCols];
 
   /* DELETE FROM yezzey.yezzey_virtual_index_<oid> WHERE segno = <blkno> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
@@ -154,7 +158,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
   ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
               BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(blkno));
 
-  auto desc = heap_beginscan(rel, snap, 1, skey);
+  auto desc = heap_beginscan(rel, snap, YezzeyVirtualIndexScanCols, skey);
 
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     simple_heap_delete(rel, &tuple->t_self);
@@ -210,13 +214,10 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
                       Oid relfilenode) {
 
   /* SELECT external_path
-   * FROM yezzey.yezzey_virtual_index_<oid> 
+   * FROM yezzey.yezzey_virtual_index_<oid>
    * WHERE segno = .. and filenode = ..
    * <>; */
   HeapTuple tuple;
-
-  /* Update this settings if where clause expr changes */
-#define YezzeyVirtualIndexScanCols 2
 
   ScanKeyData skey[YezzeyVirtualIndexScanCols];
 

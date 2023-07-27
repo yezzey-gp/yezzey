@@ -36,11 +36,15 @@ typedef struct YVirtFD {
   int64 virtualSize;
   int64 modcount;
 
+  int64 op_write;
+
   bool offloaded{false};
+
+  relnodeCoord coord;
 
   YVirtFD()
       : y_vfd(-1), localTmpVfd(0), handler(nullptr), fileFlags(0), fileMode(0),
-        reloid(InvalidOid), offset(0), virtualSize(0), modcount(0),
+        reloid(InvalidOid), offset(0), virtualSize(0), modcount(0), op_write(0),
         offloaded(false) {}
 
   YVirtFD &operator=(YVirtFD &&vfd) {
@@ -152,8 +156,10 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
   for (SMGRFile yezzey_fd = YEZZEY_NOT_OPENED + 1;; ++yezzey_fd) {
     if (!YVirtFD_cache.count(yezzey_fd)) {
       YVirtFD_cache[yezzey_fd] = YVirtFD();
+
+      YVirtFD & yfd = YVirtFD_cache[yezzey_fd];
       // memset(&YVirtFD_cache[file], 0, sizeof(YVirtFD));
-      YVirtFD_cache[yezzey_fd].filepath = std::string(fileName);
+      yfd.filepath = std::string(fileName);
       std::string spcPref = "";
       if (strlen(fileName) >= 6) {
         spcPref = std::string(fileName, 6);
@@ -168,35 +174,35 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
            */
           Assert(RecoveryInProgress());
         } else {
-          YVirtFD_cache[yezzey_fd].relname = std::string(relname);
-          YVirtFD_cache[yezzey_fd].nspname = std::string(nspname);
+          yfd.relname = std::string(relname);
+          yfd.nspname = std::string(nspname);
         }
       } else {
         /* nothing*/
       }
 
-      YVirtFD_cache[yezzey_fd].fileFlags = fileFlags;
-      YVirtFD_cache[yezzey_fd].fileMode = fileMode;
-      YVirtFD_cache[yezzey_fd].modcount = modcount;
-      YVirtFD_cache[yezzey_fd].reloid = reloid;
+      yfd.fileFlags = fileFlags;
+      yfd.fileMode = fileMode;
+      yfd.modcount = modcount;
+      yfd.reloid = reloid;
 
-      YVirtFD_cache[yezzey_fd].offloaded = offloaded;
+      yfd.offloaded = offloaded;
 
       /* we dont need to interact with s3 while in recovery*/
 
       if (offloaded) {
-        YVirtFD_cache[yezzey_fd].y_vfd = YEZZEY_OFFLOADED_FD;
+        yfd.y_vfd = YEZZEY_OFFLOADED_FD;
         if (!RecoveryInProgress()) {
           auto ioadv = std::make_shared<IOadv>(
               std::string(gpg_engine_path), std::string(gpg_key_id),
-              std::string(storage_config), YVirtFD_cache[yezzey_fd].nspname,
-              YVirtFD_cache[yezzey_fd].relname,
+              std::string(storage_config), yfd.nspname, yfd.relname,
               std::string(storage_host /*host*/),
               std::string(storage_bucket /*bucket*/),
-              std::string(storage_prefix /*prefix*/),
-              YVirtFD_cache[yezzey_fd].filepath /* coords */,
+              std::string(storage_prefix /*prefix*/), yfd.filepath /* coords */,
               reloid /* reloid */, std::string(walg_bin_path),
               std::string(walg_config_path), use_gpg_crypto);
+
+          yfd.coord = ioadv->coords_;
 
           /*
            * Ignore fileFlags here
@@ -214,23 +220,15 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
               YVirtFD_cache.erase(yezzey_fd);
               return -1;
             }
-            auto writer = YVirtFD_cache[yezzey_fd].handler->writer_;
-            /* insert entry in yezzey index */
-            YezzeyVirtualIndexInsert(
-                YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
-                ioadv->coords_.blkno /* blkno*/, ioadv->coords_.filenode,
-                modcount, writer->getInsertionStorageLsn(),
-                writer->getExternalStoragePath().c_str() /* path ? */);
+            auto writer = yfd.handler->writer_;
           }
         }
       } else {
         /* not offloaded */
-        YVirtFD_cache[yezzey_fd].y_vfd = PathNameOpenFile(
-            (FileName)YVirtFD_cache[yezzey_fd].filepath.c_str(),
-            YVirtFD_cache[yezzey_fd].fileFlags,
-            YVirtFD_cache[yezzey_fd].fileMode);
+        yfd.y_vfd = PathNameOpenFile((FileName)yfd.filepath.c_str(),
+                                     yfd.fileFlags, yfd.fileMode);
 
-        if (YVirtFD_cache[yezzey_fd].y_vfd == -1) {
+        if (yfd.y_vfd == -1) {
           YVirtFD_cache.erase(yezzey_fd);
           return -1;
         }
@@ -245,23 +243,32 @@ void yezzey_FileClose(SMGRFile file) {
   if (!YVirtFD_cache.count(file)) {
     return;
   }
-  if (YVirtFD_cache[file].y_vfd != -1 &&
-      YVirtFD_cache[file].y_vfd != YEZZEY_OFFLOADED_FD) {
+  YVirtFD& yfd = YVirtFD_cache[file];
+  if (yfd.y_vfd != -1 && yfd.y_vfd != YEZZEY_OFFLOADED_FD) {
 
-    elog(yezzey_ao_log_level, "file close with %d actual %d", file,
-         YVirtFD_cache[file].y_vfd);
+    elog(yezzey_ao_log_level, "file close with %d actual %d", file, yfd.y_vfd);
 
-    FileClose(YVirtFD_cache[file].y_vfd);
-    YVirtFD_cache[file].y_vfd = -1;
+    FileClose(yfd.y_vfd);
+    yfd.y_vfd = -1;
   }
 
-  if (YVirtFD_cache[file].y_vfd == YEZZEY_OFFLOADED_FD) {
+  if (yfd.y_vfd == YEZZEY_OFFLOADED_FD) {
     if (!RecoveryInProgress()) {
-      assert(YVirtFD_cache[file].handler);
-      if (!YVirtFD_cache[file].handler->io_close()) {
+      assert(yfd.handler);
+      if (!yfd.handler->io_close()) {
         // very bad
         elog(ERROR, "failed to complete external storage interaction: fd %d",
              file);
+      }
+      /* record file only if non-zero bytes was stored */
+      if (yfd.op_write) {
+        /* insert entry in yezzey index */
+        YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(yfd.reloid),
+                                 yfd.coord.blkno /* blkno*/,
+                                 yfd.coord.filenode, yfd.modcount,
+                                 yfd.handler->writer_->getInsertionStorageLsn(),
+                                 yfd.handler->writer_->getExternalStoragePath()
+                                     .c_str() /* path ? */);
       }
     } else {
 
@@ -278,9 +285,10 @@ void yezzey_FileClose(SMGRFile file) {
 #define ALLOW_MODIFY_EXTERNAL_TABLE
 
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
-  File actual_fd = YVirtFD_cache[file].y_vfd;
+  YVirtFD & yfd = YVirtFD_cache[file];
+  File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
-    assert(YVirtFD_cache[file].modcount);
+    assert(yfd.modcount);
 
     /* Assert here we are not in crash or regular recovery
      * If yes, simply skip this call as data is already
@@ -300,37 +308,40 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
     elog(ERROR, "external table modifications are not supported yet");
 #endif
     size_t rc = amount;
-    if (!YVirtFD_cache[file].handler->io_write(buffer, &rc)) {
+    if (!yfd.handler->io_write(buffer, &rc)) {
       elog(WARNING, "failed to write to external storage");
       return -1;
     }
     elog(yezzey_ao_log_level,
          "yezzey_FileWrite: write %d bytes, %ld transfered, yezzey fd %d",
          amount, rc, file);
-    YVirtFD_cache[file].offset += rc;
+    yfd.offset += rc;
+    yfd.op_write += rc;
     return rc;
   }
   elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
   size_t rc = FileWrite(actual_fd, buffer, amount);
   if (rc > 0) {
-    YVirtFD_cache[file].offset += rc;
+    yfd.offset += rc;
+    yfd.op_write += rc;
   }
   return rc;
 }
 
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
   size_t curr = amount;
-  File actual_fd = YVirtFD_cache[file].y_vfd;
+  YVirtFD & yfd = YVirtFD_cache[file];
+  File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
-    if (YVirtFD_cache[file].handler->reader_empty()) {
-      if (YVirtFD_cache[file].localTmpVfd <= 0) {
+    if (yfd.handler->reader_empty()) {
+      if (yfd.localTmpVfd <= 0) {
         return 0;
       }
 #ifdef DISKCACHE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
 #endif
     } else {
-      if (!YVirtFD_cache[file].handler->io_read(buffer, &curr)) {
+      if (!yfd.handler->io_read(buffer, &curr)) {
         elog(yezzey_ao_log_level,
              "problem while direct read from s3 read with %d curr: %ld", file,
              curr);
@@ -341,7 +352,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 #endif
     }
 
-    YVirtFD_cache[file].offset += curr;
+    yfd.offset += curr;
 
     elog(yezzey_ao_log_level,
          "file read with %d, actual %d, amount %d real %ld", file, actual_fd,
@@ -352,7 +363,8 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 }
 
 int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
-  File actual_fd = YVirtFD_cache[yezzey_fd].y_vfd;
+  YVirtFD & yfd = YVirtFD_cache[yezzey_fd];
+  File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     /* Leave external storage file untouched
      * We may need them for point-in-time recovery
@@ -363,7 +375,7 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
      */
 
     if (!RecoveryInProgress()) {
-      assert(YVirtFD_cache[yezzey_fd].handler);
+      assert(yfd.handler);
 
       /* if truncatetoeof, do nothing */
       /* we need addintinal checks that offset == virtual_size */
@@ -373,10 +385,9 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
 
       /* Do it only on QE? */
       if (Gp_role == GP_ROLE_EXECUTE) {
-        (void)emptyYezzeyIndexBlkno(
-            YezzeyFindAuxIndex(YVirtFD_cache[yezzey_fd].reloid),
-            YVirtFD_cache[yezzey_fd].handler->adv_->coords_.blkno,
-            YVirtFD_cache[yezzey_fd].handler->adv_->coords_.filenode);
+        (void)emptyYezzeyIndexBlkno(YezzeyFindAuxIndex(yfd.reloid),
+                                    yfd.handler->adv_->coords_.blkno,
+                                    yfd.handler->adv_->coords_.filenode);
       }
     }
     return 0;

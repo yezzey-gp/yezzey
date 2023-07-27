@@ -17,7 +17,6 @@ std::string WALGSTReader::craftString(std::string x_path, size_t segindx) {
 
   cmd += " --config=" + adv_->walg_config_path;
   cmd += " st cat --decrypt  ";
-  std::cerr << x_path << "\n";
 
   auto modified_x_path = x_path;
   modified_x_path.erase(modified_x_path.begin(),
@@ -52,11 +51,10 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
     ++order_ptr_;
   }
 
-
   wal_g_->read(buffer, *amount);
   *amount = wal_g_->gcount();
 
-  std::cerr << cmd_ << " read " << *amount  << "\n";
+  std::cerr << cmd_ << " read " << *amount << "\n";
   return *amount > 0;
 }
 int WALGSTReader::prepare() { return 0; }
