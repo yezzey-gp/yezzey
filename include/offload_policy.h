@@ -44,7 +44,7 @@ typedef FormData_yezzey_offload_metadata *Form_yezzey_offload_metadata;
 #define Offload_policy_always_remote 1
 #define Offload_policy_cache_writes 2
 
-EXTERNC void YezzeyOffloadPolicyRelation();
+EXTERNC void YezzeyCreateOffloadMetadataRelation();
 
 EXTERNC void
 YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,

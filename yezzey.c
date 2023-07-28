@@ -51,6 +51,7 @@
 #include "storage.h"
 #include "util.h"
 #include "virtual_index.h"
+#include "metadata.h"
 
 #include "catalog/oid_dispatch.h"
 
@@ -105,7 +106,7 @@ PG_FUNCTION_INFO_V1(yezzey_check_part_exr);
 void yezzey_log_smgroffload(RelFileNode *rnode);
 
 Datum yezzey_init_metadata(PG_FUNCTION_ARGS) {
-  (void)YezzeyOffloadPolicyRelation();
+  (void)YezzeyCreateMetadataRelations();
   PG_RETURN_VOID();
 }
 
@@ -239,7 +240,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   */
 
   /* empty all track info */
-  (void)emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
+  (void)emptyYezzeyIndex(aorel->rd_node.relNode /* relfilenode */);
 
   /* cleanup */
 

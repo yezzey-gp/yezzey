@@ -44,12 +44,14 @@ void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
                       bool isRedo);
 #endif
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
+
 #ifndef GPBUILD
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #else
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
-                   char relstorage);
+                char relstorage);
 #endif
+
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                    char *buffer, bool skipFsync);
 #if PG_VERSION_NUM >= 130000

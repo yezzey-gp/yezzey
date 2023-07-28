@@ -36,6 +36,7 @@
 
 #include "storage.h"
 
+#include "virtual_index.h"
 #include "proxy.h"
 
 /*
@@ -129,25 +130,6 @@ bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum) {
   return mdexists(reln, forkNum);
 }
 
-void
-#ifndef GPBUILD
-yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
-#else
-yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage)
-#endif
-{
-  if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
-    /*do nothing */
-    return;
-  }
-
-#ifndef GPBUILD
-  mdunlink(rnode, forkNum, isRedo);
-#else
-  mdunlink(rnode, forkNum, isRedo, relstorage);
-#endif
-}
-
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                    char *buffer, bool skipFsync) {
   if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
@@ -235,6 +217,31 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
 
   mdimmedsync(reln, forkNum);
 }
+
+
+#ifndef GPBUILD
+void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
+#else
+void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage)
+#endif
+{
+  if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
+    /* clear relfilenode from its internal index */
+
+    /* Do it only on QE? */
+    if (Gp_role == GP_ROLE_EXECUTE) {
+      (void)emptyYezzeyIndex(rnode.node.relNode);
+    }
+    return;
+  }
+
+#ifndef GPBUILD
+  mdunlink(rnode, forkNum, isRedo);
+#else
+  mdunlink(rnode, forkNum, isRedo, relstorage);
+#endif
+}
+
 
 static const struct f_smgr yezzey_smgr = {
     .smgr_init = yezzey_init,
