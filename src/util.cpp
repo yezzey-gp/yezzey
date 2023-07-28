@@ -24,7 +24,7 @@
 
 #include "io.h"
 #include "io_adv.h"
-#include "x_reader.h"
+#include "storage_lister.h"
 
 #define DEFAULTTABLESPACE_OID 1663 /* FIXME */
 
@@ -94,6 +94,7 @@ relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
   return relnodeCoord(dbOid, relfilenodeOid, blkno);
 }
 
+/* creates yezzey xternal storage prefix path */
 std::string
 getYezzeyRelationUrl_internal(const std::string &nspname,
                               const std::string &relname,
@@ -103,6 +104,7 @@ getYezzeyRelationUrl_internal(const std::string &nspname,
          yezzey_block_file_path(nspname, relname, coords, segid);
 }
 
+/* creates yezzey xternal storage prefix path */
 std::string yezzey_block_file_path(const std::string &nspname,
                                    const std::string &relname,
                                    relnodeCoord coords, int32_t segid) {
@@ -223,15 +225,11 @@ std::string make_yezzey_url(const std::string &prefix, int64_t modcount,
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                      int32_t segid) {
   try {
-    auto r = ExternalReader(
-        adv,
-        YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
-                              adv->coords_.blkno, adv->coords_.filenode),
-        segid);
-
+    auto lister = StorageLister(adv, GpIdentity.segindex);
     int64_t sz = 0;
-    for (auto key : r.reader_->getKeyList().contents) {
-      sz += r.reader_->bucketReader.constructReaderParams(key).getKeySize();
+    for (auto key : lister.reader_->getKeyList().contents) {
+      sz +=
+          lister.reader_->bucketReader.constructReaderParams(key).getKeySize();
     }
     /* external reader destruct */
     return sz;
@@ -244,15 +242,11 @@ int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
 int64_t yezzey_virtual_relation_chunks(std::shared_ptr<IOadv> adv,
                                        int32_t segid) {
   try {
-    auto r = ExternalReader(
-        adv,
-        YezzeyVirtualGetOrder(YezzeyFindAuxIndex(adv->reloid),
-                              adv->coords_.blkno, adv->coords_.filenode),
-        segid);
-
+    auto lister = StorageLister(adv, GpIdentity.segindex);
     int64_t sz = 0;
-    for (auto key : r.reader_->getKeyList().contents) {
-      sz += r.reader_->bucketReader.constructReaderParams(key).getKeySize();
+    for (auto key : lister.reader_->getKeyList().contents) {
+      sz +=
+          lister.reader_->bucketReader.constructReaderParams(key).getKeySize();
     }
     /* external reader destruct */
     return sz;

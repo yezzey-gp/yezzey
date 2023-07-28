@@ -109,23 +109,3 @@ bool ExternalReader::close() {
 }
 
 ExternalReader::~ExternalReader() { close(); }
-
-std::vector<storageChunkMeta> ExternalReader::list_relation_chunks() {
-  std::vector<storageChunkMeta> rv;
-  auto content = reader_->getKeyList().contents;
-  for (size_t i = 0; i < content.size(); ++i) {
-    rv.emplace_back();
-    rv.back().chunkName = content[i].getName();
-    rv.back().chunkSize = content[i].getSize();
-  }
-  return rv;
-}
-
-std::vector<std::string> ExternalReader::list_chunk_names() {
-  std::vector<std::string> rv;
-  auto content = reader_->getKeyList().contents;
-  for (size_t i = 0; i < content.size(); ++i) {
-    rv.emplace_back(content[i].getName());
-  }
-  return rv;
-}

@@ -6,10 +6,9 @@
 #include <memory>
 
 #include "chunkinfo.h"
-
 #include "gpreader.h"
 
-class ExternalReader : public YReader, public YLister {
+class ExternalReader : public YReader {
 public:
   friend class ExternalWriter;
   explicit ExternalReader(std::shared_ptr<IOadv> adv,
@@ -20,8 +19,6 @@ public:
 
   virtual bool close();
   virtual bool read(char *buffer, size_t *amount);
-  virtual std::vector<storageChunkMeta> list_relation_chunks();
-  virtual std::vector<std::string> list_chunk_names();
 
 public:
   GPReader *createReaderHandle(std::string x_path);

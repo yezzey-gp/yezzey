@@ -1,7 +1,8 @@
 #pragma once
 
 #include "io_adv.h"
-#include "x_reader.h"
+/* should go after ioadv */
+#include "gpreader.h"
 #include "ylister.h"
 #include <memory>
 #include <vector>
@@ -19,8 +20,11 @@ public:
   virtual std::vector<storageChunkMeta> list_relation_chunks();
   virtual std::vector<std::string> list_chunk_names();
 
+public:
+  std::shared_ptr<GPReader> reader_{nullptr};
+
 protected:
-  std::shared_ptr<ExternalReader> reader_{nullptr};
+  GPReader *createReaderHandle();
   bool read_initialized_{false};
 
 private:

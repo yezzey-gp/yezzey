@@ -35,6 +35,8 @@ getYezzeyRelationUrl_internal(const std::string &nspname,
                               const std::string &relname,
                               const std::string &external_storage_prefix,
                               relnodeCoord coords, int32_t segid);
+
+/* prefix in external storage */
 std::string yezzey_block_file_path(const std::string &nspname,
                                    const std::string &relname,
                                    relnodeCoord coords, int32_t segid);
