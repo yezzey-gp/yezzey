@@ -29,6 +29,7 @@ struct IOadv {
   const std::string external_storage_prefix;
 
   // base/5/12345.1
+
   const relnodeCoord coords_;
 
   const Oid reloid;

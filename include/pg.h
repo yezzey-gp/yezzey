@@ -36,9 +36,6 @@ extern "C" {
 #include "utils/catcache.h"
 #include "utils/syscache.h"
 
-// For GpIdentity
-#include "postgres.h"
-
 #include "catalog/dependency.h"
 #include "catalog/pg_extension.h"
 #include "commands/extension.h"
