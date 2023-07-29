@@ -50,7 +50,6 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   size_t chunkSize = 1 << 20;
   File vfd;
   int64 curr_read_chunk;
-  int64 progress;
   int64 virtual_size;
 
   std::vector<char> buffer(chunkSize);
@@ -60,7 +59,6 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
          "yezzey: failed to open %s file to transfer to external storage",
          localPath.c_str());
   }
-  progress = 0;
 
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
@@ -84,16 +82,11 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   }
 
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
-  progress = virtual_size;
+   auto progress = virtual_size;
+  auto offset_start = progress;
   FileSeek(vfd, progress, SEEK_SET);
   rc = 0;
 
-  /* insert chunk metadata in virtual index  */
-  YezzeyVirtualIndexInsert(
-      YezzeyFindAuxIndex(aorel->rd_id), ioadv->coords_.blkno /* blkno*/,
-      ioadv->coords_.filenode, modcount,
-      iohandler.writer_->getInsertionStorageLsn(),
-      iohandler.writer_->getExternalStoragePath().c_str() /* path */);
 
   while (progress < logicalEof) {
     curr_read_chunk = chunkSize;
@@ -127,6 +120,15 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
 
     progress += rc;
   }
+
+    auto offset_finish = progress;
+
+  /* data persisted in external storage, we can update out metadata relations */
+  /* insert chunk metadata in virtual index  */
+  YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(aorel->rd_id), 
+      ioadv->coords_.blkno /* blkno*/, ioadv->coords_.filenode, offset_start,
+      offset_finish, modcount, iohandler.writer_->getInsertionStorageLsn(),
+      iohandler.writer_->getExternalStoragePath().c_str() /* path */);
 
   if (!iohandler.io_close()) {
     elog(ERROR, "yezzey: failed to complete %s offloading", localPath.c_str());

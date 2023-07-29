@@ -18,8 +18,8 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
 
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_segno,
-                     "segno", INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_blkno,
+                     "blkno", INT4OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_filenode,
                      "filenode", OIDOID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_start_off,
@@ -152,7 +152,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
   ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
@@ -174,7 +174,8 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
 } /* end emptyYezzeyIndexBlkno */
 
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
-                              int64_t segindx, Oid relfilenodeOid,
+                              int64_t blkno, Oid relfilenodeOid,
+                              int64_t offset_start, int64_t offset_finish,
                               int64_t modcount, XLogRecPtr lsn,
                               const char *x_path /* external path */) {
   bool nulls[Natts_yezzey_virtual_index];
@@ -188,11 +189,11 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
-  values[Anum_yezzey_virtual_index_segno - 1] = Int64GetDatum(segindx);
+  values[Anum_yezzey_virtual_index_blkno - 1] = Int64GetDatum(blkno);
   values[Anum_yezzey_virtual_index_filenode - 1] =
       ObjectIdGetDatum(relfilenodeOid);
-  values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(0);
-  values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(0);
+  values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(offset_start);
+  values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(offset_finish);
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
   values[Anum_yezzey_virtual_lsn - 1] = LSNGetDatum(lsn);
   values[Anum_yezzey_virtual_x_path - 1] =
@@ -227,7 +228,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_segno, BTEqualStrategyNumber,
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
   ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,

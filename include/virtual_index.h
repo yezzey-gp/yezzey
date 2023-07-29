@@ -32,7 +32,7 @@ typedef struct {
 } FormData_yezzey_virtual_index;
 
 #define Natts_yezzey_virtual_index 7
-#define Anum_yezzey_virtual_index_segno 1
+#define Anum_yezzey_virtual_index_blkno 1
 #define Anum_yezzey_virtual_index_filenode 2
 #define Anum_yezzey_virtual_start_off 3
 #define Anum_yezzey_virtual_finish_off 4
@@ -52,6 +52,7 @@ EXTERNC void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno,
 #ifdef __cplusplus
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t segindx, Oid relfilenodeOid,
+                              int64_t offset_start, int64_t offset_finish,
                               int64_t modcount, XLogRecPtr lsn,
                               const char *x_path /* external path */);
 

@@ -54,7 +54,6 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
   wal_g_->read(buffer, *amount);
   *amount = wal_g_->gcount();
 
-  std::cerr << cmd_ << " read " << *amount << "\n";
   return *amount > 0;
 }
 int WALGSTReader::prepare() { return 0; }
