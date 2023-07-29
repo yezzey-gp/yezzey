@@ -6,7 +6,7 @@ EncryptedStorageReader::EncryptedStorageReader(
     std::shared_ptr<IOadv> adv, const std::vector<ChunkInfo> &order,
     ssize_t segindx)
     : adv_(adv), order_(order), segindx_(segindx) {
-  buf_ = std::make_shared<BlockingBuffer>(1 << 12);
+  buf_ = std::make_shared<BlockingBuffer>(1 << 16);
 
   /* TODO: with order */
   reader_ = std::make_shared<ExternalReader>(adv_, order_, segindx_);

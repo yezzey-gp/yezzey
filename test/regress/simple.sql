@@ -19,5 +19,10 @@ SELECT count(1) FROM regaoty;
 
 SELECT * FROM regaoty LIMIT 5 OFFSET 7823;
 
+
+SELECT * FROM yezzey_offload_relation_status('regaoty');
+SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
+SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
+
 \c postgres
 DROP DATABASE testreg;

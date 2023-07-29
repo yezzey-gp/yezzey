@@ -15,7 +15,7 @@ DISTRIBUTED REPLICATED;
 const std::string offload_metadata_relname = "offload_metadata";
 const std::string offload_metadata_relname_indx = "offload_metadata_indx";
 
-void YezzeyOffloadPolicyRelation() {
+void YezzeyCreateOffloadMetadataRelation() {
   { /* check existed, if no, return */
   }
   TupleDesc tupdesc;
@@ -206,8 +206,6 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
    */
   auto aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
-
-  (void)YezzeyCreateAuxIndex(aorel);
 
   /*
    * @brief do main offload job on segments

@@ -29,6 +29,7 @@ OBJS = \
 	src/encrypted_storage_writer.o  src/io_adv.o src/io.o src/crypto.o  \
 	src/x_reader.o src/x_writer.o \
 	src/virtual_index.o \
+	src/metadata_relations.o \
 	src/walg_reader.o \
 	src/walg_writer.o \
 	src/walg_st_reader.o \

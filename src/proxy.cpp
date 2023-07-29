@@ -12,6 +12,9 @@
 #include "io.h"
 #include "io_adv.h"
 
+#include "pg.h"
+#include "storage/md.h"
+
 typedef struct YVirtFD {
   int y_vfd; /* Either YEZZEY_* preserved fd or pg internal fd >= 9 */
 
@@ -33,6 +36,10 @@ typedef struct YVirtFD {
   int64 reloid;
 
   int64 offset;
+  int64 op_start_offset;
+  /* unneede, because this offset is equal to total offset and moment of
+   * FileClose */
+  // int64 op_end_offset;
   int64 virtualSize;
   int64 modcount;
 
@@ -44,8 +51,8 @@ typedef struct YVirtFD {
 
   YVirtFD()
       : y_vfd(-1), localTmpVfd(0), handler(nullptr), fileFlags(0), fileMode(0),
-        reloid(InvalidOid), offset(0), virtualSize(0), modcount(0), op_write(0),
-        offloaded(false) {}
+        reloid(InvalidOid), offset(0), op_start_offset(0), virtualSize(0),
+        modcount(0), op_write(0), offloaded(false) {}
 
   YVirtFD &operator=(YVirtFD &&vfd) {
     handler = std::move(vfd.handler);
@@ -120,7 +127,10 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     // what?
+    /* TDB: check that offset == max_offset from metadata table */
     YVirtFD_cache[file].offset = offset;
+    /* TDB: check sanity of this operation */
+    YVirtFD_cache[file].op_start_offset = offset;
     return offset;
   }
   elog(yezzey_ao_log_level,
@@ -263,12 +273,12 @@ void yezzey_FileClose(SMGRFile file) {
       /* record file only if non-zero bytes was stored */
       if (yfd.op_write) {
         /* insert entry in yezzey index */
-        YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(yfd.reloid),
-                                 yfd.coord.blkno /* blkno*/, yfd.coord.filenode,
-                                 yfd.modcount,
-                                 yfd.handler->writer_->getInsertionStorageLsn(),
-                                 yfd.handler->writer_->getExternalStoragePath()
-                                     .c_str() /* path ? */);
+        YezzeyVirtualIndexInsert(
+            yfd.coord.blkno /* blkno*/, yfd.coord.filenode, yfd.op_start_offset,
+            yfd.offset /* io operation finish offset */, yfd.modcount,
+            yfd.handler->writer_->getInsertionStorageLsn(),
+            yfd.handler->writer_->getExternalStoragePath()
+                .c_str() /* path ? */);
       }
     } else {
 
@@ -385,8 +395,7 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
 
       /* Do it only on QE? */
       if (Gp_role == GP_ROLE_EXECUTE) {
-        (void)emptyYezzeyIndexBlkno(YezzeyFindAuxIndex(yfd.reloid),
-                                    yfd.handler->adv_->coords_.blkno,
+        (void)emptyYezzeyIndexBlkno(yfd.handler->adv_->coords_.blkno,
                                     yfd.handler->adv_->coords_.filenode);
       }
     }
