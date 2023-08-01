@@ -118,6 +118,7 @@ class S3InterfaceService : public S3Interface {
                            const vector<string> &etagArray);
 
     bool abortUpload(const S3Url &s3Url, const string &uploadId);
+public:
     bool deleteChunk(const S3Url &s3Url);
 
    private:

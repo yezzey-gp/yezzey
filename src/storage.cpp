@@ -82,11 +82,10 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   }
 
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
-   auto progress = virtual_size;
+  auto progress = virtual_size;
   auto offset_start = progress;
   FileSeek(vfd, progress, SEEK_SET);
   rc = 0;
-
 
   while (progress < logicalEof) {
     curr_read_chunk = chunkSize;
@@ -121,13 +120,14 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
     progress += rc;
   }
 
-    auto offset_finish = progress;
+  auto offset_finish = progress;
 
   /* data persisted in external storage, we can update out metadata relations */
   /* insert chunk metadata in virtual index  */
-  YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(aorel->rd_id), 
-      ioadv->coords_.blkno /* blkno*/, ioadv->coords_.filenode, offset_start,
-      offset_finish, modcount, iohandler.writer_->getInsertionStorageLsn(),
+  YezzeyVirtualIndexInsert(
+      YezzeyFindAuxIndex(aorel->rd_id), ioadv->coords_.blkno /* blkno*/,
+      ioadv->coords_.filenode, offset_start, offset_finish, modcount,
+      iohandler.writer_->getInsertionStorageLsn(),
       iohandler.writer_->getExternalStoragePath().c_str() /* path */);
 
   if (!iohandler.io_close()) {

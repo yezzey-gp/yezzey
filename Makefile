@@ -6,7 +6,7 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 override CXX = g++-8
 
-COMMON_OBJS = gpreader.o gpwriter.o s3conf.o s3utils.o s3log.o s3url.o s3http_headers.o s3interface.o s3restful_service.o s3bucket_reader.o s3common_reader.o s3common_writer.o decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o
+COMMON_OBJS = gpreader.o gpwriter.o gpcleaner.o s3conf.o s3utils.o s3log.o s3url.o s3http_headers.o s3interface.o s3restful_service.o s3bucket_reader.o s3common_reader.o s3common_writer.o decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o
 
 COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lgpgme -lstdc++fs
 
@@ -39,6 +39,7 @@ OBJS = \
 	src/offload.o \
 	src/virtual_tablespace.o \
 	src/partition.o \
+	src/xvacuum.o \
 	smgr.o worker.o yezzey.o \
 	./xstorage/src/gpcloud.o ./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
 

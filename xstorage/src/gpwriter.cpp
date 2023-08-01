@@ -8,7 +8,6 @@ GPWriter::GPWriter(const S3Params& params, string fmt)
 
 void GPWriter::open(const S3Params& params) {
     this->s3InterfaceService.setRESTfulService(this->restfulServicePtr);
-    this->params = this->params.setPrefix(this->genUniqueKeyName(this->params.getS3Url()));
     this->commonWriter.setS3InterfaceService(&this->s3InterfaceService);
     this->commonWriter.open(this->params);
 }
@@ -19,34 +18,6 @@ uint64_t GPWriter::write(const char* buf, uint64_t count) {
 
 void GPWriter::close() {
     this->commonWriter.close();
-}
-
-string GPWriter::genUniqueKeyName(const S3Url& s3Url) {
-    return s3Url.getPrefix();
-}
-
-string GPWriter::constructRandomStr() {
-    int randomDevice = ::open("/dev/urandom", O_RDONLY);
-    char randomData[32];
-    size_t randomDataLen = 0;
-
-    S3_CHECK_OR_DIE(randomDevice >= 0, S3RuntimeError, "failed to generate random number");
-
-    while (randomDataLen < sizeof(randomData)) {
-        ssize_t result =
-            ::read(randomDevice, randomData + randomDataLen, sizeof(randomData) - randomDataLen);
-        if (result < 0) {
-            break;
-        }
-        randomDataLen += result;
-    }
-    ::close(randomDevice);
-
-    char out_hash_hex[SHA256_DIGEST_STRING_LENGTH];
-
-    sha256_hex(randomData, 32, out_hash_hex);
-
-    return out_hash_hex + SHA256_DIGEST_STRING_LENGTH - 8 - 1;
 }
 
 // invoked by s3_export(), need to be exception safe

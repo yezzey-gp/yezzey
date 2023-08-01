@@ -597,7 +597,6 @@ bool S3InterfaceService::abortUpload(const S3Url &s3Url, const string &uploadId)
 }
 
 
-
 bool S3InterfaceService::deleteChunk(const S3Url &s3Url) {
     HTTPHeaders headers;
     stringstream queryString;

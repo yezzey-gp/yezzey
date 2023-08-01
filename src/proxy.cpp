@@ -49,14 +49,9 @@ typedef struct YVirtFD {
   relnodeCoord coord;
 
   YVirtFD()
-      : y_vfd(-1), 
-      localTmpVfd(0),
-       handler(nullptr), 
-       fileFlags(0), fileMode(0),
-        reloid(InvalidOid), offset(0), 
-        op_start_offset(0),
-        virtualSize(0), modcount(0), op_write(0),
-        offloaded(false) {}
+      : y_vfd(-1), localTmpVfd(0), handler(nullptr), fileFlags(0), fileMode(0),
+        reloid(InvalidOid), offset(0), op_start_offset(0), virtualSize(0),
+        modcount(0), op_write(0), offloaded(false) {}
 
   YVirtFD &operator=(YVirtFD &&vfd) {
     handler = std::move(vfd.handler);
@@ -276,14 +271,13 @@ void yezzey_FileClose(SMGRFile file) {
       /* record file only if non-zero bytes was stored */
       if (yfd.op_write) {
         /* insert entry in yezzey index */
-        YezzeyVirtualIndexInsert(YezzeyFindAuxIndex(yfd.reloid),
-                                 yfd.coord.blkno /* blkno*/, yfd.coord.filenode,
-                                  yfd.op_start_offset,
-                                  yfd.offset /* io operation finish offset */, 
-                                 yfd.modcount,
-                                 yfd.handler->writer_->getInsertionStorageLsn(),
-                                 yfd.handler->writer_->getExternalStoragePath()
-                                     .c_str() /* path ? */);
+        YezzeyVirtualIndexInsert(
+            YezzeyFindAuxIndex(yfd.reloid), yfd.coord.blkno /* blkno*/,
+            yfd.coord.filenode, yfd.op_start_offset,
+            yfd.offset /* io operation finish offset */, yfd.modcount,
+            yfd.handler->writer_->getInsertionStorageLsn(),
+            yfd.handler->writer_->getExternalStoragePath()
+                .c_str() /* path ? */);
       }
     } else {
 

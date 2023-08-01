@@ -61,6 +61,8 @@
 
 #include "partition.h"
 
+#include "xvacuum.h"
+
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
 
@@ -99,11 +101,10 @@ PG_FUNCTION_INFO_V1(yezzey_init_metadata);
 PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
 PG_FUNCTION_INFO_V1(yezzey_check_part_exr);
 
-/*
- * Perform XLogInsert of a XLOG_SMGR_CREATE record to WAL.
- */
-void yezzey_log_smgroffload(RelFileNode *rnode);
+PG_FUNCTION_INFO_V1(yezzey_delete_chunk);
 
+
+/* Create yezzey metadata tables */
 Datum yezzey_init_metadata(PG_FUNCTION_ARGS) {
   (void)YezzeyOffloadPolicyRelation();
   PG_RETURN_VOID();
@@ -115,6 +116,10 @@ Datum yezzey_init_metadata_seg(PG_FUNCTION_ARGS) {
 
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
+
+
+int yezzey_delete_chunk_internal(const char *external_chunk_path);
+
 
 /*
  * yezzey_define_relation_offload_policy_internal:
@@ -318,6 +323,18 @@ Datum yezzey_offload_relation_to_external_path(PG_FUNCTION_ARGS) {
   external_path = GET_STR(PG_GETARG_TEXT_P(2));
 
   rc = yezzey_offload_relation_internal(reloid, remove_locally, external_path);
+
+  PG_RETURN_VOID();
+}
+
+/* Given external yezzey chunk path, remove it from external storage */
+Datum yezzey_delete_chunk(PG_FUNCTION_ARGS) {
+  const char *chunk_path;
+  int rc;
+
+  chunk_path = GET_STR(PG_GETARG_TEXT_P(2));
+
+  rc = yezzey_delete_chunk_internal(chunk_path);
 
   PG_RETURN_VOID();
 }
