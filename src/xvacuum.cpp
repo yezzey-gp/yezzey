@@ -25,10 +25,14 @@ int yezzey_delete_chunk_internal(
               std::string(walg_config_path), use_gpg_crypto);
 
     auto x_path = std::string(external_chunk_path);
-    auto cleaner = cleaner_init(
-        (getYezzeyExtrenalStorageBucket(ioadv->host.c_str(),
+    auto init_url = getYezzeyExtrenalStorageBucket(ioadv->host.c_str(),
                                         ioadv->bucket.c_str()) +
-         storage_url_add_options(x_path, ioadv->config_path.c_str()))
+         storage_url_add_options(x_path, ioadv->config_path.c_str());
+
+    elog(LOG, "removing external chunk with url %s", init_url.c_str());
+
+    auto cleaner = cleaner_init(
+        init_url
             .c_str());
     int rc = cleaner->clean();
   } catch (...) {

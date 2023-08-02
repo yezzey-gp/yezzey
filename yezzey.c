@@ -332,7 +332,7 @@ Datum yezzey_delete_chunk(PG_FUNCTION_ARGS) {
   const char *chunk_path;
   int rc;
 
-  chunk_path = GET_STR(PG_GETARG_TEXT_P(2));
+  chunk_path = GET_STR(PG_GETARG_TEXT_P(0));
 
   rc = yezzey_delete_chunk_internal(chunk_path);
 
