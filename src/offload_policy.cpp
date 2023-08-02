@@ -249,3 +249,61 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
   // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_INTERNAL);
   relation_close(aorel, AccessExclusiveLock);
 }
+
+/*
+ * YezzeyLoadRealtion:
+ * do all offload-metadata related work for relation loading:
+ * 1) simply change relation offload policy in yezzey.offload_metadata
+ * 2) ????
+ * 3) success
+ */
+void YezzeyLoadRealtion(Oid i_reloid) {
+  HeapTuple tuple;
+  /**/
+  ScanKeyData skey[1];
+
+  bool nulls[Natts_offload_metadata];
+  Datum values[Natts_offload_metadata];
+
+  memset(nulls, 0, sizeof(nulls));
+  memset(values, 0, sizeof(values));
+
+  /* UPDATE yezzey.offload_metadat SET relpolicy = <...> WHERE reloid = <reloid>
+   */
+  auto rel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
+
+  ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(i_reloid));
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
+
+  auto desc = heap_beginscan(rel, snap, 1, skey);
+
+  /* XXX: check that only one tuple mathed query */
+  auto oldtuple = heap_getnext(desc, ForwardScanDirection);
+
+  if (HeapTupleIsValid(oldtuple)) {
+    values[Anum_offload_metadata_reloid - 1] = ObjectIdGetDatum(i_reloid);
+    values[Anum_offload_metadata_relpolicy - 1] =
+        Int32GetDatum(Offload_policy_local);
+    values[Anum_offload_metadata_relext_time - 1] = TimestampGetDatum(0);
+    values[Anum_offload_metadata_rellast_archived - 1] =
+        TimestampGetDatum(GetCurrentTimestamp());
+
+    auto offtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
+
+    simple_heap_update(rel, &oldtuple->t_self, offtuple);
+
+    heap_freetuple(offtuple);
+  } else {
+    elog(ERROR, "yezzey metadata relation corrupted for %d", i_reloid);
+  }
+
+  heap_endscan(desc);
+  heap_close(rel, RowExclusiveLock);
+
+  UnregisterSnapshot(snap);
+
+  /* make changes visible*/
+  CommandCounterIncrement();
+}

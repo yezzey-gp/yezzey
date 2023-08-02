@@ -156,6 +156,9 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   Snapshot appendOnlyMetaDataSnapshot;
   Oid origrelfilenode;
   int rc;
+  ObjectAddress object; 
+  /* yezzey aux index oid */
+  Oid yandexoid;
 
   /*  XXX: maybe fix lock here to take more granular lock
    */
@@ -236,16 +239,42 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   }
 
   /*
-  Do not drop, just empty
-    object.classId = RelationRelationId;
-    object.objectId = YezzeyFindAuxIndex(reloid);
-    object.objectSubId = 0;
-    performDeletion(&object, DROP_CASCADE, PERFORM_DELETION_INTERNAL);
+  * Update relation status row in yezzet.offload_metadat
+  * State that relation is local, but used to be offloaded
   */
 
-  /* empty all track info */
-  (void)emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
+  /* yezzey aux index oid */
+  yandexoid = YezzeyFindAuxIndex(reloid);
 
+  /* firstly, delete dependency from pg_depend 
+  * This is needed for next deletion operation to work 
+  */
+  deleteDependencyRecordsForClass(RelationRelationId, yandexoid,
+                  RelationRelationId,
+                  DEPENDENCY_INTERNAL);
+
+  deleteDependencyRecordsForClass(RelationRelationId, reloid,
+                  ExtensionRelationId,
+                  DEPENDENCY_NORMAL);
+
+  /* make changes visible */
+  CommandCounterIncrement();
+
+  object.classId = RelationRelationId;
+  object.objectId = yandexoid;
+  object.objectSubId = 0;
+  performDeletion(&object, DROP_CASCADE, PERFORM_DELETION_INTERNAL);
+
+  /* update metadata relations */
+  YezzeyLoadRealtion(reloid);
+
+  /*
+  * Do not empty, just drop
+  * Dropping yezzey virtual index for loaded relation allow to
+  * remove extension dependecy on this object (relation)
+  * empty all track info **
+  (void)emptyYezzeyIndex(YezzeyFindAuxIndex(reloid));
+  */
   /* cleanup */
 
   relation_close(aorel, AccessExclusiveLock);

@@ -3,7 +3,11 @@
 
 -- create database yezzey;
 
+-- this creates schema yezzey with pre-defined oid
+-- 8001
 CREATE SCHEMA yezzey;
+
+GRANT USAGE ON SCHEMA yezzey to public;
 
 -- since GP uses segment-file discovery technique
 -- in can fail to remove some AO/AOCS relation files locally
@@ -107,6 +111,8 @@ LANGUAGE C STRICT;
 
 SELECT yezzey_init_metadata();
 SELECT yezzey_init_metadata_seg();
+
+GRANT SELECT ON yezzey.offload_metadata TO PUBLIC;
 
 CREATE OR REPLACE FUNCTION
 yezzey_define_offload_policy(i_offload_nspname TEXT, i_offload_relname TEXT, i_policy offload_policy DEFAULT 'remote_always')

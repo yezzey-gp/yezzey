@@ -43,6 +43,8 @@ typedef FormData_yezzey_offload_metadata *Form_yezzey_offload_metadata;
 
 #define Offload_policy_always_remote 1
 #define Offload_policy_cache_writes 2
+/* Status for loaded relation  */
+#define Offload_policy_local 3
 
 EXTERNC void YezzeyOffloadPolicyRelation();
 
@@ -52,3 +54,12 @@ YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,
                              Timestamp i_relexp);
 
 EXTERNC void YezzeyDefineOffloadPolicy(Oid reloid);
+
+/*
+ * YezzeyLoadRealtion:
+ * do all offload-metadata related work for relation loading:
+ * 1) simply change relation offload policy in yezzey.offload_metadata
+ * 2) ????
+ * 3) success
+ */
+EXTERNC void YezzeyLoadRealtion(Oid i_reloid);
