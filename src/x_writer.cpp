@@ -27,8 +27,8 @@ ExternalWriter::ExternalWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
     : adv_(adv), segindx_(segindx), modcount_(modcount),
       storage_path_(storage_path),
       insertion_rec_ptr_(yezzeyGetXStorageInsertLsn()),
-      storage_offload_path_(
-          craftUrlXpath(adv, segindx, modcount, insertion_rec_ptr_)) {
+      storage_offload_path_(craftStorageUnPrefixedPath(adv, segindx, modcount,
+                                                       insertion_rec_ptr_)) {
   InitWriter();
 }
 
@@ -53,7 +53,7 @@ std::string ExternalWriter::createWriterHandleToPath() {
       getYezzeyExtrenalStorageBucket(adv_->host.c_str(), adv_->bucket.c_str());
 
   url += adv_->external_storage_prefix;
-  url += "/seg" + std::to_string(segindx_) + basebackupsPath + storage_path_;
+  url += "/seg" + std::to_string(segindx_) + baseYezzeyPath + storage_path_;
 
   // config path
   url = storage_url_add_options(url, adv_->config_path.c_str());

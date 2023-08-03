@@ -15,8 +15,7 @@ extern "C" {
 #define EXTERNC
 #endif
 
-extern const char *basebackupsPath;
-
+extern const char *baseYezzeyPath;
 #ifdef __cplusplus
 
 #include "io.h"
@@ -29,17 +28,6 @@ extern const char *basebackupsPath;
 // create external storage write handle,
 // to transfer segment file of given AO/AOCS relation,
 // with operation modcound $modcount$
-
-std::string
-getYezzeyRelationUrl_internal(const std::string &nspname,
-                              const std::string &relname,
-                              const std::string &external_storage_prefix,
-                              relnodeCoord coords, int32_t segid);
-
-/* prefix in external storage */
-std::string yezzey_block_file_path(const std::string &nspname,
-                                   const std::string &relname,
-                                   relnodeCoord coords, int32_t segid);
 
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv, int32_t segid);
 
@@ -58,10 +46,6 @@ std::string make_yezzey_url(const std::string &prefix, int64_t modcounts,
 
 std::vector<int64_t> parseModcounts(const std::string &prefix,
                                     std::string name);
-
-std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
-                                 const char *external_storage_prefix,
-                                 const char *fileName, int32_t segid);
 #endif
 
 EXTERNC void getYezzeyExternalStoragePath(const char *nspname,

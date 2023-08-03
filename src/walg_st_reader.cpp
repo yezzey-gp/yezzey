@@ -18,12 +18,7 @@ std::string WALGSTReader::craftString(std::string x_path, size_t segindx) {
   cmd += " --config=" + adv_->walg_config_path;
   cmd += " st cat --decrypt  ";
 
-  auto modified_x_path = x_path;
-  modified_x_path.erase(modified_x_path.begin(),
-                        modified_x_path.begin() +
-                            adv_->external_storage_prefix.size());
-
-  cmd += modified_x_path;
+  cmd += x_path;
   return cmd;
 }
 

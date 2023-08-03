@@ -26,18 +26,13 @@ std::string WALGWriter::craftString(const std::shared_ptr<IOadv> &adv,
   cmd += " --config=" + adv->walg_config_path;
   cmd += " aosegfile-offload ";
 
-  auto modified_x_path = std::string(storage_path_);
-  modified_x_path.erase(modified_x_path.begin(),
-                        modified_x_path.begin() +
-                            adv->external_storage_prefix.size());
-
-  cmd += modified_x_path;
+  cmd += storage_path_;
   return cmd;
 }
 
 std::string WALGWriter::createXPath() {
-  return craftStoragePath(adv_, segindx_, modcount_,
-                          adv_->external_storage_prefix, insertion_rec_ptr_);
+  return craftStorageUnPrefixedPath(adv_, segindx_, modcount_,
+                                    insertion_rec_ptr_);
 }
 
 WALGWriter::WALGWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,

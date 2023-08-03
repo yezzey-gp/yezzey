@@ -1,52 +1,63 @@
 
 #include "url.h"
 
-std::string craftStoragePath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                             ssize_t modcount,
-                             const std::string &storage_prefix,
-                             XLogRecPtr current_recptr) {
+/* creates yezzey xternal storage prefix path */
+std::string yezzey_block_file_path(const std::string &nspname,
+                                   const std::string &relname,
+                                   relnodeCoord coords, int32_t segid) {
 
-  /* Craft path in format
-   *  handler->external_storage_prefix + seg_{segid} + ...
-   * example:           (prefix in extrenal storage) / tablespace oid /
-   * reloid / md5(schema + relname) / relfilenode / modcount
-   * wal-e/<cid>/6/segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
-   *
-   */
+  std::string url =
+      "/segments_005/seg" + std::to_string(segid) + baseYezzeyPath;
 
+  unsigned char md[MD5_DIGEST_LENGTH];
+
+  url += std::to_string(DEFAULTTABLESPACE_OID) + "_" +
+         std::to_string(coords.dboid) + "_";
+
+  std::string full_name = nspname + "." + relname;
+  /* compute AO/AOCS relation name, just like walg does*/
+  (void)MD5((const unsigned char *)full_name.c_str(), full_name.size(), md);
+
+  for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i) {
+    char chunk[3];
+    (void)sprintf(chunk, "%.2x", md[i]);
+    url += chunk[0];
+    url += chunk[1];
+  }
+
+  url += "_" + std::to_string(coords.filenode) + "_" +
+         std::to_string(coords.blkno) + "_";
+
+  return url;
+}
+
+std::string craftStoragePrefixedPath(const std::shared_ptr<IOadv> &adv,
+                                     ssize_t segindx, ssize_t modcount,
+                                     const std::string &storage_prefix,
+                                     XLogRecPtr current_recptr) {
   auto prefix = getYezzeyRelationUrl_internal(
       adv->nspname, adv->relname, storage_prefix, adv->coords_, segindx);
 
   return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
-std::string craftWalgStoragePath(const std::shared_ptr<IOadv> &adv,
-                                 ssize_t segindx, ssize_t modcount) {
-
-  /* Craft path in format
-   *  handler->external_storage_prefix + seg_{segid} + ...
-   * example:           (prefix in wal-g compatable form) / tablespace oid /
-   * reloid / md5(schema + relname) / relfilenode / modcount
-   * segments_005/seg0/basebackups_005/aosegments/1663_98304_527e1c67fae2e4f3e5caf632d5473cf5_73728_1_1_D_1_D_1_D_1_aoseg_yezzey
-   *
-   */
+/* prefix-independent wal-g compatable path */
+std::string craftStorageUnPrefixedPath(const std::shared_ptr<IOadv> &adv,
+                                       ssize_t segindx, ssize_t modcount,
+                                       XLogRecPtr current_recptr) {
 
   auto prefix =
       yezzey_block_file_path(adv->nspname, adv->relname, adv->coords_, segindx);
 
-  return make_yezzey_url(prefix, modcount, InvalidXLogRecPtr);
+  return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
-std::string craftUrlXpath(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                          ssize_t modcount, XLogRecPtr current_recptr) {
-  return craftStoragePath(adv, segindx, modcount, adv->external_storage_prefix,
-                          current_recptr);
-}
-
+/* Create prefixed (x storage prefix) path to x storage with bucket and host */
 std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                      ssize_t modcount, XLogRecPtr insertion_rec_ptr) {
 
-  auto path = craftUrlXpath(adv, segindx, modcount, insertion_rec_ptr);
+  auto path = craftStoragePrefixedPath(
+      adv, segindx, modcount, adv->external_storage_prefix, insertion_rec_ptr);
 
   auto url =
       getYezzeyExtrenalStorageBucket(adv->host.c_str(), adv->bucket.c_str()) +
@@ -54,5 +65,30 @@ std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
 
   // add config path
   return storage_url_add_options(url, adv->config_path.c_str());
-  ;
+}
+
+/* creates yezzey xternal storage prefix path */
+std::string
+getYezzeyRelationUrl_internal(const std::string &nspname,
+                              const std::string &relname,
+                              const std::string &external_storage_prefix,
+                              relnodeCoord coords, int32_t segid) {
+  return external_storage_prefix +
+         yezzey_block_file_path(nspname, relname, coords, segid);
+}
+/// @brief
+/// @param nspname
+/// @param relname
+/// @param external_storage_prefix
+/// @param fileName
+/// @param segid greenplum executor segment id
+/// @return
+std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
+                                 const char *external_storage_prefix,
+                                 const char *fileName, int32_t segid) {
+  std::string filename_str = std::string(fileName);
+  auto coords = getRelnodeCoordinate(filename_str);
+
+  return getYezzeyRelationUrl_internal(nspname, relname,
+                                       external_storage_prefix, coords, segid);
 }

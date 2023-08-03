@@ -40,7 +40,9 @@ GPReader *ExternalReader::createReaderHandle(std::string x_path) {
     return reader_init_unsafe(
         (getYezzeyExtrenalStorageBucket(adv_->host.c_str(),
                                         adv_->bucket.c_str()) +
-         storage_url_add_options(x_path, adv_->config_path.c_str()))
+         /* add prefix to path */
+         storage_url_add_options(adv_->external_storage_prefix + x_path,
+                                 adv_->config_path.c_str()))
             .c_str());
   } catch (...) {
     elog(ERROR, "failed to prepare x-storage reader for chunk");
