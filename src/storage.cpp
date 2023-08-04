@@ -308,9 +308,10 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       return rc;
     }
   } catch (S3Exception &e) {
-    elog(ERROR, ("reader_cleanup caught a " + e.getType() +
+    const char * full_message = (e.getType() +
                  " exception: " + e.getFullMessage())
-                    .c_str());
+                    .c_str();
+    elog(ERROR, "reader_cleanup caught msg: %s", full_message);
     return -1;
   } catch (...) {
     elog(ERROR, "Caught an unexpected exception.");
