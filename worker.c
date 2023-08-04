@@ -182,10 +182,10 @@ void yezzey_process_database(Datum main_arg) {
   set_ps_display(dbname, false);
   ereport(LOG, (errmsg("yezzey bgworker: processing database \"%s\"", dbname)));
 
-  if (Gp_role == GP_ROLE_EXECUTE) {
-    (void)processPartitionOffload();
-  } else if (Gp_role = GP_ROLE_DISPATCH) {
+
+  if (Gp_role = GP_ROLE_DISPATCH) {
     (void)processOffloadedRelations();
+    (void)processPartitionOffload();
   }
 }
 
@@ -421,8 +421,11 @@ static void yezzey_start_launcher_worker(void) {
   // worker.bgw_notify_pid = MyProcPid;
 
   if (Gp_role == GP_ROLE_DISPATCH) {
+    /* run on master */
     RegisterBackgroundWorker(&worker);
   } else {
+    /*
+    do we need to run bgworker on gp execute? 
     if (!RegisterDynamicBackgroundWorker(&worker, &handle))
       ereport(ERROR,
               (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
@@ -435,6 +438,7 @@ static void yezzey_start_launcher_worker(void) {
               (errcode(ERRCODE_INSUFFICIENT_RESOURCES),
                errmsg("could not start background process"),
                errhint("More details may be available in the server log.")));
+    */
   }
 }
 
@@ -508,7 +512,7 @@ void _PG_init(void) {
 
   elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
-  if (yezzey_autooffload && false /*temp disable*/) {
+  if (yezzey_autooffload) {
     /* dispatch yezzey worker */
     yezzey_start_launcher_worker();
   }
