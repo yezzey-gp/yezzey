@@ -1,8 +1,7 @@
 
+export GPHOME=/usr/local/gpdb/
 source gpAux/gpdemo/gpdemo-env.sh
 source /usr/local/gpdb/greenplum_path.sh
-export GPHOME=/usr/local/gpdb/
-export PATH=$PATH:/usr/local/gpdb/bin
 
 
 
