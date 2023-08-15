@@ -512,7 +512,7 @@ void _PG_init(void) {
 
   elog(yezzey_log_level, "[YEZZEY_SMGR] setting up bgworker");
 
-  if (yezzey_autooffload) {
+  if (yezzey_autooffload && false /*temp disable*/) {
     /* dispatch yezzey worker */
     yezzey_start_launcher_worker();
   }
