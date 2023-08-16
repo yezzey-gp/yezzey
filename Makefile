@@ -6,7 +6,13 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 override CXX = g++-8
 
-COMMON_OBJS = gpreader.o gpwriter.o gpcleaner.o s3conf.o s3utils.o s3log.o s3url.o s3http_headers.o s3interface.o s3restful_service.o s3bucket_reader.o s3common_reader.o s3common_writer.o decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o
+COMMON_OBJS = \
+	gpreader.o gpwriter.o gpcleaner.o \
+	s3conf.o s3utils.o s3log.o s3url.o \
+	s3http_headers.o s3interface.o s3restful_service.o \
+	s3bucket_reader.o s3common_reader.o s3common_writer.o \
+	decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o \
+	xstorage.o
 
 COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lgpgme -lstdc++fs
 
@@ -20,7 +26,6 @@ PG_CPPFLAGS += $(COMMON_CPP_FLAGS) -I./include -Iinclude -Ilib -I$(libpq_srcdir)
 
 
 MODULE_big = yezzey
-#Theseus
 
 OBJS = \
 	$(WIN32RES) \

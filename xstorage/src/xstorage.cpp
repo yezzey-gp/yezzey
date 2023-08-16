@@ -25,14 +25,6 @@ extern "C" {
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-
-/* Do the module magic dance */
-// PG_MODULE_MAGIC;
-PG_FUNCTION_INFO_V1(s3_export);
-PG_FUNCTION_INFO_V1(s3_import);
-
-Datum s3_export(PG_FUNCTION_ARGS);
-Datum s3_import(PG_FUNCTION_ARGS);
 }
 
 #include "gpreader.h"
