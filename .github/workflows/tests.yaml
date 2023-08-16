@@ -1,0 +1,38 @@
+name: tests
+
+on:
+  push:
+    branches: [ v1.8 ]
+  pull_request:
+    branches: "*"
+
+jobs:
+  build-image:
+    name: Build docker image
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          reposiory: yezzey-gp/gp_modified_for_yezzey
+          ref: add-github-actions-wip
+
+      - name: Build docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: false
+          tags: yezzey:1.0
+          build-args:
+            accessKeyId=${{secrets.ACCESS_KEY_ID}}
+            secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
+            bucketName=test-bucket-yezzey
+  
+  run-tests:
+    name: Run tests
+    runs-on: ubuntu-20.04
+    container: 
+      image: yezzey:1.0
+      env:
+        YEZZEY_REF: ${GITHUB_REF}
