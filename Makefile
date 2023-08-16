@@ -41,7 +41,7 @@ OBJS = \
 	src/partition.o \
 	src/xvacuum.o \
 	smgr.o worker.o yezzey.o \
-	./xstorage/src/gpcloud.o ./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
+	./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql
