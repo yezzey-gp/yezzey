@@ -7,7 +7,7 @@ CREATE EXTENSION yezzey;
 -- how to do it?
 CREATE OR REPLACE FUNCTION 
 yvindex_get()
-RETUNRS SETOF ROWS
+RETURNS SET OF ROWS
 AS $$
 SELECT * FROM yezzey.yezzey_virtual_index_
 
