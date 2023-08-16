@@ -15,7 +15,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          reposiory: yezzey-gp/gp_modified_for_yezzey
+          repository: yezzey-gp/gp_modified_for_yezzey
           ref: add-github-actions-wip
 
       - name: Build docker image
