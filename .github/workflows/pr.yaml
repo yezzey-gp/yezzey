@@ -29,14 +29,12 @@ jobs:
           push: false
           load: true
           tags: yezzey:1.0
-          accessKeyId: ${{ secrets.ACCESS_KEY_ID }}
-          secretAccessKey: ${{ secrets.SECRET_ACCESS_KEY }}
-          mockSecret: ${{ secrets.MOCK_SECRET }}
           build-args: |
             accessKeyId=${{secrets.ACCESS_KEY_ID}}
             secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
             bucketName=test-bucket-yezzey
             yezzeyRef=${{github.head_ref}}
+
       - name: Run Docker
         shell: bash
         run: |
