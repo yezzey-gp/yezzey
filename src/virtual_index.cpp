@@ -147,7 +147,11 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
   HeapTuple tuple;
   ScanKeyData skey[YezzeyVirtualIndexScanCols];
 
-  /* DELETE FROM yezzey.yezzey_virtual_index_<oid> WHERE segno = <blkno> */
+  /* 
+  * DELETE 
+  *     FROM yezzey.yezzey_virtual_index_<oid> 
+  * WHERE 
+  *   blkno = <blkno> AND relfilenode = <relfilenode> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
@@ -156,7 +160,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
               F_INT4EQ, Int32GetDatum(blkno));
 
   ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
-              BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(blkno));
+              BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
 
   auto desc = heap_beginscan(rel, snap, YezzeyVirtualIndexScanCols, skey);
 
