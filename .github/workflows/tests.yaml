@@ -26,9 +26,10 @@ jobs:
           tags: yezzey:1.0
           accessKeyId: ${{ secrets.ACCESS_KEY_ID }}
           secretAccessKey: ${{ secrets.SECRET_ACCESS_KEY }}
+          mockSecret: ${{ secrets.MOCK_SECRET }}
           build-args:
-            accessKeyId=${{secrets.ACCESS_KEY_ID}}
-            secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
+            accessKeyId=${{secrets.MOCK_SECRET}}
+            secretAccessKey=${{secrets.MOCK}}
             bucketName=test-bucket-yezzey
             yezzeyRef=${{github.ref}}
       - name: Run Docker
