@@ -5,8 +5,8 @@ on:
     branches: "*"
 
 jobs:
-  build-image:
-    name: Build docker image
+  test:
+    name: Run tests
     runs-on: ubuntu-20.04
     steps:
 
