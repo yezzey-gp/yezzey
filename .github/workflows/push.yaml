@@ -34,6 +34,7 @@ jobs:
             secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
             bucketName=test-bucket-yezzey
             yezzeyRef=origin/v1.8
+
       - name: Run Docker
         shell: bash
         run: |
