@@ -37,7 +37,7 @@ jobs:
             accessKeyId=${{secrets.ACCESS_KEY_ID}}
             secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
             bucketName=test-bucket-yezzey
-            yezzeyRef=${{github.ref}}
+            yezzeyRef=${GITHUB_REF##*/}
       - name: Run Docker
         shell: bash
         run: |
