@@ -1,8 +1,6 @@
-name: tests
+name: Pull request
 
 on:
-  push:
-    branches: [ v1.8 ]
   pull_request:
     branches: "*"
 
@@ -37,7 +35,7 @@ jobs:
             accessKeyId=${{secrets.ACCESS_KEY_ID}}
             secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
             bucketName=test-bucket-yezzey
-            yezzeyRef=${{github.ref_name}}
+            yezzeyRef=${{github.head_ref}}
       - name: Run Docker
         shell: bash
         run: |
