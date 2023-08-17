@@ -24,6 +24,8 @@ jobs:
           context: .
           push: false
           tags: yezzey:1.0
+          accessKeyId: ${{ secrets.ACCESS_KEY_ID }}
+          secretAccessKey: ${{ secrets.SECRET_ACCESS_KEY }}
           build-args:
             accessKeyId=${{secrets.ACCESS_KEY_ID}}
             secretAccessKey=${{secrets.SECRET_ACCESS_KEY}}
