@@ -132,6 +132,9 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
 
   if (!iohandler.io_close()) {
     elog(ERROR, "yezzey: failed to complete %s offloading", localPath.c_str());
+  } else {
+    // debug output 
+    elog(DEBUG1, "yezzey: complete %s offloading", dest_path.c_str());
   }
 
   FileClose(vfd);
@@ -190,6 +193,8 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
 
   if (!iohandler.io_close()) {
     elog(ERROR, "yezzey: failed to complete %s offloading", dest_path.c_str());
+  } else {
+    elog(DEBUG1, "yezzey: complete %s offloading", dest_path.c_str());
   }
   return 0;
   // return std::rename(tmp_path.c_str(), dest_path.c_str());

@@ -267,6 +267,8 @@ void yezzey_FileClose(SMGRFile file) {
         // very bad
         elog(ERROR, "failed to complete external storage interaction: fd %d",
              file);
+      } else {
+        elog(DEBUG1, "yezzey: complete external storage interaction: fd %d", file);
       }
       /* record file only if non-zero bytes was stored */
       if (yfd.op_write) {
