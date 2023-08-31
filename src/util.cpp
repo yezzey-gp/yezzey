@@ -205,6 +205,7 @@ int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                           ssize_t segindx, ssize_t modcount,
                                           const std::string &storage_path) {
 
+#if USE_WALG_BACKUPS
   try {
     auto ioh = YIO(adv, segindx, modcount, storage_path);
     int64_t sz = 0;
@@ -223,6 +224,10 @@ int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
   } catch (...) {
     return -1;
   }
+#else
+  /* TODO: better import logic */
+  return 0;
+#endif
 }
 /*XXX: fix cleanup*/
 
