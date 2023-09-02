@@ -268,7 +268,8 @@ void yezzey_FileClose(SMGRFile file) {
         elog(ERROR, "failed to complete external storage interaction: fd %d",
              file);
       } else {
-        elog(DEBUG1, "yezzey: complete external storage interaction: fd %d", file);
+        elog(DEBUG1, "yezzey: complete external storage interaction: fd %d",
+             file);
       }
       /* record file only if non-zero bytes was stored */
       if (yfd.op_write) {
@@ -276,9 +277,8 @@ void yezzey_FileClose(SMGRFile file) {
         YezzeyVirtualIndexInsert(
             YezzeyFindAuxIndex(yfd.reloid), yfd.coord.blkno /* blkno*/,
             yfd.coord.filenode, yfd.op_start_offset,
-            yfd.offset /* io operation finish offset */,
-            1 /* encrypted */, 0 /* reused */,
-            yfd.modcount,
+            yfd.offset /* io operation finish offset */, 1 /* encrypted */,
+            0 /* reused */, yfd.modcount,
             yfd.handler->writer_->getInsertionStorageLsn(),
             yfd.handler->writer_->getExternalStoragePath()
                 .c_str() /* path ? */);

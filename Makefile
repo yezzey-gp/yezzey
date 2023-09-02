@@ -45,6 +45,7 @@ OBJS = \
 	src/virtual_tablespace.o \
 	src/partition.o \
 	src/xvacuum.o \
+	src/yezzey_expire.o \
 	smgr.o worker.o yezzey.o \
 	./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
 

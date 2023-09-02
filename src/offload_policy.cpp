@@ -15,7 +15,7 @@ DISTRIBUTED REPLICATED;
 const std::string offload_metadata_relname = "offload_metadata";
 const std::string offload_metadata_relname_indx = "offload_metadata_indx";
 
-void YezzeyOffloadPolicyRelation() {
+void YezzeyCreateOffloadPolicyRelation() {
   { /* check existed, if no, return */
   }
   TupleDesc tupdesc;

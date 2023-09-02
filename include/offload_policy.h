@@ -46,7 +46,7 @@ typedef FormData_yezzey_offload_metadata *Form_yezzey_offload_metadata;
 /* Status for loaded relation  */
 #define Offload_policy_local 3
 
-EXTERNC void YezzeyOffloadPolicyRelation();
+EXTERNC void YezzeyCreateOffloadPolicyRelation();
 
 EXTERNC void
 YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,

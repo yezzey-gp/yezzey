@@ -126,16 +126,14 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   /* insert chunk metadata in virtual index  */
   YezzeyVirtualIndexInsert(
       YezzeyFindAuxIndex(aorel->rd_id), ioadv->coords_.blkno /* blkno*/,
-      ioadv->coords_.filenode, offset_start, offset_finish,
-      1 /* encrypted */, 0 /* reused */,
-      modcount,
-      iohandler.writer_->getInsertionStorageLsn(),
+      ioadv->coords_.filenode, offset_start, offset_finish, 1 /* encrypted */,
+      0 /* reused */, modcount, iohandler.writer_->getInsertionStorageLsn(),
       iohandler.writer_->getExternalStoragePath().c_str() /* path */);
 
   if (!iohandler.io_close()) {
     elog(ERROR, "yezzey: failed to complete %s offloading", localPath.c_str());
   } else {
-    // debug output 
+    // debug output
     elog(DEBUG1, "yezzey: complete %s offloading", localPath.c_str());
   }
 
@@ -315,9 +313,8 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       return rc;
     }
   } catch (S3Exception &e) {
-    const char * full_message = (e.getType() +
-                 " exception: " + e.getFullMessage())
-                    .c_str();
+    const char *full_message =
+        (e.getType() + " exception: " + e.getFullMessage()).c_str();
     elog(ERROR, "reader_cleanup caught msg: %s", full_message);
     return -1;
   } catch (...) {

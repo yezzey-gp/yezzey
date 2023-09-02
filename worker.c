@@ -53,6 +53,8 @@
 #include "storage.h"
 #include "yezzey.h"
 
+#include "yezzey_expire.h"
+
 #if PG_VERSION_NUM >= 100000
 void yezzey_main(Datum main_arg);
 #else
@@ -524,4 +526,7 @@ void _PG_init(void) {
   smgrao_hook = smgrao_yezzey;
 #endif
   smgr_init_hook = smgr_init_yezzey;
+
+  /* set drop hook  */
+  TrackDropObject_hook = YezzeyRecordRelationExpireLsn;
 }

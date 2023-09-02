@@ -58,10 +58,10 @@
 #include "offload_policy.h"
 
 #include "virtual_tablespace.h"
-
 #include "partition.h"
-
 #include "xvacuum.h"
+#include "yezzey_expire.h"
+
 
 #define GET_STR(textp)                                                         \
   DatumGetCString(DirectFunctionCall1(textout, PointerGetDatum(textp)))
@@ -106,7 +106,8 @@ PG_FUNCTION_INFO_V1(yezzey_delete_chunk);
 
 /* Create yezzey metadata tables */
 Datum yezzey_init_metadata(PG_FUNCTION_ARGS) {
-  (void)YezzeyOffloadPolicyRelation();
+  (void)YezzeyCreateOffloadPolicyRelation();
+  (void)YezzeyCreateRelationExpireIndex();
   PG_RETURN_VOID();
 }
 

@@ -27,10 +27,10 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_finish_off,
                      "offset_finish", INT8OID, -1, 0);
 
-
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_encrypted,
                      "encrypted", INT4OID, -1, 0);
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_reused_from_backup,
+  TupleDescInitEntry(tupdesc,
+                     (AttrNumber)Anum_yezzey_virtual_reused_from_backup,
                      "reused", INT4OID, -1, 0);
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_modcount,
@@ -154,11 +154,11 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
   HeapTuple tuple;
   ScanKeyData skey[YezzeyVirtualIndexScanCols];
 
-  /* 
-  * DELETE 
-  *     FROM yezzey.yezzey_virtual_index_<oid> 
-  * WHERE 
-  *   blkno = <blkno> AND relfilenode = <relfilenode> */
+  /*
+   * DELETE
+   *     FROM yezzey.yezzey_virtual_index_<oid>
+   * WHERE
+   *   blkno = <blkno> AND relfilenode = <relfilenode> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
