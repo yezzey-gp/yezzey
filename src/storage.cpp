@@ -126,7 +126,9 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   /* insert chunk metadata in virtual index  */
   YezzeyVirtualIndexInsert(
       YezzeyFindAuxIndex(aorel->rd_id), ioadv->coords_.blkno /* blkno*/,
-      ioadv->coords_.filenode, offset_start, offset_finish, modcount,
+      ioadv->coords_.filenode, offset_start, offset_finish,
+      1 /* encrypted */, 0 /* reused */,
+      modcount,
       iohandler.writer_->getInsertionStorageLsn(),
       iohandler.writer_->getExternalStoragePath().c_str() /* path */);
 

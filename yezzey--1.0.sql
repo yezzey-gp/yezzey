@@ -590,7 +590,16 @@ $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION yezzey_dump_virtual_index(i_relname text) 
-RETURNS TABLE(blkno integer, relfilenode OID, offset_start bigint, offset_finish bigint, modcount bigint, lsn pg_lsn, x_path TEXT)
+RETURNS 
+    TABLE(
+        blkno integer,
+        relfilenode OID,
+        offset_start bigint,
+        offset_finish bigint,
+        encrypted int,
+        reused int,
+        modcount bigint,
+        lsn pg_lsn, x_path TEXT)
 AS $$
 DECLARE
     v_reloid OID;

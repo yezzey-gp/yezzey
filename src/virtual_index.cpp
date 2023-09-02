@@ -26,6 +26,13 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
                      "offset_start", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_finish_off,
                      "offset_finish", INT8OID, -1, 0);
+
+
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_encrypted,
+                     "encrypted", INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_reused_from_backup,
+                     "reused", INT4OID, -1, 0);
+
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_modcount,
                      "modcount", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_lsn, "lsn",
@@ -180,6 +187,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               int64_t blkno, Oid relfilenodeOid,
                               int64_t offset_start, int64_t offset_finish,
+                              int32_t encrypted, int32_t reused,
                               int64_t modcount, XLogRecPtr lsn,
                               const char *x_path /* external path */) {
   bool nulls[Natts_yezzey_virtual_index];
@@ -198,6 +206,10 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
       ObjectIdGetDatum(relfilenodeOid);
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(offset_start);
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(offset_finish);
+
+  values[Anum_yezzey_virtual_encrypted - 1] = Int32GetDatum(encrypted);
+  values[Anum_yezzey_virtual_reused_from_backup - 1] = Int32GetDatum(reused);
+
   values[Anum_yezzey_virtual_modcount - 1] = Int64GetDatum(modcount);
   values[Anum_yezzey_virtual_lsn - 1] = LSNGetDatum(lsn);
   values[Anum_yezzey_virtual_x_path - 1] =
