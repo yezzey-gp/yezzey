@@ -1,4 +1,5 @@
 # yezzey extension
-comment = 'S3 support for psql'
+comment = 'Extension for offloading Greenplum AO/AOCS relations to external storage'
 default_version = '1.0'
 module_pathname = '$libdir/yezzey'
+trusted = true
