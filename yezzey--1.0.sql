@@ -137,7 +137,7 @@ BEGIN
 
     SELECT parrelid 
         FROM pg_partition
-    INTO v_reloid 
+    INTO v_par_reloid 
     WHERE parrelid = v_reloid;
 
     IF NOT FOUND THEN

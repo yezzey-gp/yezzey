@@ -134,7 +134,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
     elog(ERROR, "yezzey: failed to complete %s offloading", localPath.c_str());
   } else {
     // debug output 
-    elog(DEBUG1, "yezzey: complete %s offloading", dest_path.c_str());
+    elog(DEBUG1, "yezzey: complete %s offloading", localPath.c_str());
   }
 
   FileClose(vfd);
