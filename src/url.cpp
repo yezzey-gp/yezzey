@@ -1,6 +1,25 @@
 
 #include "url.h"
 
+std::string yezzey_fqrelname_md5(const std::string &nspname,
+                                 const std::string &relname) {
+  unsigned char md[MD5_DIGEST_LENGTH];
+  std::string full_name = nspname + "." + relname;
+  /* compute AO/AOCS relation name, just like walg does*/
+  (void)MD5((const unsigned char *)full_name.c_str(), full_name.size(), md);
+
+  std::string relmd5;
+
+  for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i) {
+    char chunk[3];
+    (void)sprintf(chunk, "%.2x", md[i]);
+    relmd5 += chunk[0];
+    relmd5 += chunk[1];
+  }
+
+  return relmd5;
+}
+
 /* creates yezzey xternal storage prefix path */
 std::string yezzey_block_file_path(const std::string &nspname,
                                    const std::string &relname,
@@ -9,22 +28,10 @@ std::string yezzey_block_file_path(const std::string &nspname,
   std::string url =
       "/segments_005/seg" + std::to_string(segid) + baseYezzeyPath;
 
-  unsigned char md[MD5_DIGEST_LENGTH];
-
   url += std::to_string(DEFAULTTABLESPACE_OID) + "_" +
          std::to_string(coords.dboid) + "_";
 
-  std::string full_name = nspname + "." + relname;
-  /* compute AO/AOCS relation name, just like walg does*/
-  (void)MD5((const unsigned char *)full_name.c_str(), full_name.size(), md);
-
-  for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i) {
-    char chunk[3];
-    (void)sprintf(chunk, "%.2x", md[i]);
-    url += chunk[0];
-    url += chunk[1];
-  }
-
+  auto md = yezzey_fqrelname_md5(nspname, relname);
   url += "_" + std::to_string(coords.filenode) + "_" +
          std::to_string(coords.blkno) + "_";
 

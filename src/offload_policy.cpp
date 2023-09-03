@@ -258,7 +258,6 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
  * 3) success
  */
 void YezzeyLoadRealtion(Oid i_reloid) {
-  HeapTuple tuple;
   /**/
   ScanKeyData skey[1];
 

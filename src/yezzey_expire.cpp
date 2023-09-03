@@ -1,8 +1,53 @@
 #include "yezzey_expire.h"
 #include "string"
+#include "url.h"
+#include "util.h"
 
-void YezzeyRecordRelationExpireLsn(Oid reloid) {
+void YezzeyRecordRelationExpireLsn(Relation rel) {
+  auto tp = SearchSysCache1(NAMESPACEOID,
+                            ObjectIdGetDatum(RelationGetNamespace(rel)));
 
+  if (!HeapTupleIsValid(tp)) {
+    elog(ERROR, "yezzey: failed to get namescape name of relation %d",
+         RelationGetNamespace(rel));
+  }
+  Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
+  auto namespaceName = std::string(nsptup->nspname.data);
+  auto md = yezzey_fqrelname_md5(namespaceName, RelationGetRelationName(rel));
+
+  ReleaseSysCache(tp);
+
+  bool nulls[Natts_yezzey_expire_index];
+  Datum values[Natts_yezzey_expire_index];
+
+  memset(nulls, 0, sizeof(nulls));
+  memset(values, 0, sizeof(values));
+
+  /* INSERT INTO  yezzey.yezzey_virtual_index_<oid> VALUES(segno, start_offset,
+   * 0, modcount, external_path) */
+
+  auto yandxexprel = heap_open(YEZZEY_EXPIRE_INDEX_RELATION, RowExclusiveLock);
+
+  values[Anum_yezzey_expire_index_reloid - 1] =
+      ObjectIdGetDatum(RelationGetRelid(rel));
+  values[Anum_yezzey_expire_index_relfileoid - 1] =
+      ObjectIdGetDatum(rel->rd_node.relNode);
+
+  values[Anum_yezzey_expire_index_fqnmd5 - 1] =
+      PointerGetDatum(cstring_to_text(md.c_str()));
+  values[Anum_yezzey_expire_index_lsn - 1] =
+      LSNGetDatum(yezzeyGetXStorageInsertLsn());
+
+  auto yandxtuple =
+      heap_form_tuple(RelationGetDescr(yandxexprel), values, nulls);
+
+  simple_heap_insert(yandxexprel, yandxtuple);
+  CatalogUpdateIndexes(yandxexprel, yandxtuple);
+
+  heap_freetuple(yandxtuple);
+  heap_close(yandxexprel, RowExclusiveLock);
+
+  CommandCounterIncrement();
 } // YezzeyRecordRelationExpireLsn
 
 /*
@@ -17,7 +62,7 @@ DISTRIBUTED REPLICATED;
 const std::string yezzey_expire_index_relname = "yezzey_expire_index";
 const std::string yezzey_expire_index_indx_relname = "yezzey_expire_index_indx";
 
-Oid YezzeyCreateRelationExpireIndex(void) {
+void YezzeyCreateRelationExpireIndex(void) {
   { /* check existed, if no, return */
   }
   TupleDesc tupdesc;
@@ -29,10 +74,15 @@ Oid YezzeyCreateRelationExpireIndex(void) {
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_reloid,
                      "reloid", OIDOID, -1, 0);
+
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_relfileoid,
+                     "relfileoid", LSNOID, -1, 0);
+
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_fqnmd5,
+                     "fqnmd5", TEXTOID, -1, 0);
+
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_lsn,
                      "expire_lsn", LSNOID, -1, 0);
-
-  auto expire_relation = "yezzey_expire_index";
 
   (void)heap_create_with_catalog(
       yezzey_expire_index_relname.c_str() /* relname */,
