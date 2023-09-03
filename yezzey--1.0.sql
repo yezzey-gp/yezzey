@@ -1,7 +1,7 @@
 \echo Use "CREATE EXTENSION yezzey" to load this file. \quit
--- this should be run in database yezzey!
 
--- create database yezzey;
+-- database to track various db-indepemdent metadata.
+CREATE DATABASE YEZZEY;
 
 -- this creates schema yezzey with pre-defined oid
 -- 8001
