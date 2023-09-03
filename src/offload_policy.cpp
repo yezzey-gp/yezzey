@@ -15,6 +15,38 @@ DISTRIBUTED REPLICATED;
 const std::string offload_metadata_relname = "offload_metadata";
 const std::string offload_metadata_relname_indx = "offload_metadata_indx";
 
+
+bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
+ /**/
+  ScanKeyData skey[1];
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
+
+  auto offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
+
+  /* SELECT FROM yezzey.offload_metadata WHERE reloid = i_reloid; */
+
+  ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(i_reloid));
+
+  auto scan = heap_beginscan(offrel, snap, 1, skey);
+
+  auto oldtuple = heap_getnext(scan, ForwardScanDirection);
+
+  bool found = false;
+
+  if (HeapTupleIsValid(oldtuple)) {
+    found = true;
+  }
+  
+  heap_close(offrel, RowExclusiveLock);
+
+  heap_endscan(scan);
+  UnregisterSnapshot(snap);
+
+  return found;
+}
+
 void YezzeyCreateOffloadPolicyRelation() {
   { /* check existed, if no, return */
   }

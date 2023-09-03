@@ -2,8 +2,15 @@
 #include "string"
 #include "url.h"
 #include "util.h"
+#include "offload_policy.h"
 
 void YezzeyRecordRelationExpireLsn(Relation rel) {
+  /* check that relation is yezzey-related. */
+  if (!YezzeyCheckRelationOffloaded(RelationGetRelid(rel))) {
+    /* noop */
+    return;
+  }
+
   auto tp = SearchSysCache1(NAMESPACEOID,
                             ObjectIdGetDatum(RelationGetNamespace(rel)));
 
@@ -63,7 +70,8 @@ const std::string yezzey_expire_index_relname = "yezzey_expire_index";
 const std::string yezzey_expire_index_indx_relname = "yezzey_expire_index_indx";
 
 void YezzeyCreateRelationExpireIndex(void) {
-  { /* check existed, if no, return */
+  { 
+    /* check existed, if no, return */
   }
   TupleDesc tupdesc;
 
@@ -76,7 +84,7 @@ void YezzeyCreateRelationExpireIndex(void) {
                      "reloid", OIDOID, -1, 0);
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_relfileoid,
-                     "relfileoid", LSNOID, -1, 0);
+                     "relfileoid", OIDOID, -1, 0);
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_fqnmd5,
                      "fqnmd5", TEXTOID, -1, 0);

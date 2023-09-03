@@ -24,3 +24,8 @@ INSERT INTO regaoty SELECT * FROM generate_series(1, 100) a JOIN generate_series
 VACUUM regaoty;
 
 SELECT count(1) FROM regaoty;
+
+INSERT INTO regaoty SELECT * FROM generate_series(1, 100) a JOIN generate_series(1, 100) b ON true;
+DROP TABLE regaoty;
+
+SELECT * from yezzey.yezzey_expire_index;
