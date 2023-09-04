@@ -15,9 +15,8 @@ DISTRIBUTED REPLICATED;
 const std::string offload_metadata_relname = "offload_metadata";
 const std::string offload_metadata_relname_indx = "offload_metadata_indx";
 
-
 bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
- /**/
+  /**/
   ScanKeyData skey[1];
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
@@ -38,7 +37,7 @@ bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
   if (HeapTupleIsValid(oldtuple)) {
     found = true;
   }
-  
+
   heap_close(offrel, RowExclusiveLock);
 
   heap_endscan(scan);
@@ -238,8 +237,6 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
    */
   auto aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
-
-  (void)YezzeyCreateAuxIndex(aorel);
 
   /*
    * @brief do main offload job on segments

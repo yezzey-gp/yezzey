@@ -5,23 +5,22 @@
 
 Oid YezzeyFindAuxIndex_internal(Oid reloid);
 
-Oid YezzeyCreateAuxIndex(Relation aorel) {
-  {
-    auto tmp = YezzeyFindAuxIndex_internal(RelationGetRelid(aorel));
-    if (OidIsValid(tmp)) {
-      return tmp;
-    }
-  }
-
-  ObjectAddress baseobject;
-  ObjectAddress yezzey_ao_auxiliaryobject;
+static inline Oid
+yezzey_create_index_internal(Oid relid, const std::string &relname,
+                             Oid relowner, char relpersistence,
+                             bool shared_relation, bool mapped_relation) {
 
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 
-  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_blkno,
-                     "blkno", INT4OID, -1, 0);
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_reloid,
+                     "relation", OIDOID, -1, 0);
+
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_filenode,
                      "filenode", OIDOID, -1, 0);
+
+  TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_blkno,
+                     "blkno", INT4OID, -1, 0);
+
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_start_off,
                      "offset_start", INT8OID, -1, 0);
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_finish_off,
@@ -40,33 +39,37 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_x_path, "x_path",
                      TEXTOID, -1, 0);
 
-  auto yezzey_ao_auxiliary_relname = std::string("yezzey_virtual_index") +
-                                     std::to_string(RelationGetRelid(aorel));
-
   auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
-      yezzey_ao_auxiliary_relname.c_str() /* relname */,
-      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
-      GetNewObjectId() /* relid */, GetNewObjectId() /* reltype oid */,
-      InvalidOid /* reloftypeid */, aorel->rd_rel->relowner /* owner */,
+      relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,
+      0 /* tablespace */, relid /* relid */, GetNewObjectId() /* reltype oid */,
+      InvalidOid /* reloftypeid */, relowner /* owner */,
       tupdesc /* rel tuple */, NIL, InvalidOid /* relam */, RELKIND_YEZZEYINDEX,
-      aorel->rd_rel->relpersistence, RELSTORAGE_HEAP,
-      aorel->rd_rel->relisshared, RelationIsMapped(aorel), true, 0,
-      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
-      true, true, false /* valid_opts */, false /* is_part_child */,
-      false /* is part parent */);
+      relpersistence, RELSTORAGE_HEAP, shared_relation, mapped_relation, true,
+      0, ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0,
+      false /* use_user_acl */, true, true, false /* valid_opts */,
+      false /* is_part_child */, false /* is part parent */);
 
   /* Make this table visible, else yezzey virtual index creation will fail */
   CommandCounterIncrement();
 
-  /*
-   * Register dependency from the auxiliary table to the master, so that the
-   * aoseg table will be deleted if the master is.
-   */
-  baseobject.classId = RelationRelationId;
-  baseobject.objectId = RelationGetRelid(aorel);
+  return yezzey_ao_auxiliary_relid;
+}
+
+void YezzeyCreateVirtualIndex() {
+  auto yezzey_ao_auxiliary_relname = std::string("yezzey_virtual_index");
+
+  (void)yezzey_create_index_internal(YEZZEY_TEMP_INDEX_RELATION,
+                                     yezzey_ao_auxiliary_relname, GetUserId(),
+                                     RELPERSISTENCE_PERMANENT, false, false);
+
+  ObjectAddress baseobject;
+  ObjectAddress yezzey_ao_auxiliaryobject;
+
+  baseobject.classId = ExtensionRelationId;
+  baseobject.objectId = get_extension_oid("yezzey", false);
   baseobject.objectSubId = 0;
   yezzey_ao_auxiliaryobject.classId = RelationRelationId;
-  yezzey_ao_auxiliaryobject.objectId = yezzey_ao_auxiliary_relid;
+  yezzey_ao_auxiliaryobject.objectId = YEZZEY_TEMP_INDEX_RELATION;
   yezzey_ao_auxiliaryobject.objectSubId = 0;
 
   recordDependencyOn(&yezzey_ao_auxiliaryobject, &baseobject,
@@ -76,8 +79,6 @@ Oid YezzeyCreateAuxIndex(Relation aorel) {
    * Make changes visible
    */
   CommandCounterIncrement();
-
-  return yezzey_ao_auxiliary_relid;
 }
 
 Oid YezzeyFindAuxIndex_internal(Oid reloid) {
@@ -106,6 +107,10 @@ Oid YezzeyFindAuxIndex_internal(Oid reloid) {
 
   if (HeapTupleIsValid(tup = systable_getnext(scan))) {
     yezzey_virtual_index_oid = HeapTupleGetOid(tup);
+  } else {
+    // use separate index for relations, offloaded without yezzey api
+    // this may happen during expand process and maybe some other cases
+    yezzey_virtual_index_oid = YEZZEY_TEMP_INDEX_RELATION;
   }
 
   systable_endscan(scan);
@@ -114,24 +119,21 @@ Oid YezzeyFindAuxIndex_internal(Oid reloid) {
   return yezzey_virtual_index_oid;
 }
 
-Oid YezzeyFindAuxIndex(Oid reloid) {
-  Oid yezzey_virtual_index_oid = YezzeyFindAuxIndex_internal(reloid);
-  if (OidIsValid(yezzey_virtual_index_oid)) {
-    return yezzey_virtual_index_oid;
-  }
-  elog(ERROR, "could not find yezzey virtual index oid for relation \"%d\"",
-       reloid);
-}
+Oid YezzeyFindAuxIndex(Oid reloid) { return YEZZEY_TEMP_INDEX_RELATION; }
 
-void emptyYezzeyIndex(Oid yezzey_index_oid) {
+void emptyYezzeyIndex(Oid yezzey_index_oid, Oid reloid) {
   HeapTuple tuple;
+  ScanKeyData skey[1];
 
-  /* DELETE FROM yezzey.yezzey_virtual_index_<oid> */
+  /* DELETE FROM yezzey.yezzey_virtual_index_<oid> WHERE reloid = <reloid> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
+
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(reloid));
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(rel, snap, 0, NULL);
+  auto desc = heap_beginscan(rel, snap, 1, skey);
 
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     simple_heap_delete(rel, &tuple->t_self);
@@ -147,9 +149,10 @@ void emptyYezzeyIndex(Oid yezzey_index_oid) {
 } /* end emptyYezzeyIndex */
 
 /* Update this settings if where clause expr changes */
-#define YezzeyVirtualIndexScanCols 2
+#define YezzeyVirtualIndexScanCols 3
 
-void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
+void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid, Oid relfilenode,
+                           int blkno) {
 
   HeapTuple tuple;
   ScanKeyData skey[YezzeyVirtualIndexScanCols];
@@ -158,16 +161,20 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
    * DELETE
    *     FROM yezzey.yezzey_virtual_index_<oid>
    * WHERE
+   *   reloid = <redloi> and md5 = <md5> AND
    *   blkno = <blkno> AND relfilenode = <relfilenode> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
-              F_INT4EQ, Int32GetDatum(blkno));
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(reloid));
 
   ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
               BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
+
+  ScanKeyInit(&skey[2], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
+              F_INT4EQ, Int32GetDatum(blkno));
 
   auto desc = heap_beginscan(rel, snap, YezzeyVirtualIndexScanCols, skey);
 
@@ -185,7 +192,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, int blkno, Oid relfilenode) {
 } /* end emptyYezzeyIndexBlkno */
 
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
-                              int64_t blkno, Oid relfilenodeOid,
+                              Oid reloid, Oid relfilenodeOid, int64_t blkno,
                               int64_t offset_start, int64_t offset_finish,
                               int32_t encrypted, int32_t reused,
                               int64_t modcount, XLogRecPtr lsn,
@@ -201,9 +208,12 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxrel = heap_open(yandexoid, RowExclusiveLock);
 
-  values[Anum_yezzey_virtual_index_blkno - 1] = Int64GetDatum(blkno);
+  values[Anum_yezzey_virtual_index_reloid - 1] = Int64GetDatum(reloid);
   values[Anum_yezzey_virtual_index_filenode - 1] =
       ObjectIdGetDatum(relfilenodeOid);
+
+  values[Anum_yezzey_virtual_index_blkno - 1] = Int64GetDatum(blkno);
+
   values[Anum_yezzey_virtual_start_off - 1] = Int64GetDatum(offset_start);
   values[Anum_yezzey_virtual_finish_off - 1] = Int64GetDatum(offset_finish);
 
@@ -227,8 +237,8 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 }
 
 std::vector<ChunkInfo>
-YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
-                      Oid relfilenode) {
+YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid,
+                      Oid relfilenode, int blkno) {
 
   /* SELECT external_path
    * FROM yezzey.yezzey_virtual_index_<oid>
@@ -244,11 +254,14 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, int blkno,
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
-              F_INT4EQ, Int32GetDatum(blkno));
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(reloid));
 
   ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
               BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
+
+  ScanKeyInit(&skey[2], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
+              F_INT4EQ, Int32GetDatum(blkno));
 
   /* TBD: Read index */
   auto desc = heap_beginscan(rel, snap, YezzeyVirtualIndexScanCols, skey);

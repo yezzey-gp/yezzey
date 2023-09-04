@@ -1,7 +1,7 @@
 \echo Use "CREATE EXTENSION yezzey" to load this file. \quit
 
 -- database to track various db-indepemdent metadata.
-CREATE DATABASE YEZZEY;
+--CREATE DATABASE YEZZEY;
 
 -- this creates schema yezzey with pre-defined oid
 -- 8001
@@ -592,20 +592,22 @@ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION yezzey_dump_virtual_index(i_relname text) 
 RETURNS 
     TABLE(
-        blkno integer,
+        reloid OID,
         relfilenode OID,
+        blkno integer,
         offset_start bigint,
         offset_finish bigint,
         encrypted int,
         reused int,
         modcount bigint,
-        lsn pg_lsn, x_path TEXT)
+        lsn pg_lsn,
+        x_path TEXT)
 AS $$
 DECLARE
     v_reloid OID;
 BEGIN
-    select oid from pg_class INTO v_reloid where relname = i_relname;
-    RETURN QUERY EXECUTE 'SELECT * FROM yezzey.yezzey_virtual_index'||v_reloid||';';
+    select oid from pg_class p INTO v_reloid where relname = i_relname;
+    RETURN QUERY SELECT * FROM gp_dist_random('yezzey.yezzey_virtual_index') WHERE relation = v_reloid;
 END;
 $$
 EXECUTE ON ALL SEGMENTS

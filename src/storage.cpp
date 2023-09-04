@@ -20,6 +20,9 @@
 #include "s3memory_mgmt.h"
 
 #include "storage_lister.h"
+#include "url.h"
+
+#include "yezzey_meta.h"
 
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
@@ -124,11 +127,13 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
 
   /* data persisted in external storage, we can update out metadata relations */
   /* insert chunk metadata in virtual index  */
-  YezzeyVirtualIndexInsert(
-      YezzeyFindAuxIndex(aorel->rd_id), ioadv->coords_.blkno /* blkno*/,
-      ioadv->coords_.filenode, offset_start, offset_finish, 1 /* encrypted */,
-      0 /* reused */, modcount, iohandler.writer_->getInsertionStorageLsn(),
-      iohandler.writer_->getExternalStoragePath().c_str() /* path */);
+  YezzeyUpdateMetadataRelations(
+      YezzeyFindAuxIndex(aorel->rd_id), ioadv->reloid, ioadv->coords_.filenode,
+      ioadv->coords_.blkno /* blkno*/, offset_start, offset_finish,
+      1 /* encrypted */, 0 /* reused */, modcount,
+      iohandler.writer_->getInsertionStorageLsn(),
+      iohandler.writer_->getExternalStoragePath().c_str() /* path */,
+      yezzey_fqrelname_md5(ioadv->nspname, ioadv->relname).c_str());
 
   if (!iohandler.io_close()) {
     elog(ERROR, "yezzey: failed to complete %s offloading", localPath.c_str());

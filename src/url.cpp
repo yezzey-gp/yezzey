@@ -32,6 +32,7 @@ std::string yezzey_block_file_path(const std::string &nspname,
          std::to_string(coords.dboid) + "_";
 
   auto md = yezzey_fqrelname_md5(nspname, relname);
+  url += md;
   url += "_" + std::to_string(coords.filenode) + "_" +
          std::to_string(coords.blkno) + "_";
 

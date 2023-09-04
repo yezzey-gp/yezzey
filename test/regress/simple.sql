@@ -23,5 +23,9 @@ SELECT * FROM yezzey_offload_relation_status('regaoty');
 SELECT * FROM yezzey_offload_relation_status_per_filesegment('regaoty');
 SELECT * FROM yezzey_relation_describe_external_storage_structure('regaoty');
 
+select * from gp_dist_random('yezzey.yezzey_expire_index');
+DROP TABLE regaoty;
+select * from gp_dist_random('yezzey.yezzey_expire_index');
+
 \c postgres
 DROP DATABASE testreg;

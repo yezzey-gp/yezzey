@@ -3,9 +3,8 @@
 #include "util.h"
 #include "ylister.h"
 
-
 std::string yezzey_fqrelname_md5(const std::string &nspname,
-                                   const std::string &relname);
+                                 const std::string &relname);
 
 /* prefix in external storage, block file path */
 /* Craft path in format

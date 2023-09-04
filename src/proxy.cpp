@@ -12,6 +12,9 @@
 #include "io.h"
 #include "io_adv.h"
 
+#include "url.h"
+#include "yezzey_meta.h"
+
 typedef struct YVirtFD {
   int y_vfd; /* Either YEZZEY_* preserved fd or pg internal fd >= 9 */
 
@@ -193,7 +196,6 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
       yfd.fileMode = fileMode;
       yfd.modcount = modcount;
       yfd.reloid = reloid;
-
       yfd.offloaded = offloaded;
 
       /* we dont need to interact with s3 while in recovery*/
@@ -274,14 +276,14 @@ void yezzey_FileClose(SMGRFile file) {
       /* record file only if non-zero bytes was stored */
       if (yfd.op_write) {
         /* insert entry in yezzey index */
-        YezzeyVirtualIndexInsert(
-            YezzeyFindAuxIndex(yfd.reloid), yfd.coord.blkno /* blkno*/,
-            yfd.coord.filenode, yfd.op_start_offset,
+        YezzeyUpdateMetadataRelations(
+            YezzeyFindAuxIndex(yfd.reloid), yfd.reloid, yfd.coord.filenode,
+            yfd.coord.blkno /* blkno*/, yfd.op_start_offset,
             yfd.offset /* io operation finish offset */, 1 /* encrypted */,
             0 /* reused */, yfd.modcount,
             yfd.handler->writer_->getInsertionStorageLsn(),
-            yfd.handler->writer_->getExternalStoragePath()
-                .c_str() /* path ? */);
+            yfd.handler->writer_->getExternalStoragePath().c_str() /* path ? */,
+            yezzey_fqrelname_md5(yfd.nspname, yfd.relname).c_str());
       }
     } else {
 
@@ -398,9 +400,9 @@ int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) {
 
       /* Do it only on QE? */
       if (Gp_role == GP_ROLE_EXECUTE) {
-        (void)emptyYezzeyIndexBlkno(YezzeyFindAuxIndex(yfd.reloid),
-                                    yfd.handler->adv_->coords_.blkno,
-                                    yfd.handler->adv_->coords_.filenode);
+        (void)emptyYezzeyIndexBlkno(YezzeyFindAuxIndex(yfd.reloid), yfd.reloid,
+                                    yfd.handler->adv_->coords_.filenode,
+                                    yfd.handler->adv_->coords_.blkno);
       }
     }
     return 0;

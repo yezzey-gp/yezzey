@@ -61,6 +61,7 @@
 #include "partition.h"
 #include "xvacuum.h"
 #include "yezzey_expire.h"
+#include "init.h"
 
 
 #define GET_STR(textp)                                                         \
@@ -106,8 +107,7 @@ PG_FUNCTION_INFO_V1(yezzey_delete_chunk);
 
 /* Create yezzey metadata tables */
 Datum yezzey_init_metadata(PG_FUNCTION_ARGS) {
-  (void)YezzeyCreateOffloadPolicyRelation();
-  (void)YezzeyCreateRelationExpireIndex();
+  YezzeyInitMetadata();
   PG_RETURN_VOID();
 }
 
@@ -157,13 +157,13 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   Snapshot appendOnlyMetaDataSnapshot;
   Oid origrelfilenode;
   int rc;
-  ObjectAddress object; 
   /* yezzey aux index oid */
   Oid yandexoid;
 
   /*  XXX: maybe fix lock here to take more granular lock
    */
   aorel = relation_open(reloid, AccessExclusiveLock);
+
   nvp = aorel->rd_att->natts;
   origrelfilenode = aorel->rd_rel->relfilenode;
 
@@ -239,6 +239,9 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
     elog(ERROR, "not an AO/AOCS relation, no action performed");
   }
 
+  /* record that relation on its current reloid is expired */
+  YezzeyRecordRelationExpireLsn(aorel);
+
   /*
   * Update relation status row in yezzet.offload_metadat
   * State that relation is local, but used to be offloaded
@@ -261,10 +264,14 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   /* make changes visible */
   CommandCounterIncrement();
 
-  object.classId = RelationRelationId;
-  object.objectId = yandexoid;
-  object.objectSubId = 0;
-  performDeletion(&object, DROP_CASCADE, PERFORM_DELETION_INTERNAL);
+  /* Check if relation hash dedicated vitr index and drop */
+  if (yandexoid != YEZZEY_TEMP_INDEX_RELATION) {
+    ObjectAddress object; 
+    object.classId = RelationRelationId;
+    object.objectId = yandexoid;
+    object.objectSubId = 0;
+    performDeletion(&object, DROP_CASCADE, PERFORM_DELETION_INTERNAL);
+  }
 
   /* update metadata relations */
   YezzeyLoadRealtion(reloid);

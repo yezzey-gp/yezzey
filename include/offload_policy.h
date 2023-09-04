@@ -46,7 +46,6 @@ typedef FormData_yezzey_offload_metadata *Form_yezzey_offload_metadata;
 /* Status for loaded relation  */
 #define Offload_policy_local 3
 
-
 #ifdef __cplusplus
 bool YezzeyCheckRelationOffloaded(Oid relid);
 #endif
