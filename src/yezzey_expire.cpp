@@ -9,7 +9,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     return;
   }
   /* check that relation is yezzey-related. */
-  if (!YezzeyCheckRelationOffloaded(RelationGetRelid(rel))) {
+  if (rel->rd_node != YEZZEYTABLESPACE_OID) {
     /* noop */
     return;
   }
@@ -97,7 +97,8 @@ const std::string yezzey_expire_index_relname = "yezzey_expire_index";
 const std::string yezzey_expire_index_indx_relname = "yezzey_expire_index_indx";
 
 void YezzeyCreateRelationExpireIndex(void) {
-  { /* check existed, if no, return */ }
+  { /* check existed, if no, return */
+  }
   TupleDesc tupdesc;
 
   ObjectAddress baseobject;

@@ -185,7 +185,7 @@ void yezzey_process_database(Datum main_arg) {
   ereport(LOG, (errmsg("yezzey bgworker: processing database \"%s\"", dbname)));
 
 
-  if (Gp_role = GP_ROLE_DISPATCH) {
+  if (Gp_role == GP_ROLE_DISPATCH) {
     (void)processOffloadedRelations();
     (void)processPartitionOffload();
   }
