@@ -9,7 +9,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     return;
   }
   /* check that relation is yezzey-related. */
-  if (rel->rd_node != YEZZEYTABLESPACE_OID) {
+  if (rel->rd_node.spcNode != YEZZEYTABLESPACE_OID) {
     /* noop */
     return;
   }
