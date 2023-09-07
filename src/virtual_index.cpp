@@ -121,15 +121,15 @@ Oid YezzeyFindAuxIndex_internal(Oid reloid) {
 
 Oid YezzeyFindAuxIndex(Oid reloid) { return YEZZEY_TEMP_INDEX_RELATION; }
 
-void emptyYezzeyIndex(Oid yezzey_index_oid, Oid reloid) {
+void emptyYezzeyIndex(Oid yezzey_index_oid, Oid relfilenode) {
   HeapTuple tuple;
   ScanKeyData skey[1];
 
   /* DELETE FROM yezzey.yezzey_virtual_index_<oid> WHERE reloid = <reloid> */
   auto rel = heap_open(yezzey_index_oid, RowExclusiveLock);
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(reloid));
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_filenode, BTEqualStrategyNumber,
+              F_OIDEQ, ObjectIdGetDatum(relfilenode));
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
@@ -149,9 +149,9 @@ void emptyYezzeyIndex(Oid yezzey_index_oid, Oid reloid) {
 } /* end emptyYezzeyIndex */
 
 /* Update this settings if where clause expr changes */
-#define YezzeyVirtualIndexScanCols 3
+#define YezzeyVirtualIndexScanCols 2
 
-void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid, Oid relfilenode,
+void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid /* not used */, Oid relfilenode,
                            int blkno) {
 
   HeapTuple tuple;
@@ -167,13 +167,13 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid, Oid relfilenode,
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(reloid));
+  // ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
+  //             F_OIDEQ, ObjectIdGetDatum(reloid));
 
-  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_filenode,
               BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
 
-  ScanKeyInit(&skey[2], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
+  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
   auto desc = heap_beginscan(rel, snap, YezzeyVirtualIndexScanCols, skey);
@@ -237,7 +237,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 }
 
 std::vector<ChunkInfo>
-YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid,
+YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid /* not used */,
                       Oid relfilenode, int blkno) {
 
   /* SELECT external_path
@@ -254,13 +254,13 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid,
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(reloid));
+  // ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_reloid, BTEqualStrategyNumber,
+  //             F_OIDEQ, ObjectIdGetDatum(reloid));
 
-  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_filenode,
+  ScanKeyInit(&skey[0], Anum_yezzey_virtual_index_filenode,
               BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(relfilenode));
 
-  ScanKeyInit(&skey[2], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
+  ScanKeyInit(&skey[1], Anum_yezzey_virtual_index_blkno, BTEqualStrategyNumber,
               F_INT4EQ, Int32GetDatum(blkno));
 
   /* TBD: Read index */

@@ -28,9 +28,15 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
   ReleaseSysCache(tp);
 
+  /*
+  * It it important that we drop all chunks related to
+  * relation filenode, not oid, since owner of particular
+  * relifilenode may may with time thought operations 
+  * like vacuum, expand (the main case) etc...
+  */
   /* clear yezzey index. */
   emptyYezzeyIndex(YezzeyFindAuxIndex(RelationGetRelid(rel)),
-                   RelationGetRelid(rel));
+                   rel->rd_node.relNode);
 
 #define YezzeySetExpireIndexCols 1
   ScanKeyData skey[YezzeySetExpireIndexCols];

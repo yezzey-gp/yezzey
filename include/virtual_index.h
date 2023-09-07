@@ -52,7 +52,7 @@ typedef struct {
 
 EXTERNC Oid YezzeyFindAuxIndex(Oid reloid);
 
-EXTERNC void emptyYezzeyIndex(Oid yezzey_index_oid, Oid relation);
+EXTERNC void emptyYezzeyIndex(Oid yezzey_index_oid, Oid relfilenode);
 
 EXTERNC void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid relation,
                                    Oid relfilenode, int blkno);
