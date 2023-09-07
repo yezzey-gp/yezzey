@@ -48,6 +48,7 @@ OBJS = \
 	src/yezzey_expire.o \
 	src/init.o \
 	src/meta.o \
+	src/json.o \
 	smgr.o worker.o yezzey.o \
 	./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
 

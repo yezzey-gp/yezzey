@@ -457,6 +457,10 @@ void yezzey_define_gucs() {
                              NULL, &storage_bucket, "", PGC_SUSET, 0, NULL,
                              NULL, NULL);
 
+  DefineCustomStringVariable("yezzey.backup_bucket", "external storage backup bucket",
+                             NULL, &backup_bucket, "", PGC_SUSET, 0, NULL,
+                             NULL, NULL);
+
   DefineCustomStringVariable("yezzey.storage_config",
                              "Storage config path for yezzey external storage.",
                              NULL, &storage_config, "", PGC_SUSET, 0, NULL,

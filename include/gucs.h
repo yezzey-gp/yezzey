@@ -13,6 +13,7 @@ extern bool use_gpg_crypto;
 /* ----- STORAGE -----  */
 extern char *storage_prefix;
 extern char *storage_bucket;
+extern char *backup_bucket;
 extern char *storage_config;
 extern char *storage_host;
 
