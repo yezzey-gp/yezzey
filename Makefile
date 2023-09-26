@@ -4,8 +4,6 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 # -Werror=implicit-fallthrough=3
 
-override CXX = g++-8
-
 COMMON_OBJS = \
 	gpreader.o gpwriter.o gpcleaner.o \
 	s3conf.o s3utils.o s3log.o s3url.o \
