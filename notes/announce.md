@@ -1,6 +1,6 @@
 # Yezzey: GPDB extension for compute-storage disaggregation
 
-Here's a simple walk-through usage guide and some benchmark statistics base on [NY Yellow Taxi](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) 2013-2022 dataset.
+Here's a minimalistic usage guide and some benchmark statistics base on [NY Yellow Taxi](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) 2013-2022 dataset.
 
 ## Offloading data into cloud storage
 Let's create a table and populate it with data.
@@ -51,6 +51,12 @@ Test queries:
 
 ## Benchmark results
 
+Benchmark hardware:
+* Master x2 s3-c2-m8 (2 vCPU, 100% vCPU rate, 8 ГБ RAM) 20 ГБ network-ssd
+* Segment hosts x2 i3-c24-m192 (24 vCPU, 100% vCPU rate, 192 ГБ RAM) 368 ГБ local-ssd
+* 4 segments per host
+
+Here's the table with results of executing benchmark queries against tables with different storage engines. GP 1,2,3 columns indicate runs over regular Greenplum append-optimized column store. Yezzey 1, 2, 3 present results for tables in S3-compatible Yandex Object storage. PXF columns indicate results for Platform Extension Framework.
 | Query | GP 1 | GP 2 | GP 3 | Yezzey 1 | Yezzey 2 | Yezzey 3 | PXF 1 | PXF 2 | PXF 3 |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
 | 1. ```select count(1)from <table>;```|14.614s|15.973s|14.971s|20.938s|21.788s|19.429s|6m 6s|6m 6s|6m 4s|
@@ -61,3 +67,8 @@ Test queries:
 | 6. ```select z.locationid, count(r.vendorid), sum(r.total_amount) from <table> r left join ny_taxi_zones_src_gp z on r.pulocationid=z.locationid where r.pickup_date between '2014-01-01'::date and '2016-12-31'::date group by 1``` |28.818s|27.413s|28.622s|37.807s|36.25s|36.117s|3m 45s|3m 37s|3m 35s|
 | 7. ```select z.locationid, count(r.vendorid), sum(r.total_amount) from <table> r left join ny_taxi_zones_src_gp z on r.pulocationid=z.locationid group by 1``` | 56.936s|55.202s|55.626s|1m 18s|1m 13s|1m 10s|8m 13s|7m 59s|8m 51s|
 
+As you can see, Yezzey query performance is comparable to file-system tables, while storage price is on par with PXF.
+We also tried [external tables with S3 protocol](https://docs.vmware.com/en/VMware-Greenplum/6/greenplum-database/admin_guide-external-g-s3-protocol.html) and obtained results similar to PXF.
+
+## Conclusion
+Yezzey is open source Greenplum extensions providing data analitics with performance of local drives and price of S3-compatible storage.
