@@ -167,16 +167,13 @@ EXTERNC int yezzey_FileSync(SMGRFile file)
 
 #if GP_VERSION_NUM >= 70000
 SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
-                                 FileName fileName, int fileFlags,
+                                 const char * fileName, int fileFlags,
                                  int64 modcount) {
 #else
 SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
-                                 FileName fileName, int fileFlags, int fileMode,
+                                 const char * fileName, int fileFlags, int fileMode,
                                  int64 modcount) {
 #endif
-  elog(yezzey_ao_log_level,
-       "yezzey_AORelOpenSegFile: path name open file %s with modcount %ld",
-       fileName, modcount);
 
   if (modcount != -1) {
     /* advance modcount to the value it will be after commit */
