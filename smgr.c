@@ -282,6 +282,9 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileRead = yezzey_FileRead,
     .smgr_FileSync = yezzey_FileSync,
     .smgr_FileTruncate = yezzey_FileTruncate,
+#if GP_VERSION_NUM < 70000
+    .smgr_FileSeek = yezzey_FileSeek,
+#endif
 };
 
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode) {
