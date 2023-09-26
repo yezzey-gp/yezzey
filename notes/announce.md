@@ -32,7 +32,7 @@ select yezzey_define_offload_policy('ny_taxi_yezzey_1_prt_13');
 ```
 
 ## Benchmarking
-Fact tables with trips for all engines were intentionally distributed randomly into segments (DISTRIBUTED RANDOMLY) in order to evenly distribute data and guarantee the call of a redistricting operation.
+Fact tables containing trips for all engines were intentionally DISTRIBUTED RANDOMLY to ensure an even distribution of data and to guarantee the call of a redistribution operation.
 
 Test queries:
 1. Aggregate without redistribution - ```select count(1) from <table>```;
