@@ -21,7 +21,7 @@ PARTITION BY RANGE(pickup_date)
 
 insert into ny_taxi_yezzey select * from ny_taxi_src_gp;
 ```
-See [scripts](https://github.com/x4m/yezzey/edit/benchmark_post/notes/scripts) for details. Now we can instruct Greenplum to put this data into cold storage.
+See [scripts](https://github.com/x4m/yezzey/edit/benchmark_post/notes/scripts) for details. Now we can tell Greenplum to put this data into cold storage.
 
 ```
 select yezzey_define_offload_policy('ny_taxi_yezzey_1_prt_10');
