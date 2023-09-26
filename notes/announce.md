@@ -1,6 +1,6 @@
 # Yezzey: GPDB extension for compute-storage disaggregation
 
-Here's a minimalistic usage guide and some benchmark statistics base on [NY Yellow Taxi](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) 2013-2022 dataset.
+Here's a minimalist usage guide and some benchmark statistics based on the [NY Yellow Taxi](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) 2013-2022 dataset.
 
 ## Offloading data into cloud storage
 Let's create a table and populate it with data.
