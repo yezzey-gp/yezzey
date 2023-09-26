@@ -145,9 +145,9 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
 }
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC int yezzey_FileSync(SMGRFile file, uint32 wait_event_info);
+EXTERNC int yezzey_FileSync(SMGRFile file, uint32 wait_event_info)
 #else
-EXTERNC int yezzey_FileSync(SMGRFile file);
+EXTERNC int yezzey_FileSync(SMGRFile file)
 #endif
 {
   File actual_fd = YVirtFD_cache[file].y_vfd;
@@ -261,7 +261,7 @@ SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
         yfd.y_vfd = PathNameOpenFile(yfd.filepath.c_str(),
                                      yfd.fileFlags);
 #else
-        yfd.y_vfd = PathNameOpenFile(yfd.filepath.c_str(),
+        yfd.y_vfd = PathNameOpenFile((char*) yfd.filepath.c_str(),
                                      yfd.fileFlags, yfd.fileMode);
 #endif
         if (yfd.y_vfd == -1) {
@@ -344,6 +344,21 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount, off_t offset, uint
       return amount;
     }
     yezzey_FileSeek(file, offset, SEEK_SET);
+
+#ifdef CACHE_LOCAL_WRITES_FEATURE
+/* CACHE_LOCAL_WRITES_FEATURE to do*/
+#endif
+    size_t rc = amount;
+    if (!yfd.handler->io_write(buffer, &rc)) {
+      elog(WARNING, "failed to write to external storage");
+      return -1;
+    }
+    elog(yezzey_ao_log_level,
+         "yezzey_FileWrite: write %d bytes, %ld transfered, yezzey fd %d",
+         amount, rc, file);
+    yfd.offset += rc;
+    yfd.op_write += rc;
+    return rc;
   }
 
 #else 
@@ -363,16 +378,9 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
        * amount) ? */
       return amount;
     }
-  }
-#endif
 
-
-#ifdef ALLOW_MODIFY_EXTERNAL_TABLE
 #ifdef CACHE_LOCAL_WRITES_FEATURE
 /* CACHE_LOCAL_WRITES_FEATURE to do*/
-#endif
-#else
-    elog(ERROR, "external table modifications are not supported yet");
 #endif
     size_t rc = amount;
     if (!yfd.handler->io_write(buffer, &rc)) {
@@ -386,6 +394,8 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
     yfd.op_write += rc;
     return rc;
   }
+#endif
+
   elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
 
 #if GP_VERSION_NUM >= 70000
@@ -445,10 +455,11 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 }
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset, uint32 wait_event_info);
+EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset, uint32 wait_event_info)
 #else
-EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset);
+EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) 
 #endif 
+{
   YVirtFD &yfd = YVirtFD_cache[yezzey_fd];
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
