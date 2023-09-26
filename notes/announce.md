@@ -16,7 +16,7 @@ with
 DISTRIBUTED RANDOMLY
 PARTITION BY RANGE(pickup_date) 
 (
--- All the stuff you would typically do with Greenplum Append-Optimized table
+-- All the stuff you would normally do with the Greenplum Append-Optimised table
 );
 
 insert into ny_taxi_yezzey select * from ny_taxi_src_gp;
