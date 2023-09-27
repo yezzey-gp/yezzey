@@ -72,7 +72,7 @@ We also tried [external tables using S3 protocol](https://docs.vmware.com/en/VMw
 1. Yezzey is compatible with [WAL-G](https://github.com/wal-g/wal-g). We want to make instant S3 offload when the table did not change much since recent backups.
 2. Local caching is not implemented yet.
 3. When you drop a table - it might be a part of WAL-G backup. Thus, S3 space is not immidiately released, but rather occupied until backup deletion. Probably one day this trait will be transformed into some form of time travel mechanism.
-4. We want to make data sharing possible. Some data catalog service would make possible to share same table between many clusters.
+4. We want to make table sharing between clusters possible. Some data catalog service would make possible to share same table between many clusters.
 5. Transforming Yezzey into access method would allow instant expand: ability to add new compute nodes without doing heavy redistribution operations(aka expand). We reffer to this idea as [Yeneid](https://github.com/yezzey-gp/yeneid).
 
 ## Conclusion
