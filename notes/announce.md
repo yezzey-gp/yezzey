@@ -23,12 +23,10 @@ insert into ny_taxi_yezzey select * from ny_taxi_src_gp;
 ```
 See [scripts](https://github.com/x4m/yezzey/edit/benchmark_post/notes/scripts) for details. Now we can tell Greenplum to put this data into cold storage.
 
+TODO: Configure S3 bucket and GPG encryption keys.
+
 ```
-select yezzey_define_offload_policy('ny_taxi_yezzey_1_prt_10');
-select yezzey_define_offload_policy('ny_taxi_yezzey_1_prt_11');
-select yezzey_define_offload_policy('ny_taxi_yezzey_1_prt_12');
-select yezzey_define_offload_policy('ny_taxi_yezzey_1_prt_13');
-...
+select yezzey_define_offload_policy('ny_taxi_yezzey');
 ```
 
 ## Benchmarking
@@ -69,6 +67,13 @@ Here's the table showing the results of running benchmark queries against tables
 
 As you can see, the query performance of Yezzey is comparable to file system tables, while the storage price is comparable to PXF.
 We also tried [external tables using S3 protocol](https://docs.vmware.com/en/VMware-Greenplum/6/greenplum-database/admin_guide-external-g-s3-protocol.html) and got results similar to PXF.
+
+## Limitations and Roadmap
+1. Yezzey is compatible with [WAL-G](https://github.com/wal-g/wal-g). We want to make instant S3 offload when the table did not change much since recent backups.
+2. Local caching is not implemented yet.
+3. When you drop a table - it might be a part of WAL-G backup. Thus, S3 space is not immidiately released, but rather occupied until backup deletion. Probably one day this trait will be transformed into some form of time travel mechanism.
+4. We want to make data sharing possible. Some data catalog service would make possible to share same table between many clusters.
+5. Transforming Yezzey into access method would allow instant expand: ability to add new compute nodes without doing heavy redistribution operations. We reffer to this idea as [Yeneid](https://github.com/yezzey-gp/yeneid).
 
 ## Conclusion
 Yezzey is an open source Greenplum extension that provides data analytics with the performance of local drives and the price of S3-compatible storage.
