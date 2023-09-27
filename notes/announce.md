@@ -77,3 +77,4 @@ We also tried [external tables using S3 protocol](https://docs.vmware.com/en/VMw
 
 ## Conclusion
 Yezzey is an open source Greenplum extension that provides data analytics with the performance of local drives and the price of S3-compatible storage.
+Easies way to test out this technology is to create a cluster in [Yandex Cloud Managed Greenplum](https://cloud.yandex.com/en/services/managed-greenplum). The technology is fully open source, Yandex Cloud engineers are committed to develop Yezzey together with community.
