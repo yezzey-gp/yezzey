@@ -21,9 +21,7 @@ PARTITION BY RANGE(pickup_date)
 
 insert into ny_taxi_yezzey select * from ny_taxi_src_gp;
 ```
-See [scripts](https://github.com/x4m/yezzey/edit/benchmark_post/notes/scripts) for details. Now we can tell Greenplum to put this data into cold storage.
-
-TODO: Configure S3 bucket and GPG encryption keys.
+See [scripts](https://github.com/x4m/yezzey/edit/benchmark_post/notes/scripts) for details. Also you will need to setup [s3conf](https://github.com/yezzey-gp/yezzey/blob/v1.8/s3test.conf), credentials and GPG encryption keys. Now we can tell Greenplum to put this data into cold storage.
 
 ```
 select yezzey_define_offload_policy('ny_taxi_yezzey');
