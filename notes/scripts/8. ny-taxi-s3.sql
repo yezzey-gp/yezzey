@@ -1,7 +1,17 @@
+/* 
+
+    To reproduce please change the next variables:
+
+        <bucket-name> - your S3 bucket
+
+    Note that script is relevant for Yandex Object Storage (storage.yandexcloud.net). To use with another S3 storage please change the endpoint name
+
+ */
+
 -- drop external table ny_taxi_s3_2013_rw
 create writable external table ny_taxi_s3_2013_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2013/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2013/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
@@ -9,7 +19,7 @@ distributed RANDOMLY;
 -- drop external table ny_taxi_s3_2013_ro
 create readable external table ny_taxi_s3_2013_ro
 (like ny_taxi_s3_2013_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2013/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2013/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2013_rw
@@ -29,14 +39,14 @@ Finish time	Fri Aug 04 00:20:18 MSK 2023
 -- drop external table ny_taxi_s3_2014_rw
 create writable external table ny_taxi_s3_2014_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2014/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2014/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2014_ro
 create readable external table ny_taxi_s3_2014_ro
 (like ny_taxi_s3_2014_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2014/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2014/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2014_rw
@@ -56,14 +66,14 @@ Finish time	Fri Aug 04 00:25:12 MSK 2023
 -- drop external table ny_taxi_s3_2015_rw
 create writable external table ny_taxi_s3_2015_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2015/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2015/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2015_ro
 create readable external table ny_taxi_s3_2015_ro
 (like ny_taxi_s3_2015_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2015/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2015/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2015_rw
@@ -83,14 +93,14 @@ Finish time	Fri Aug 04 00:33:56 MSK 2023
 -- drop external table ny_taxi_s3_2016_rw
 create writable external table ny_taxi_s3_2016_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2016_ro
 create readable external table ny_taxi_s3_2016_ro
 (like ny_taxi_s3_2016_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2016_rw
@@ -111,14 +121,14 @@ Finish time	Fri Aug 04 00:38:37 MSK 2023
 -- drop external table ny_taxi_s3_2016_rw
 create writable external table ny_taxi_s3_2016_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2016_ro
 create readable external table ny_taxi_s3_2016_ro
 (like ny_taxi_s3_2016_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2016/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2016_rw
@@ -138,14 +148,14 @@ Finish time	Fri Aug 04 00:38:37 MSK 2023
 -- drop external table ny_taxi_s3_2017_rw
 create writable external table ny_taxi_s3_2017_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2017/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2017/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2017_ro
 create readable external table ny_taxi_s3_2017_ro
 (like ny_taxi_s3_2017_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2017/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2017/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2017_rw
@@ -166,14 +176,14 @@ Finish time	Fri Aug 04 00:50:12 MSK 2023
 -- drop external table ny_taxi_s3_2018_rw
 create writable external table ny_taxi_s3_2018_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2018/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2018/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2018_ro
 create readable external table ny_taxi_s3_2018_ro
 (like ny_taxi_s3_2018_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2018/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2018/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2018_rw
@@ -193,14 +203,14 @@ Finish time	Fri Aug 04 10:47:38 MSK 2023
 -- drop external table ny_taxi_s3_2019_rw
 create writable external table ny_taxi_s3_2019_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2019/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2019/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2019_ro
 create readable external table ny_taxi_s3_2019_ro
 (like ny_taxi_s3_2019_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2019/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2019/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2019_rw
@@ -220,14 +230,14 @@ Finish time	Fri Aug 04 11:47:04 MSK 2023
 -- drop external table ny_taxi_s3_2020_rw
 create writable external table ny_taxi_s3_2020_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2020/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2020/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2020_ro
 create readable external table ny_taxi_s3_2020_ro
 (like ny_taxi_s3_2020_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2020/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2020/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2020_rw
@@ -247,14 +257,14 @@ Finish time	Fri Aug 04 11:54:40 MSK 2023
 -- drop external table ny_taxi_s3_2021_rw
 create writable external table ny_taxi_s3_2021_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2021/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2021/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2021_ro
 create readable external table ny_taxi_s3_2021_ro
 (like ny_taxi_s3_2021_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2021/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2021/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2021_rw
@@ -273,14 +283,14 @@ Finish time	Fri Aug 04 11:56:47 MSK 2023
 -- drop external table ny_taxi_s3_2022_rw
 create writable external table ny_taxi_s3_2022_rw
 (like ny_taxi_src_gp)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2022/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2022/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv'
 distributed RANDOMLY;
 
 -- drop external table ny_taxi_s3_2022_ro
 create readable external table ny_taxi_s3_2022_ro
 (like ny_taxi_s3_2022_rw)
-LOCATION('s3://storage.yandexcloud.net/alexey-luzan-prod/s3-test/2022/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
+LOCATION('s3://storage.yandexcloud.net/<bucket-name>/s3-test/2022/ config_server=http://10.129.0.13:8553/s3.config region=ru-central1-a')
 FORMAT 'csv';
 
 insert into ny_taxi_s3_2022_rw

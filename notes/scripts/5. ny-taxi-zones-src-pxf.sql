@@ -1,8 +1,14 @@
 /* 
 
-select * from ny_taxi_zones_src_pxf 
+    To reproduce please change the next variables:
 
-*/ 
+        <bucket-name> - your S3 bucket
+        <s3-access-key> - your S3 access key
+        <s3-secret-key> - your S3 secret key
+
+    Note that script is relevant for Yandex Object Storage (storage.yandexcloud.net). To use with another S3 storage please change the endpoint name
+
+ */
 
 -- drop external table ny_taxi_zones_src_pxf
 
