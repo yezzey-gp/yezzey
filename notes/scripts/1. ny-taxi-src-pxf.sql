@@ -1,3 +1,14 @@
+/* 
+
+    To reproduce please change the next variables:
+
+        <bucket-name> - your S3 bucket
+        <s3-access-key> - your S3 access key
+        <s3-secret-key> - your S3 secret key
+
+    Note that script is relevant for Yandex Object Storage (storage.yandexcloud.net). To use with another S3 storage please change the endpoint name
+
+ */
 
 
 select RatecodeID, count(1) from ny_taxi_src_pxf_2018
@@ -30,7 +41,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2013/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2013/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -58,7 +69,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2014/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2014/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -87,7 +98,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2015/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2015/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -116,7 +127,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2016/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2016/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -145,7 +156,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2017/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2017/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -173,7 +184,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2018/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2018/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -201,7 +212,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2019/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2019/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -230,7 +241,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2020/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2020/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -259,7 +270,7 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2021/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2021/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );
 
@@ -287,6 +298,6 @@ total_amount float(32),
 congestion_surcharge FLOAT8
 , airport_fee FLOAT8
 )
-location ('pxf://alexey-luzan-prod/ny-taxi/2022/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
+location ('pxf://<bucket-name>/ny-taxi/2022/*/?PROFILE=s3:parquet&accesskey=<s3-access-key>&secretkey=<s3-secret-key>&endpoint=storage.yandexcloud.net')
 ON ALL
 FORMAT 'CUSTOM' ( FORMATTER='pxfwritable_import' );

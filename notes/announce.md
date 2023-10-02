@@ -53,6 +53,8 @@ Benchmark hardware:
 * 4 segments per host
 
 Here's the table showing the results of running benchmark queries against tables with different storage engines. GP 1, 2, 3 columns show runs over regular Greenplum append-optimised column storage. Yezzey 1, 2, 3 show results for tables in S3-compatible Yandex Object storage. PXF columns show results for Platform Extension Framework.
+Notice: all the PXF-tables were created as writable external tables with Parquet format.
+
 | Query | GP 1 | GP 2 | GP 3 | Yezzey 1 | Yezzey 2 | Yezzey 3 | PXF 1 | PXF 2 | PXF 3 |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
 | 1. ```select count(1)from <table>;```|14.614s|15.973s|14.971s|20.938s|21.788s|19.429s|6m 6s|6m 6s|6m 4s|
