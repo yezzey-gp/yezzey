@@ -37,7 +37,6 @@ Read/write logic in GP with AO/AOCS tables works in following way:
 
 * In case of read operation,
 * Open AO/AOCS segment file.
-*
 * Set read/write offset to either 0 or $logicalEof
 * Read/Write X bytes
 * Close file
@@ -61,9 +60,9 @@ Algo of AO/AOCS table offloading:
 2) Write all table segments files to s3, one by one. Write them with name segment<gpsegment>/base/<dboid>/<tableoid>.<segnum>.0 (last number means that zero is this file logical eof start)
 3) Change relation tablespace to Yezzey virual tablespace (with pre-defined oid = 8555)
 
-Write to already offloaeded AO/AOCS segment logic is following:
+Write to already offloaded AO/AOCS segment logic is following:
 
-1) For each AO/AOCS segment we firstly resolve resolve highest epoch in which this changes are made. This is last number from lexicographically largest segment<gpsegment>/base/\<dboid\>/\<tableoid\>.\<segnum\>.0.* file. Let in be Y
+1) For each AO/AOCS segment we firstly resolve highest epoch in which these changes are made. This is the last number from the lexicographically largest segment<gpsegment>/base/\<dboid\>/\<tableoid\>.\<segnum\>.0.* file. Let in be Y
 2) Write new file with name  segment<gpsegment>/base/\<dboid\>/\<tableoid\>.\<segnum\>.\<current_write_offset=logical_end_of_file\>.Y
 3) success
 

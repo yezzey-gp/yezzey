@@ -48,13 +48,12 @@ Test queries:
 ## Benchmark results
 
 Benchmark hardware:
-* Master x2 s3-c2-m8 (2 vCPU, 100% vCPU rate, 8 ГБ RAM) 20 ГБ network-ssd
-* Segment hosts x2 i3-c24-m192 (24 vCPU, 100% vCPU rate, 192 ГБ RAM) 368 ГБ local-ssd
+* Master x2 s3-c2-m8 (2 vCPU, 100% vCPU rate, 8 GB RAM) 20 GB network-ssd
+* Segment hosts x2 i3-c24-m192 (24 vCPU, 100% vCPU rate, 192 GB RAM) 368 GB local-ssd
 * 4 segments per host
 
 Here's the table showing the results of running benchmark queries against tables with different storage engines. GP 1, 2, 3 columns show runs over regular Greenplum append-optimised column storage. Yezzey 1, 2, 3 show results for tables in S3-compatible Yandex Object storage. PXF columns show results for Platform Extension Framework.
 Notice: all the PXF-tables were created as writable external tables with Parquet format.
-
 
 | Query | GP 1 | GP 2 | GP 3 | Yezzey 1 | Yezzey 2 | Yezzey 3 | PXF 1 | PXF 2 | PXF 3 |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |

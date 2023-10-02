@@ -10,6 +10,7 @@
 
  */
 
+
 select RatecodeID, count(1) from ny_taxi_src_pxf_2018
 group by 1
 order by 1
