@@ -23,8 +23,8 @@ EXTERNC int yezzey_FileSync(SMGRFile file);
 #endif
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
-                                         char *relname, const char * fileName,
+EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname,
+                                         const char *relname, const char * fileName,
                                          int fileFlags,
                                          int64 modcount);
 #else

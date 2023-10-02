@@ -284,6 +284,8 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileTruncate = yezzey_FileTruncate,
 #if GP_VERSION_NUM < 70000
     .smgr_FileSeek = yezzey_FileSeek,
+#else
+    .smgr_FileDiskSize = yezzey_FileDiskSize,
 #endif
 };
 
