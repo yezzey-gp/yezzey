@@ -1,5 +1,6 @@
 #include "offload_policy.h"
 #include "offload.h"
+#include "yezzey_heap_api.h"
 
 /*
 
@@ -21,14 +22,14 @@ bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
+  auto offrel = yezzey_relation_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
 
   /* SELECT FROM yezzey.offload_metadata WHERE reloid = i_reloid; */
 
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = heap_beginscan(offrel, snap, 1, skey);
+  auto scan = table_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
@@ -160,7 +161,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = heap_beginscan(offrel, snap, 1, skey);
+  auto scan = table_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
@@ -305,7 +306,7 @@ void YezzeyLoadRealtion(Oid i_reloid) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(rel, snap, 1, skey);
+  auto desc = table_beginscan(rel, snap, 1, skey);
 
   /* XXX: check that only one tuple mathed query */
   auto oldtuple = heap_getnext(desc, ForwardScanDirection);

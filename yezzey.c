@@ -16,7 +16,10 @@
 #include "access/aocssegfiles.h"
 #include "access/aosegfiles.h"
 #include "storage/lmgr.h"
+
+#if PG_VERSION_NUM < 10000
 #include "utils/tqual.h"
+#endif
 
 #include "utils/fmgroids.h"
 

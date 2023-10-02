@@ -87,7 +87,9 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
   auto progress = virtual_size;
   auto offset_start = progress;
+#if PG_VERSION_NUM < 120000
   FileSeek(vfd, progress, SEEK_SET);
+#endif
   rc = 0;
 
   while (progress < logicalEof) {

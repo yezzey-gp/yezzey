@@ -60,7 +60,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(yexprel, snap, YezzeySetExpireIndexCols, skey);
+  auto desc = table_beginscan(yexprel, snap, YezzeySetExpireIndexCols, skey);
 
   HeapTuple tuple;
 
@@ -240,7 +240,7 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(rel, snap, YezzeyExpireIndexCols, skey);
+  auto desc = table_beginscan(rel, snap, YezzeyExpireIndexCols, skey);
 
   auto tuple = heap_getnext(desc, ForwardScanDirection);
 
