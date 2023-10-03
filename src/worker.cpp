@@ -1,14 +1,14 @@
 /*
-* file: src/worker.cpp
-*/
+ * file: src/worker.cpp
+ */
 
 #include "worker.h"
 #include "gucs.h"
 #include "offload.h"
 #include "offload_policy.h"
 
-#include "yezzey_heap_api.h"
 #include "pg.h"
+#include "yezzey_heap_api.h"
 
 void processPartitionOffload() {
   SetCurrentStatementStartTimestamp();

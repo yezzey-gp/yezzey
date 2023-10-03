@@ -1,8 +1,8 @@
 
 /*
-*
-* file: src/offload.cpp
-*/
+ *
+ * file: src/offload.cpp
+ */
 
 #include "offload.h"
 #include "gucs.h"
@@ -42,8 +42,8 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
   if (RelationIsAoRows(aorel)) {
     /* Get information about all the file segments we need to scan */
 #if GP_VERSION_NUM >= 70000
-    segfile_array =
-        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
+    segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                      &total_segfiles, &segrelid);
 #else
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
@@ -76,10 +76,10 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
 #if GP_VERSION_NUM < 70000
-      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
-#else 
-      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+#else
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles, &segrelid);
 #endif
     for (int inat = 0; inat < nvp; ++inat) {
