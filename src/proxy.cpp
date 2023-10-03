@@ -128,7 +128,7 @@ int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 }
 #endif
 
-#if PG_VERSION_NUM < 70000
+#if GP_VERSION_NUM < 70000
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
