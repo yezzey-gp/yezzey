@@ -24,33 +24,35 @@ EXTERNC int yezzey_FileSync(SMGRFile file);
 
 #if GP_VERSION_NUM >= 70000
 EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname,
-                                         const char *relname, const char * fileName,
-                                         int fileFlags,
+                                         const char *relname,
+                                         const char *fileName, int fileFlags,
                                          int64 modcount);
 #else
 EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
-                                         char *relname, const char * fileName,
+                                         char *relname, const char *fileName,
                                          int fileFlags, int fileMode,
                                          int64 modcount);
 #endif
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC int yezzey_FileWrite(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info);
-EXTERNC int yezzey_FileRead(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info);
-#else 
+EXTERNC int yezzey_FileWrite(SMGRFile file, char *buffer, int amount,
+                             off_t offset, uint32 wait_event_info);
+EXTERNC int yezzey_FileRead(SMGRFile file, char *buffer, int amount,
+                            off_t offset, uint32 wait_event_info);
+#else
 EXTERNC int yezzey_FileWrite(SMGRFile file, char *buffer, int amount);
 EXTERNC int yezzey_FileRead(SMGRFile file, char *buffer, int amount);
 #endif
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset, uint32 wait_event_info);
+EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset,
+                                uint32 wait_event_info);
 #else
 EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset);
-#endif 
+#endif
 
 #if GP_VERSION_NUM >= 70000
 EXTERNC int yezzey_FileDiskSize(SMGRFile file);
 #endif
-
 
 #endif /* YEZZEY_PROXY_H */

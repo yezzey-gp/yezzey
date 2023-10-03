@@ -133,8 +133,7 @@ bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum) {
   return mdexists(reln, forkNum);
 }
 
-
-#if PG_VERSION_NUM < 150000
+#if GP_VERSION_NUM >= 70000
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
 #else
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
@@ -146,7 +145,7 @@ void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
     return;
   }
 
-#if PG_VERSION_NUM < 150000
+#if GP_VERSION_NUM >= 70000
   mdunlink(rnode, forkNum, isRedo);
 #else
   mdunlink(rnode, forkNum, isRedo, relstorage);

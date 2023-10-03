@@ -128,7 +128,7 @@ int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
 }
 #endif
 
-#if PG_VERSION_NUM < 70000
+#if GP_VERSION_NUM < 70000
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
@@ -167,13 +167,15 @@ EXTERNC int yezzey_FileSync(SMGRFile file)
 }
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname, const char *relname,
-                                 const char * fileName, int fileFlags,
-                                 int64 modcount)
+EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname,
+                                         const char *relname,
+                                         const char *fileName, int fileFlags,
+                                         int64 modcount)
 #else
-EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
-                                 const char * fileName, int fileFlags, int fileMode,
-                                 int64 modcount)
+EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
+                                         char *relname, const char *fileName,
+                                         int fileFlags, int fileMode,
+                                         int64 modcount)
 #endif
 {
   if (modcount != -1) {
@@ -256,10 +258,9 @@ EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relnam
       } else {
         /* not offloaded */
 #if GP_VERSION_NUM >= 70000
-        yfd.y_vfd = PathNameOpenFile(yfd.filepath.c_str(),
-                                     yfd.fileFlags);
+        yfd.y_vfd = PathNameOpenFile(yfd.filepath.c_str(), yfd.fileFlags);
 #else
-        yfd.y_vfd = PathNameOpenFile((char*) yfd.filepath.c_str(),
+        yfd.y_vfd = PathNameOpenFile((char *)yfd.filepath.c_str(),
                                      yfd.fileFlags, yfd.fileMode);
 #endif
         if (yfd.y_vfd == -1) {
@@ -323,11 +324,10 @@ void yezzey_FileClose(SMGRFile file) {
 
 #define ALLOW_MODIFY_EXTERNAL_TABLE
 
-
-
 #if GP_VERSION_NUM >= 70000
-int yezzey_FileWrite(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info)
-#else 
+int yezzey_FileWrite(SMGRFile file, char *buffer, int amount, off_t offset,
+                     uint32 wait_event_info)
+#else
 int yezzey_FileWrite(SMGRFile file, char *buffer, int amount)
 #endif
 {
@@ -375,8 +375,9 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount)
 }
 
 #if GP_VERSION_NUM >= 70000
-int yezzey_FileRead(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info) {
-#else 
+int yezzey_FileRead(SMGRFile file, char *buffer, int amount, off_t offset,
+                    uint32 wait_event_info) {
+#else
 int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 #endif
 
@@ -419,10 +420,11 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 }
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset, uint32 wait_event_info)
+EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset,
+                                uint32 wait_event_info)
 #else
-EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset) 
-#endif 
+EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset)
+#endif
 {
   YVirtFD &yfd = YVirtFD_cache[yezzey_fd];
   File actual_fd = yfd.y_vfd;
@@ -458,12 +460,9 @@ EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset)
   return FileTruncate(actual_fd, offset, wait_event_info);
 #else
   return FileTruncate(actual_fd, offset);
-#endif 
+#endif
 }
-
 
 #if GP_VERSION_NUM >= 70000
-EXTERNC int yezzey_FileDiskSize(SMGRFile file) {
-  return FileDiskSize(file);
-}
+EXTERNC int yezzey_FileDiskSize(SMGRFile file) { return FileDiskSize(file); }
 #endif

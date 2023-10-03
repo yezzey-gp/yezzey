@@ -23,7 +23,10 @@ extern "C" {
 
 #include "utils/builtins.h"
 
+#if GP_VERSION_NUM >= 70000
 #include "access/relation.h"
+#endif
+
 #include "access/aosegfiles.h"
 #include "access/htup_details.h"
 
@@ -49,8 +52,8 @@ extern "C" {
 
 #include "access/aocssegfiles.h"
 #include "access/aosegfiles.h"
-#include "storage/lmgr.h"
 #include "storage/bufmgr.h"
+#include "storage/lmgr.h"
 
 #if PG_VERSION_NUM < 10000
 #include "utils/tqual.h"
@@ -109,9 +112,9 @@ extern "C" {
 #include "utils/pg_lsn.h"
 
 #if PG_VERSION_NUM >= 120000
+#include "access/heapam.h"
 #include "access/table.h"
 #include "access/tupdesc.h"
-#include "access/heapam.h"
 #endif
 
 #ifdef __cplusplus

@@ -1,6 +1,6 @@
 /*
-* file: src/offload_policy.cpp
-*/
+ * file: src/offload_policy.cpp
+ */
 
 #include "offload_policy.h"
 #include "offload.h"
@@ -26,14 +26,15 @@ bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto offrel = yezzey_relation_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
+  auto offrel =
+      yezzey_relation_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
 
   /* SELECT FROM yezzey.offload_metadata WHERE reloid = i_reloid; */
 
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = table_beginscan(offrel, snap, 1, skey);
+  auto scan = yezzey_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
@@ -93,11 +94,11 @@ void YezzeyCreateOffloadPolicyRelation() {
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
       YEZZEY_OFFLOAD_POLICY_RELATION /* relid */,
       GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
-      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/, tupdesc /* rel tuple */, NIL,
-      RELKIND_RELATION/*relkind*/, RELPERSISTENCE_PERMANENT,
-      false /*shared*/, false /*mapped*/, ONCOMMIT_NOOP,
-      NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
-      InvalidOid/*relrewrite*/, NULL, false /* valid_opts */);
+      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/,
+      tupdesc /* rel tuple */, NIL, RELKIND_RELATION /*relkind*/,
+      RELPERSISTENCE_PERMANENT, false /*shared*/, false /*mapped*/,
+      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
+      true, true, InvalidOid /*relrewrite*/, NULL, false /* valid_opts */);
 #endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
@@ -144,12 +145,13 @@ void YezzeyCreateOffloadPolicyRelation() {
                      false, true, false, false, true, NULL);
 #else
   bits16 flags, constr_flags;
-	flags = constr_flags = 0;
+  flags = constr_flags = 0;
   (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
                      YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
                      InvalidOid, InvalidOid, indexInfo, indexColNames,
                      BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
-                     classObjectId, coloptions, (Datum)0, flags, constr_flags, true, true, NULL);
+                     classObjectId, coloptions, (Datum)0, flags, constr_flags,
+                     true, true, NULL);
 #endif
 
   /* Unlock target table -- no one can see it */
@@ -200,7 +202,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = table_beginscan(offrel, snap, 1, skey);
+  auto scan = yezzey_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
@@ -345,7 +347,7 @@ void YezzeyLoadRealtion(Oid i_reloid) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = table_beginscan(rel, snap, 1, skey);
+  auto desc = yezzey_beginscan(rel, snap, 1, skey);
 
   /* XXX: check that only one tuple mathed query */
   auto oldtuple = heap_getnext(desc, ForwardScanDirection);
