@@ -176,8 +176,9 @@ void yezzey_process_database(Datum main_arg) {
   /* Establish signal handlers; once that's done, unblock signals. */
   // pqsignal(SIGTERM, die);
   BackgroundWorkerUnblockSignals();
-
+#if GP_VERSION_NUM < 70000
   Gp_session_role = GP_ROLE_UTILITY;
+#endif
   Gp_role = GP_ROLE_UTILITY;
   InitPostgres(NULL, dboid, NULL, InvalidOid, dbname, true);
   SetProcessingMode(NormalProcessing);
@@ -338,7 +339,9 @@ yezzey_main(Datum main_arg) {
    * to modify tables on segments (sql without QD)
    */
   Gp_role = GP_ROLE_UTILITY;
+#if GP_VERSION_NUM < 70000
   Gp_session_role = GP_ROLE_UTILITY;
+#endif
 
   /*
    * acquire connection to database,
@@ -391,10 +394,6 @@ yezzey_main(Datum main_arg) {
  */
 static void yezzey_start_launcher_worker(void) {
   BackgroundWorker worker;
-  BackgroundWorkerHandle *handle;
-  BgwHandleStatus status;
-
-  pid_t pid;
 
   MemSet(&worker, 0, sizeof(BackgroundWorker));
   worker.bgw_flags =

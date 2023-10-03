@@ -1,4 +1,9 @@
 
+/*
+*
+* file: src/offload.cpp
+*/
+
 #include "offload.h"
 #include "gucs.h"
 
@@ -16,6 +21,10 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
 
   auto nvp = aorel->rd_att->natts;
 
+#if GP_VERSION_NUM >= 70000
+  Oid segrelid;
+#endif
+
   /*
    * Relation segments named base/DBOID/aorel->rd_node.*
    */
@@ -30,11 +39,15 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
   /* acquire snapshot for aoseg table lookup */
   auto appendOnlyMetaDataSnapshot = SnapshotSelf;
 
-  switch (aorel->rd_rel->relstorage) {
-  case RELSTORAGE_AOROWS:
+  if (RelationIsAoRows(aorel)) {
     /* Get information about all the file segments we need to scan */
+#if GP_VERSION_NUM >= 70000
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
+#else
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#endif
 
     for (int i = 0; i < total_segfiles; i++) {
       auto segno = segfile_array[i]->segno;
@@ -60,12 +73,15 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
       FreeAllSegFileInfo(segfile_array, total_segfiles);
       pfree(segfile_array);
     }
-    break;
-  case RELSTORAGE_AOCOLS:
+  } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+#if GP_VERSION_NUM < 70000
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
-
+#else 
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles, &segrelid);
+#endif
     for (int inat = 0; inat < nvp; ++inat) {
       for (int i = 0; i < total_segfiles; i++) {
         auto segno = segfile_array_cs[i]->segno;
@@ -99,8 +115,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
       FreeAllAOCSSegFileInfo(segfile_array_cs, total_segfiles);
       pfree(segfile_array_cs);
     }
-    break;
-  default:
+  } else {
     elog(ERROR, "wrong relation storage type, not AO/AOCS");
   }
 

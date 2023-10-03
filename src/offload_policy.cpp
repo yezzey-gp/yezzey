@@ -1,5 +1,10 @@
+/*
+* file: src/offload_policy.cpp
+*/
+
 #include "offload_policy.h"
 #include "offload.h"
+#include "yezzey_heap_api.h"
 
 /*
 
@@ -21,14 +26,14 @@ bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto offrel = heap_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
+  auto offrel = yezzey_relation_open(YEZZEY_OFFLOAD_POLICY_RELATION, RowExclusiveLock);
 
   /* SELECT FROM yezzey.offload_metadata WHERE reloid = i_reloid; */
 
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = heap_beginscan(offrel, snap, 1, skey);
+  auto scan = table_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
@@ -40,7 +45,7 @@ bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
 
   heap_close(offrel, RowExclusiveLock);
 
-  heap_endscan(scan);
+  yezzey_endscan(scan);
   UnregisterSnapshot(snap);
 
   return found;
@@ -54,7 +59,11 @@ void YezzeyCreateOffloadPolicyRelation() {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
+#if GP_VERSION_NUM < 70000
   tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata, false);
+#else
+  tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata);
+#endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_offload_metadata_reloid,
                      "reloid", OIDOID, -1, 0);
@@ -66,6 +75,7 @@ void YezzeyCreateOffloadPolicyRelation() {
                      (AttrNumber)Anum_offload_metadata_rellast_archived,
                      "rellast_archived", TIMESTAMPOID, -1, 0);
 
+#if GP_VERSION_NUM < 70000
   (void)heap_create_with_catalog(
       offload_metadata_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -77,6 +87,18 @@ void YezzeyCreateOffloadPolicyRelation() {
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
       false /* is part parent */);
+#else
+  (void)heap_create_with_catalog(
+      offload_metadata_relname.c_str() /* relname */,
+      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
+      YEZZEY_OFFLOAD_POLICY_RELATION /* relid */,
+      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
+      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/, tupdesc /* rel tuple */, NIL,
+      RELKIND_RELATION/*relkind*/, RELPERSISTENCE_PERMANENT,
+      false /*shared*/, false /*mapped*/, ONCOMMIT_NOOP,
+      NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
+      InvalidOid/*relrewrite*/, NULL, false /* valid_opts */);
+#endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
   CommandCounterIncrement();
@@ -93,11 +115,19 @@ void YezzeyCreateOffloadPolicyRelation() {
   int16 coloptions[1];
 
   indexInfo->ii_NumIndexAttrs = 1;
+#if GP_VERSION_NUM < 70000
   indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
+#else
+  indexInfo->ii_IndexAttrNumbers[0] = Anum_offload_metadata_reloid;
+#endif
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
+#if GP_VERSION_NUM < 70000
   indexInfo->ii_PredicateState = NIL;
+#else
+  indexInfo->ii_PredicateState = NULL;
+#endif
   indexInfo->ii_Unique = true;
   indexInfo->ii_Concurrent = false;
 
@@ -105,12 +135,22 @@ void YezzeyCreateOffloadPolicyRelation() {
   classObjectId[0] = OID_BTREE_OPS_OID;
   coloptions[0] = 0;
 
+#if GP_VERSION_NUM < 70000
   (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
                      YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
                      InvalidOid, InvalidOid, indexInfo, indexColNames,
                      BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
                      classObjectId, coloptions, (Datum)0, true, false, false,
                      false, true, false, false, true, NULL);
+#else
+  bits16 flags, constr_flags;
+	flags = constr_flags = 0;
+  (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
+                     YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
+                     InvalidOid, InvalidOid, indexInfo, indexColNames,
+                     BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
+                     classObjectId, coloptions, (Datum)0, flags, constr_flags, false, true, NULL);
+#endif
 
   /* Unlock target table -- no one can see it */
   heap_close(yezzey_rel, ShareLock);
@@ -160,7 +200,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   ScanKeyInit(&skey[0], Anum_offload_metadata_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
-  auto scan = heap_beginscan(offrel, snap, 1, skey);
+  auto scan = table_beginscan(offrel, snap, 1, skey);
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
@@ -193,7 +233,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
 
   heap_close(offrel, RowExclusiveLock);
 
-  heap_endscan(scan);
+  yezzey_endscan(scan);
   UnregisterSnapshot(snap);
 
   /* make changes visible */
@@ -305,7 +345,7 @@ void YezzeyLoadRealtion(Oid i_reloid) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(rel, snap, 1, skey);
+  auto desc = table_beginscan(rel, snap, 1, skey);
 
   /* XXX: check that only one tuple mathed query */
   auto oldtuple = heap_getnext(desc, ForwardScanDirection);
@@ -327,7 +367,7 @@ void YezzeyLoadRealtion(Oid i_reloid) {
     elog(ERROR, "yezzey metadata relation corrupted for %d", i_reloid);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);

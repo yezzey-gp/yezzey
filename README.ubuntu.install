@@ -1,0 +1,2 @@
+apt update
+apt install libgpgme-dev libgpgme11 libpstreams-dev

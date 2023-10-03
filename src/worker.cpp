@@ -1,9 +1,13 @@
+/*
+* file: src/worker.cpp
+*/
 
 #include "worker.h"
 #include "gucs.h"
 #include "offload.h"
 #include "offload_policy.h"
 
+#include "yezzey_heap_api.h"
 #include "pg.h"
 
 void processPartitionOffload() {
@@ -79,7 +83,7 @@ void processOffloadedRelations() {
                 BTLessEqualStrategyNumber, F_TIMESTAMP_LT,
                 TimestampGetDatum(GetCurrentTimestamp()));
 
-    auto desc = heap_beginscan(offrel, snap, 1, skey);
+    auto desc = yezzey_beginscan(offrel, snap, 1, skey);
 
     while (HeapTupleIsValid(tup = heap_getnext(desc, ForwardScanDirection))) {
       auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(tup);
@@ -95,7 +99,7 @@ void processOffloadedRelations() {
       YezzeyDefineOffloadPolicy(meta->reloid);
     }
 
-    heap_endscan(desc);
+    yezzey_endscan(desc);
   }
 
   UnregisterSnapshot(snap);

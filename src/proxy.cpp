@@ -126,9 +126,9 @@ int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
        file, YVirtFD_cache[file].y_vfd);
   return FileNonVirtualCurSeek(YVirtFD_cache[file].y_vfd);
 }
-
 #endif
 
+#if PG_VERSION_NUM < 70000
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
@@ -143,6 +143,7 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
        file, offset, actual_fd);
   return FileSeek(actual_fd, offset, whence);
 }
+#endif
 
 #if GP_VERSION_NUM >= 70000
 EXTERNC int yezzey_FileSync(SMGRFile file, uint32 wait_event_info)
@@ -166,15 +167,15 @@ EXTERNC int yezzey_FileSync(SMGRFile file)
 }
 
 #if GP_VERSION_NUM >= 70000
-SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
+EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname, const char *relname,
                                  const char * fileName, int fileFlags,
-                                 int64 modcount) {
+                                 int64 modcount)
 #else
-SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
+EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname, char *relname,
                                  const char * fileName, int fileFlags, int fileMode,
-                                 int64 modcount) {
+                                 int64 modcount)
 #endif
-
+{
   if (modcount != -1) {
     /* advance modcount to the value it will be after commit */
     ++modcount;
@@ -325,42 +326,11 @@ void yezzey_FileClose(SMGRFile file) {
 
 
 #if GP_VERSION_NUM >= 70000
-int yezzey_FileWrite(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info) {
-  YVirtFD &yfd = YVirtFD_cache[file];
-  File actual_fd = yfd.y_vfd;
-  if (actual_fd == YEZZEY_OFFLOADED_FD) {
-    assert(yfd.modcount);
-
-    /* Assert here we are not in crash or regular recovery
-     * If yes, simply skip this call as data is already
-     * persisted in external storage
-     */
-    if (RecoveryInProgress()) {
-      /* Should we return $amount or min (virtualSize - currentLogicalEof,
-       * amount) ? */
-      return amount;
-    }
-    yezzey_FileSeek(file, offset, SEEK_SET);
-
-#ifdef CACHE_LOCAL_WRITES_FEATURE
-/* CACHE_LOCAL_WRITES_FEATURE to do*/
-#endif
-    size_t rc = amount;
-    if (!yfd.handler->io_write(buffer, &rc)) {
-      elog(WARNING, "failed to write to external storage");
-      return -1;
-    }
-    elog(yezzey_ao_log_level,
-         "yezzey_FileWrite: write %d bytes, %ld transfered, yezzey fd %d",
-         amount, rc, file);
-    yfd.offset += rc;
-    yfd.op_write += rc;
-    return rc;
-  }
-
+int yezzey_FileWrite(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info)
 #else 
-int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
-
+int yezzey_FileWrite(SMGRFile file, char *buffer, int amount)
+#endif
+{
   YVirtFD &yfd = YVirtFD_cache[file];
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
@@ -391,9 +361,6 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount) {
     yfd.op_write += rc;
     return rc;
   }
-#endif
-
-  elog(yezzey_ao_log_level, "file write with %d, actual %d", file, actual_fd);
 
 #if GP_VERSION_NUM >= 70000
   size_t rc = FileWrite(actual_fd, buffer, amount, offset, wait_event_info);
@@ -493,3 +460,10 @@ EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset)
   return FileTruncate(actual_fd, offset);
 #endif 
 }
+
+
+#if GP_VERSION_NUM >= 70000
+EXTERNC int yezzey_FileDiskSize(SMGRFile file) {
+  return FileDiskSize(file);
+}
+#endif

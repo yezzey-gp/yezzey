@@ -56,7 +56,11 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   int64 virtual_size;
 
   std::vector<char> buffer(chunkSize);
-  vfd = PathNameOpenFile((FileName)localPath.c_str(), O_RDONLY, 0600);
+#if GP_VERSION_NUM < 70000
+  vfd = PathNameOpenFile(localPath.c_str(), O_RDONLY, 0600);
+#else
+  vfd = PathNameOpenFile(localPath.c_str(), O_RDONLY);
+#endif
   if (vfd <= 0) {
     elog(ERROR,
          "yezzey: failed to open %s file to transfer to external storage",
@@ -87,7 +91,9 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
   auto progress = virtual_size;
   auto offset_start = progress;
+#if PG_VERSION_NUM < 120000
   FileSeek(vfd, progress, SEEK_SET);
+#endif
   rc = 0;
 
   while (progress < logicalEof) {
@@ -97,7 +103,11 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
       curr_read_chunk = logicalEof - progress;
     }
     /* code */
+#if GP_VERSION_NUM < 70000
     rc = FileRead(vfd, buffer.data(), curr_read_chunk);
+#else
+    rc = FileRead(vfd, buffer.data(), curr_read_chunk, progress, WAIT_EVENT_DATA_FILE_READ);
+#endif
     if (rc < 0) {
       FileClose(vfd);
       return rc;

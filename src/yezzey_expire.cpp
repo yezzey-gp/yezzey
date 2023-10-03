@@ -1,8 +1,15 @@
+/*
+*
+* file: src/yezzey_expire.cpp
+*/
+
+
 #include "yezzey_expire.h"
 #include "offload_policy.h"
 #include "string"
 #include "url.h"
 #include "util.h"
+#include "yezzey_heap_api.h"
 
 void YezzeyRecordRelationExpireLsn(Relation rel) {
   if (Gp_role != GP_ROLE_EXECUTE) {
@@ -60,7 +67,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(yexprel, snap, YezzeySetExpireIndexCols, skey);
+  auto desc = table_beginscan(yexprel, snap, YezzeySetExpireIndexCols, skey);
 
   HeapTuple tuple;
 
@@ -85,12 +92,17 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     auto yandxtuple = heap_form_tuple(RelationGetDescr(yexprel), values, nulls);
 
     simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
-    CatalogUpdateIndexes(yexprel, yandxtuple);
+
+#if GP_VERSION_NUM < 70000
+  CatalogUpdateIndexes(yexprel, yandxtuple);
+#else
+	CatalogTupleUpdate(yexprel, &yandxtuple->t_self, yandxtuple);
+#endif
 
     heap_freetuple(yandxtuple);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(yexprel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);
@@ -110,7 +122,11 @@ void YezzeyCreateRelationExpireIndex(void) {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
+#if GP_VERSION_NUM < 70000
   tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index, false);
+#else
+  tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index);
+#endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_reloid,
                      "reloid", OIDOID, -1, 0);
@@ -127,6 +143,8 @@ void YezzeyCreateRelationExpireIndex(void) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_lsn,
                      "expire_lsn", LSNOID, -1, 0);
 
+
+#if GP_VERSION_NUM < 70000
   (void)heap_create_with_catalog(
       yezzey_expire_index_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -138,6 +156,19 @@ void YezzeyCreateRelationExpireIndex(void) {
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
       false /* is part parent */);
+
+#else
+  (void)heap_create_with_catalog(
+      yezzey_expire_index_relname.c_str() /* relname */,
+      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
+      YEZZEY_EXPIRE_INDEX_RELATION /* relid */,
+      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
+      GetUserId() /* owner */,HEAP_TABLE_AM_OID /* access method*/, tupdesc /* rel tuple */, NIL,
+      RELKIND_RELATION/*relkind*/, RELPERSISTENCE_PERMANENT,
+      false /*shared*/, false /*mapped*/, ONCOMMIT_NOOP,
+      NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
+      InvalidOid/*relrewrite*/, NULL, false /* valid_opts */);
+#endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
   CommandCounterIncrement();
@@ -155,13 +186,22 @@ void YezzeyCreateRelationExpireIndex(void) {
   int16 coloptions[2];
 
   indexInfo->ii_NumIndexAttrs = 2;
+#if GP_VERSION_NUM < 70000 
   indexInfo->ii_KeyAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
   indexInfo->ii_KeyAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
+#else
+  indexInfo->ii_IndexAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
+  indexInfo->ii_IndexAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
+#endif
 
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
+#if GP_VERSION_NUM < 70000 
   indexInfo->ii_PredicateState = NIL;
+#else
+  indexInfo->ii_PredicateState = NULL;
+#endif
   indexInfo->ii_ExclusionOps = NULL;
   indexInfo->ii_ExclusionProcs = NULL;
   indexInfo->ii_ExclusionStrats = NULL;
@@ -178,12 +218,15 @@ void YezzeyCreateRelationExpireIndex(void) {
   classObjectId[1] = OID_BTREE_OPS_OID;
   coloptions[1] = 0;
 
+#if GP_VERSION_NUM < 70000
   (void)index_create(yezzey_rel, yezzey_expire_index_indx_relname.c_str(),
                      YEZZEY_EXPIRE_INDEX_RELATION_INDX, InvalidOid, InvalidOid,
                      InvalidOid, indexInfo, indexColNames, BTREE_AM_OID,
                      0 /* tablespace */, collationObjectId, classObjectId,
                      coloptions, (Datum)0, true, false, false, false, true,
                      false, false, true, NULL);
+#else
+#endif
 
   /* Unlock target table -- no one can see it */
   heap_close(yezzey_rel, ShareLock);
@@ -240,7 +283,7 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
 
   auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
-  auto desc = heap_beginscan(rel, snap, YezzeyExpireIndexCols, skey);
+  auto desc = table_beginscan(rel, snap, YezzeyExpireIndexCols, skey);
 
   auto tuple = heap_getnext(desc, ForwardScanDirection);
 
@@ -262,7 +305,13 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     simple_heap_update(rel, &tuple->t_self, yandxtuple);
-    CatalogUpdateIndexes(rel, yandxtuple);
+
+#if GP_VERSION_NUM < 70000
+  CatalogUpdateIndexes(rel, yandxtuple);
+#else
+	CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
+#endif
+
 
     heap_freetuple(yandxtuple);
   } else {
@@ -270,12 +319,17 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     simple_heap_insert(rel, yandxtuple);
-    CatalogUpdateIndexes(rel, yandxtuple);
+
+#if GP_VERSION_NUM < 70000
+  CatalogUpdateIndexes(rel, yandxtuple);
+#else
+	CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
+#endif
 
     heap_freetuple(yandxtuple);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);

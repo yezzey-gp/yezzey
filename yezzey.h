@@ -44,12 +44,19 @@ void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
                       bool isRedo);
 #endif
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
-#ifndef GPBUILD
+
+#if PG_VERSION_NUM < 150000
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #else
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
                    char relstorage);
 #endif
+
+#if GP_VERSION_NUM >= 70000
+void yezzey_unlink_ao(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
+#endif
+
+
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                    char *buffer, bool skipFsync);
 #if PG_VERSION_NUM >= 130000
@@ -63,7 +70,7 @@ void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                  char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                   char *buffer, bool skipFsync);
-#ifndef GPBUILD
+#if GP_VERSION_NUM >= 70000
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks);
 #endif
@@ -75,7 +82,12 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
 void addToMoveTable(char *tableName);
 void processTables(void);
 
+#if GP_VERSION_NUM < 70000
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
+#else
+const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which);
+#endif
+
 #ifdef GPBUILD
 const f_smgr_ao *smgrao_yezzey();
 #endif

@@ -21,12 +21,11 @@ extern "C" {
 
 #include "utils/elog.h"
 
-#include "pgstat.h"
 #include "utils/builtins.h"
 
+#include "access/relation.h"
 #include "access/aosegfiles.h"
 #include "access/htup_details.h"
-#include "utils/tqual.h"
 
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_tablespace.h"
@@ -51,7 +50,11 @@ extern "C" {
 #include "access/aocssegfiles.h"
 #include "access/aosegfiles.h"
 #include "storage/lmgr.h"
+#include "storage/bufmgr.h"
+
+#if PG_VERSION_NUM < 10000
 #include "utils/tqual.h"
+#endif
 
 #include "utils/fmgroids.h"
 
@@ -75,8 +78,9 @@ extern "C" {
 #if PG_VERSION_NUM >= 100000
 #include "common/file_perm.h"
 #else
-#include "access/xact.h"
 #endif
+
+#include "access/xact.h"
 
 #include "utils/elog.h"
 
@@ -92,7 +96,6 @@ extern "C" {
 #include "utils/syscache.h"
 
 #include "catalog/heap.h"
-#include "catalog/pg_namespace.h"
 
 #include "access/multixact.h"
 #include "nodes/primnodes.h"
@@ -104,6 +107,12 @@ extern "C" {
 #include "catalog/pg_opclass.h"
 
 #include "utils/pg_lsn.h"
+
+#if PG_VERSION_NUM >= 120000
+#include "access/table.h"
+#include "access/tupdesc.h"
+#include "access/heapam.h"
+#endif
 
 #ifdef __cplusplus
 }
