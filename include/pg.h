@@ -111,6 +111,7 @@ extern "C" {
 #if PG_VERSION_NUM >= 120000
 #include "access/table.h"
 #include "access/tupdesc.h"
+#include "access/heapam.h"
 #endif
 
 #ifdef __cplusplus

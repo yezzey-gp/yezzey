@@ -126,9 +126,9 @@ int64 yezzey_NonVirtualCurSeek(SMGRFile file) {
        file, YVirtFD_cache[file].y_vfd);
   return FileNonVirtualCurSeek(YVirtFD_cache[file].y_vfd);
 }
-
 #endif
 
+#if PG_VERSION_NUM < 70000
 int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
   File actual_fd = YVirtFD_cache[file].y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
@@ -143,6 +143,7 @@ int64 yezzey_FileSeek(SMGRFile file, int64 offset, int whence) {
        file, offset, actual_fd);
   return FileSeek(actual_fd, offset, whence);
 }
+#endif
 
 #if GP_VERSION_NUM >= 70000
 EXTERNC int yezzey_FileSync(SMGRFile file, uint32 wait_event_info)

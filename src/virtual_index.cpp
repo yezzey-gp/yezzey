@@ -11,7 +11,12 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
                              Oid relowner, char relpersistence,
                              bool shared_relation, bool mapped_relation) {
 
+
+#if GP_VERSION_NUM < 70000
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
+#else
+  auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, );
+#endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_reloid,
                      "relation", OIDOID, -1, 0);

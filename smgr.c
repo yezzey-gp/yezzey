@@ -236,6 +236,52 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
   mdimmedsync(reln, forkNum);
 }
 
+
+
+static const f_smgr yezzey_smgrsw[] = {
+	/* magnetic disk */
+	{
+		.smgr_init = yezzey_init,
+		.smgr_shutdown = NULL,
+		.smgr_close = yezzey_close,
+		.smgr_create = yezzey_create,
+		.smgr_exists = mdexists,
+		.smgr_unlink = mdunlink,
+		.smgr_extend = mdextend,
+		.smgr_prefetch = mdprefetch,
+		.smgr_read = mdread,
+		.smgr_write = mdwrite,
+		.smgr_writeback = mdwriteback,
+		.smgr_nblocks = mdnblocks,
+		.smgr_truncate = mdtruncate,
+		.smgr_immedsync = mdimmedsync,
+	},
+	/*
+	 * Relation files that are different from heap, characterised by:
+	 *     1. variable blocksize
+	 *     2. block numbers are not consecutive
+	 *     3. shared buffers are not used
+	 * Append-optimized relation files currently fall in this category.
+	 */
+	{
+		.smgr_init = NULL,
+		.smgr_shutdown = NULL,
+		.smgr_close = yezzey_close,
+		.smgr_create = yezzey_create,
+		.smgr_exists = mdexists,
+		.smgr_unlink = mdunlink_ao,
+		.smgr_extend = mdextend,
+		.smgr_prefetch = mdprefetch,
+		.smgr_read = mdread,
+		.smgr_write = mdwrite,
+		.smgr_writeback = mdwriteback,
+		.smgr_nblocks = mdnblocks,
+		.smgr_truncate = mdtruncate,
+		.smgr_immedsync = mdimmedsync,
+	}
+};
+
+#if GP_VERSION_NUM < 70000
 static const struct f_smgr yezzey_smgr = {
     .smgr_init = yezzey_init,
     .smgr_shutdown = NULL,
@@ -244,7 +290,9 @@ static const struct f_smgr yezzey_smgr = {
 #endif
     .smgr_close = yezzey_close,
     .smgr_create = yezzey_create,
+  #ifndef GPBUILD
     .smgr_create_ao = yezzey_create_ao,
+  #endif
     .smgr_exists = yezzey_exists,
     .smgr_unlink = yezzey_unlink,
     .smgr_extend = yezzey_extend,
@@ -258,6 +306,7 @@ static const struct f_smgr yezzey_smgr = {
     .smgr_truncate = yezzey_truncate,
     .smgr_immedsync = yezzey_immedsync,
 };
+#endif
 
 /*
 
@@ -295,7 +344,7 @@ const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode) {
 }
 #else
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which) {
-  return &yezzey_smgr;
+  return yezzey_smgrsw[which];
 }
 #endif
 

@@ -164,6 +164,10 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   /* yezzey aux index oid */
   Oid yandexoid;
 
+#if GP_VERSION_NUM >= 70000
+  Oid segrelid;
+#endif
+
   /*  XXX: maybe fix lock here to take more granular lock
    */
   aorel = relation_open(reloid, AccessExclusiveLock);
@@ -193,10 +197,15 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   (void)YezzeyATExecSetTableSpace(aorel, reloid, DEFAULTTABLESPACE_OID);
 
   /* Get information about all the file segments we need to scan */
-  if (aorel->rd_rel->relstorage == 'a') {
+  if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
+#if GP_VERSION_NUM >= 70000
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
+#else
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#endif
 
     for (i = 0; i < total_segfiles; i++) {
       segno = segfile_array[i]->segno;
@@ -213,10 +222,15 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
       FreeAllSegFileInfo(segfile_array, total_segfiles);
       pfree(segfile_array);
     }
-  } else if (aorel->rd_rel->relstorage == 'c') {
+  } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
+#if GP_VERSION_NUM < 70000
     segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
+#else 
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles, &segrelid);
+#endif
 
     for (inat = 0; inat < nvp; ++inat) {
       for (i = 0; i < total_segfiles; i++) {
@@ -445,6 +459,9 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   MemoryContext oldcontext;
   AttInMetadata *attinmeta;
   int32 call_cntr;
+#if GP_VERSION_NUM >= 70000
+  Oid segrelid;
+#endif
 
   reloid = PG_GETARG_OID(0);
   segfile_array_cs = NULL;
@@ -473,13 +490,23 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
      */
     oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-    if (aorel->rd_rel->relstorage == 'a') {
+    if (RelationIsAoRows(aorel)) {
       /* ao rows relation */
-      segfile_array =
-          GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
-    } else if (aorel->rd_rel->relstorage == 'c') {
-      segfile_array_cs = GetAllAOCSFileSegInfo(
-          aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#if GP_VERSION_NUM >= 70000
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
+#else
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#endif
+    } else if (RelationIsAoCols(aorel)) {
+#if GP_VERSION_NUM < 70000
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
+#else 
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles, &segrelid);
+#endif
     } else {
       elog(ERROR, "wrong relation storage type, not AO/AOCS relation");
     }
@@ -489,8 +516,14 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
      * The number and type of attributes have to match the definition of the
      * view yezzey_offload_relation_status_internal
      */
+
+#if GP_VERSION_NUM < 70000
     funcctx->tuple_desc =
         CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
+#else
+    funcctx->tuple_desc =
+        CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS);
+#endif
 
     TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "reloid", OIDOID,
                        -1 /* typmod */, 0 /* attdim */);
@@ -517,10 +550,10 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
 
     if (total_segfiles > 0) {
 
-      if (aorel->rd_rel->relstorage == 'a') {
+      if (RelationIsAoRows(aorel)){
         funcctx->max_calls = total_segfiles;
         funcctx->user_fctx = segfile_array;
-      } else if (aorel->rd_rel->relstorage == 'c') {
+      } else if (RelationIsAoCols(aorel)) {
         funcctx->max_calls = total_segfiles * nvp;
         funcctx->user_fctx = segfile_array_cs;
       } else {
@@ -554,7 +587,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   size_t local_bytes = 0;
   size_t external_bytes = 0;
   size_t local_commited_bytes = 0;
-  if (aorel->rd_rel->relstorage == 'a') {
+  if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
 
     segfile_array = funcctx->user_fctx;
@@ -628,9 +661,9 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   values[0] = ObjectIdGetDatum(reloid);
   values[1] = Int32GetDatum(GpIdentity.segindex);
 
-  if (aorel->rd_rel->relstorage == 'a') {
+  if (RelationIsAoRows(aorel)) {
     values[2] = Int32GetDatum(segno);
-  } else if (aorel->rd_rel->relstorage == 'c') {
+  } else if (RelationIsAoCols(aorel)){
     values[2] = Int32GetDatum(pseudosegno);
   }
   values[3] = Int64GetDatum(local_bytes);
@@ -680,6 +713,10 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   AttInMetadata *attinmeta;
   int32 call_cntr;
   yezzeyChunkMetaInfo *chunkInfo;
+#if GP_VERSION_NUM >= 70000
+  Oid segrelid;
+#endif
+
   chunkInfo = palloc(sizeof(yezzeyChunkMetaInfo));
 
   reloid = PG_GETARG_OID(0);
@@ -716,10 +753,15 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
     size_t external_bytes = 0;
     size_t local_commited_bytes = 0;
 
-    if (aorel->rd_rel->relstorage == 'a') {
+    if (RelationIsAoRows(aorel)) {
       /* ao rows relation */
-      segfile_array =
-          GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#if GP_VERSION_NUM >= 70000
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
+#else
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#endif
 
       for (i = 0; i < total_segfiles; ++i) {
 
@@ -770,10 +812,15 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
        * view yezzey_offload_relation_status_internal
        */
 
-    } else if (aorel->rd_rel->relstorage == 'c') {
+    } else if (RelationIsAoCols(aorel)) {
 
-      segfile_array_cs = GetAllAOCSFileSegInfo(
-          aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#if GP_VERSION_NUM < 70000
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
+#else 
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles, &segrelid);
+#endif
 
       for (inat = 0; inat < nvp; ++inat) {
         for (i = 0; i < total_segfiles; i++) {
@@ -828,8 +875,13 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
       elog(ERROR, "yezzey: wrong relation storage type: not AO/AOCS relation");
     }
 
+#if GP_VERSION_NUM < 70000
     funcctx->tuple_desc = CreateTemplateTupleDesc(
         NUM_USED_OFFLOAD_PER_SEGMENT_STATUS_STRUCT, false);
+#else
+    funcctx->tuple_desc = CreateTemplateTupleDesc(
+        NUM_USED_OFFLOAD_PER_SEGMENT_STATUS_STRUCT);
+#endif
 
     TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "reloid", OIDOID,
                        -1 /* typmod */, 0 /* attdim */);
@@ -925,6 +977,9 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   int nvp;
   int pseudosegno;
   int total_segfiles;
+#if GP_VERSION_NUM >= 70000
+  Oid segrelid;
+#endif
   int64 modcount;
   int64 logicalEof;
   FileSegInfo **segfile_array;
@@ -953,10 +1008,16 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   size_t external_bytes = 0;
   size_t local_commited_bytes = 0;
 
-  if (aorel->rd_rel->relstorage == 'a') {
+  if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
+
+#if GP_VERSION_NUM >= 70000
+    segfile_array =
+        GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
+#else
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
+#endif
 
     for (i = 0; i < total_segfiles; i++) {
       segno = segfile_array[i]->segno;
@@ -981,10 +1042,15 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
       local_commited_bytes += curr_local_commited_bytes;
       /* segment if loaded */
     }
-  } else if (aorel->rd_rel->relstorage == 'c') {
+  } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+#if GP_VERSION_NUM < 70000
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
+#else 
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles, &segrelid);
+#endif
 
     for (inat = 0; inat < nvp; ++inat) {
       for (i = 0; i < total_segfiles; i++) {

@@ -1,3 +1,7 @@
+/*
+* file: src/offload_policy.cpp
+*/
+
 #include "offload_policy.h"
 #include "offload.h"
 #include "yezzey_heap_api.h"
@@ -55,7 +59,11 @@ void YezzeyCreateOffloadPolicyRelation() {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
+#if GP_VERSION_NUM < 70000
   tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata, false);
+#else
+  tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata);
+#endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_offload_metadata_reloid,
                      "reloid", OIDOID, -1, 0);
@@ -67,6 +75,7 @@ void YezzeyCreateOffloadPolicyRelation() {
                      (AttrNumber)Anum_offload_metadata_rellast_archived,
                      "rellast_archived", TIMESTAMPOID, -1, 0);
 
+#if GP_VERSION_NUM < 70000
   (void)heap_create_with_catalog(
       offload_metadata_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -78,6 +87,18 @@ void YezzeyCreateOffloadPolicyRelation() {
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
       false /* is part parent */);
+#else
+  (void)heap_create_with_catalog(
+      offload_metadata_relname.c_str() /* relname */,
+      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
+      YEZZEY_OFFLOAD_POLICY_RELATION /* relid */,
+      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
+      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/, tupdesc /* rel tuple */, NIL,
+      RELKIND_RELATION/*relkind*/, RELPERSISTENCE_PERMANENT,
+      false /*shared*/, false /*mapped*/, ONCOMMIT_NOOP,
+      NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
+      InvalidOid/*relrewrite*/, NULL, false /* valid_opts */);
+#endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
   CommandCounterIncrement();
@@ -94,7 +115,11 @@ void YezzeyCreateOffloadPolicyRelation() {
   int16 coloptions[1];
 
   indexInfo->ii_NumIndexAttrs = 1;
+#if GP_VERSION_NUM < 70000
   indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
+#else
+  indexInfo->ii_IndexAttrNumbers[0] = Anum_offload_metadata_reloid;
+#endif
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;

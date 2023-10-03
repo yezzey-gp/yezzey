@@ -83,7 +83,7 @@ void processOffloadedRelations() {
                 BTLessEqualStrategyNumber, F_TIMESTAMP_LT,
                 TimestampGetDatum(GetCurrentTimestamp()));
 
-    auto desc = heap_beginscan(offrel, snap, 1, skey);
+    auto desc = yezzey_beginscan(offrel, snap, 1, skey);
 
     while (HeapTupleIsValid(tup = heap_getnext(desc, ForwardScanDirection))) {
       auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(tup);
