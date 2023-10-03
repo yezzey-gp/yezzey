@@ -84,11 +84,6 @@ public:
     return mpy_sz;
   }
 
-  // void waitdone() {
-  //     std::unique_lock<std::mutex> lk(mu_);
-  //     cv_full_.wait(lk, [&] { return offset_ == 0; } );
-  // }
-
   void clear() {
     std::unique_lock<std::mutex> lk(mu_);
 

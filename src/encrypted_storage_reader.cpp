@@ -1,3 +1,8 @@
+/*
+ *  Encrypted external storage reader routine
+ * file: encrypted_storage_reader.cpp
+ */
+
 #include "encrypted_storage_reader.h"
 #include "meta.h"
 #include <iostream>
@@ -5,12 +10,11 @@
 EncryptedStorageReader::EncryptedStorageReader(
     std::shared_ptr<IOadv> adv, const std::vector<ChunkInfo> &order,
     ssize_t segindx)
-    : adv_(adv), order_(order), segindx_(segindx) {
-  buf_ = std::make_shared<BlockingBuffer>(1 << 12);
-
+    : adv_(adv), order_(order), segindx_(segindx),
+      buf_(std::make_shared<BlockingBuffer>(1 << 24)),
+      reader_(std::make_shared<ExternalReader>(adv_, order_, segindx_)),
+      crypter_(make_unique<Crypter>(adv_, reader_, buf_)) {
   /* TODO: with order */
-  reader_ = std::make_shared<ExternalReader>(adv_, order_, segindx_);
-  crypter_ = make_unique<Crypter>(adv_, reader_, buf_);
 }
 
 EncryptedStorageReader::~EncryptedStorageReader() { close(); }

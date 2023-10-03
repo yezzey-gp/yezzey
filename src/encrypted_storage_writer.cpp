@@ -11,7 +11,7 @@ EncryptedStorageWriter::EncryptedStorageWriter(std::shared_ptr<IOadv> adv,
       storage_path_(storage_path) {
   writer_ = std::make_shared<ExternalWriter>(adv_, segindx_, modcount_,
                                              storage_path_);
-  buf_ = std::make_shared<BlockingBuffer>(1 << 12);
+  buf_ = std::make_shared<BlockingBuffer>(1 << 24);
   crypter_ = make_unique<Crypter>(adv_, writer_, buf_);
 }
 
