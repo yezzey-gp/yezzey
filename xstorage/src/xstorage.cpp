@@ -118,8 +118,6 @@ typedef struct gpcloudResHandle {
 // owners.
 static gpcloudResHandle *openedResHandles;
 
-static bool isGpcloudResReleaseCallbackRegistered;
-
 static gpcloudResHandle *createGpcloudResHandle(void) {
     gpcloudResHandle *resHandle;
 

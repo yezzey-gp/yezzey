@@ -394,10 +394,6 @@ yezzey_main(Datum main_arg) {
  */
 static void yezzey_start_launcher_worker(void) {
   BackgroundWorker worker;
-  BackgroundWorkerHandle *handle;
-  BgwHandleStatus status;
-
-  pid_t pid;
 
   MemSet(&worker, 0, sizeof(BackgroundWorker));
   worker.bgw_flags =

@@ -73,7 +73,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
       FreeAllSegFileInfo(segfile_array, total_segfiles);
       pfree(segfile_array);
     }
-  else if (RelationIsAoCols(aorel)) {
+  } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
 #if GP_VERSION_NUM < 70000
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,

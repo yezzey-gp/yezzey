@@ -34,6 +34,10 @@
 #include "c.h"
 #include "cdb/cdbvars.h"
 
+#if GP_VERSION_NUM >= 70000
+#include "access/aomd.h"
+#endif
+
 #include "storage.h"
 
 #include "proxy.h"
@@ -129,11 +133,12 @@ bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum) {
   return mdexists(reln, forkNum);
 }
 
-void
-#ifndef GPBUILD
-yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
+
+#if PG_VERSION_NUM < 150000
+void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
 #else
-yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char relstorage)
+void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
+                   char relstorage)
 #endif
 {
   if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
@@ -141,12 +146,26 @@ yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo, char re
     return;
   }
 
-#ifndef GPBUILD
+#if PG_VERSION_NUM < 150000
   mdunlink(rnode, forkNum, isRedo);
 #else
   mdunlink(rnode, forkNum, isRedo, relstorage);
 #endif
 }
+
+
+#if GP_VERSION_NUM >= 70000
+void
+yezzey_unlink_ao(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo)
+{
+  if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
+  mdunlink_ao(rnode, forkNum, isRedo);
+}
+#endif
+
 
 void yezzey_extend(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                    char *buffer, bool skipFsync) {
@@ -196,7 +215,7 @@ void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
   mdwrite(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
-#ifndef GPBUILD
+#if GP_VERSION_NUM >= 70000
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks) {
   if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
@@ -237,6 +256,30 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
 }
 
 
+#if GP_VERSION_NUM < 70000
+static const struct f_smgr yezzey_smgr = {
+    .smgr_init = yezzey_init,
+    .smgr_shutdown = NULL,
+#ifndef GPBUILD
+    .smgr_open = yezzey_open,
+#endif
+    .smgr_close = yezzey_close,
+    .smgr_create = yezzey_create,
+    .smgr_create_ao = yezzey_create_ao,
+    .smgr_exists = yezzey_exists,
+    .smgr_unlink = yezzey_unlink,
+    .smgr_extend = yezzey_extend,
+    .smgr_prefetch = yezzey_prefetch,
+    .smgr_read = yezzey_read,
+    .smgr_write = yezzey_write,
+#ifndef GPBUILD
+    .smgr_writeback = yezzey_writeback,
+#endif
+    .smgr_nblocks = yezzey_nblocks,
+    .smgr_truncate = yezzey_truncate,
+    .smgr_immedsync = yezzey_immedsync,
+};
+#else
 
 static const f_smgr yezzey_smgrsw[] = {
 	/* magnetic disk */
@@ -245,16 +288,17 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
-		.smgr_exists = mdexists,
-		.smgr_unlink = mdunlink,
-		.smgr_extend = mdextend,
-		.smgr_prefetch = mdprefetch,
-		.smgr_read = mdread,
-		.smgr_write = mdwrite,
-		.smgr_writeback = mdwriteback,
+    .smgr_create_ao = yezzey_create_ao,
+		.smgr_exists = yezzey_exists,
+		.smgr_unlink = yezzey_unlink,
+		.smgr_extend = yezzey_extend,
+		.smgr_prefetch = yezzey_prefetch,
+		.smgr_read = yezzey_read,
+		.smgr_write = yezzey_write,
+		.smgr_writeback = yezzey_writeback,
 		.smgr_nblocks = mdnblocks,
-		.smgr_truncate = mdtruncate,
-		.smgr_immedsync = mdimmedsync,
+		.smgr_truncate = yezzey_nblocks,
+		.smgr_immedsync = yezzey_immedsync,
 	},
 	/*
 	 * Relation files that are different from heap, characterised by:
@@ -268,43 +312,18 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
-		.smgr_exists = mdexists,
-		.smgr_unlink = mdunlink_ao,
-		.smgr_extend = mdextend,
-		.smgr_prefetch = mdprefetch,
-		.smgr_read = mdread,
-		.smgr_write = mdwrite,
-		.smgr_writeback = mdwriteback,
-		.smgr_nblocks = mdnblocks,
-		.smgr_truncate = mdtruncate,
-		.smgr_immedsync = mdimmedsync,
-	}
-};
-
-#if GP_VERSION_NUM < 70000
-static const struct f_smgr yezzey_smgr = {
-    .smgr_init = yezzey_init,
-    .smgr_shutdown = NULL,
-#ifndef GPBUILD
-    .smgr_open = yezzey_open,
-#endif
-    .smgr_close = yezzey_close,
-    .smgr_create = yezzey_create,
-  #ifndef GPBUILD
     .smgr_create_ao = yezzey_create_ao,
-  #endif
-    .smgr_exists = yezzey_exists,
-    .smgr_unlink = yezzey_unlink,
-    .smgr_extend = yezzey_extend,
-    .smgr_prefetch = yezzey_prefetch,
-    .smgr_read = yezzey_read,
-    .smgr_write = yezzey_write,
-#ifndef GPBUILD
-    .smgr_writeback = yezzey_writeback,
-#endif
-    .smgr_nblocks = yezzey_nblocks,
-    .smgr_truncate = yezzey_truncate,
-    .smgr_immedsync = yezzey_immedsync,
+		.smgr_exists = yezzey_exists,
+		.smgr_unlink = yezzey_unlink_ao,
+		.smgr_extend = yezzey_extend,
+		.smgr_prefetch = yezzey_prefetch,
+		.smgr_read = yezzey_read,
+		.smgr_write = yezzey_write,
+		.smgr_writeback = yezzey_writeback,
+		.smgr_nblocks = yezzey_nblocks,
+		.smgr_truncate = yezzey_truncate,
+		.smgr_immedsync = yezzey_immedsync,
+	}
 };
 #endif
 
@@ -344,7 +363,7 @@ const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode) {
 }
 #else
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which) {
-  return yezzey_smgrsw[which];
+  return &yezzey_smgrsw[which];
 }
 #endif
 

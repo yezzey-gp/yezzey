@@ -15,7 +15,7 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
 #if GP_VERSION_NUM < 70000
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 #else
-  auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, );
+  auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index);
 #endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_reloid,
@@ -45,6 +45,7 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_x_path, "x_path",
                      TEXTOID, -1, 0);
 
+#if GP_VERSION_NUM < 70000
   auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
       relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,
       0 /* tablespace */, relid /* relid */, GetNewObjectId() /* reltype oid */,
@@ -54,6 +55,17 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
       0, ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0,
       false /* use_user_acl */, true, true, false /* valid_opts */,
       false /* is_part_child */, false /* is part parent */);
+#else
+  auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
+      relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,
+      0 /* tablespace */, relid /* relid */, GetNewObjectId() /* reltype oid */,
+      InvalidOid /* reloftypeid */, relowner /* owner */,
+      HEAP_TABLE_AM_OID /* access method*/, tupdesc /* rel tuple */, NIL,
+      RELKIND_RELATION/*relkind*/, RELPERSISTENCE_PERMANENT,
+      false /*shared*/, false /*mapped*/, ONCOMMIT_NOOP,
+      NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
+      InvalidOid/*relrewrite*/, NULL, false /* valid_opts */);
+#endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
   CommandCounterIncrement();
@@ -112,7 +124,12 @@ Oid YezzeyFindAuxIndex_internal(Oid reloid) {
       systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 2, skey);
 
   if (HeapTupleIsValid(tup = systable_getnext(scan))) {
+#if GP_VERSION_NUM < 70000
     yezzey_virtual_index_oid = HeapTupleGetOid(tup);
+#else
+    auto ytup = ((FormData_pg_class *)GETSTRUCT(tup));
+    yezzey_virtual_index_oid = ytup->oid;
+#endif
   } else {
     // use separate index for relations, offloaded without yezzey api
     // this may happen during expand process and maybe some other cases

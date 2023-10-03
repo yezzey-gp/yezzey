@@ -197,7 +197,11 @@ void YezzeyCreateRelationExpireIndex(void) {
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
+#if GP_VERSION_NUM < 70000 
   indexInfo->ii_PredicateState = NIL;
+#else
+  indexInfo->ii_PredicateState = NULL;
+#endif
   indexInfo->ii_ExclusionOps = NULL;
   indexInfo->ii_ExclusionProcs = NULL;
   indexInfo->ii_ExclusionStrats = NULL;
@@ -214,12 +218,15 @@ void YezzeyCreateRelationExpireIndex(void) {
   classObjectId[1] = OID_BTREE_OPS_OID;
   coloptions[1] = 0;
 
+#if GP_VERSION_NUM < 70000
   (void)index_create(yezzey_rel, yezzey_expire_index_indx_relname.c_str(),
                      YEZZEY_EXPIRE_INDEX_RELATION_INDX, InvalidOid, InvalidOid,
                      InvalidOid, indexInfo, indexColNames, BTREE_AM_OID,
                      0 /* tablespace */, collationObjectId, classObjectId,
                      coloptions, (Datum)0, true, false, false, false, true,
                      false, false, true, NULL);
+#else
+#endif
 
   /* Unlock target table -- no one can see it */
   heap_close(yezzey_rel, ShareLock);

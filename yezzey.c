@@ -615,7 +615,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
     external_bytes = curr_external_bytes;
     local_commited_bytes = curr_local_commited_bytes;
 
-  } else if (aorel->rd_rel->relstorage == 'c') {
+  } else if (RelationIsAoCols(aorel)) {
 
     segfile_array_cs = funcctx->user_fctx;
 
@@ -1093,7 +1093,11 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
    * The number and type of attributes have to match the definition of the
    * view yezzey_offload_relation_status_internal
    */
+#if GP_VERSION_NUM < 70000
   tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS, false);
+#else
+  tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS);
+#endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)1, "reloid", OIDOID, -1 /* typmod */,
                      0 /* attdim */);
