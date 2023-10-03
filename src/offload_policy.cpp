@@ -149,7 +149,7 @@ void YezzeyCreateOffloadPolicyRelation() {
                      YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
                      InvalidOid, InvalidOid, indexInfo, indexColNames,
                      BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
-                     classObjectId, coloptions, (Datum)0, flags, constr_flags, false, true, NULL);
+                     classObjectId, coloptions, (Datum)0, flags, constr_flags, true, true, NULL);
 #endif
 
   /* Unlock target table -- no one can see it */

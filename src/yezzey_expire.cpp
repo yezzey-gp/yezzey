@@ -226,6 +226,14 @@ void YezzeyCreateRelationExpireIndex(void) {
                      coloptions, (Datum)0, true, false, false, false, true,
                      false, false, true, NULL);
 #else
+
+  bits16 flags, constr_flags;
+	flags = constr_flags = 0;
+  (void)index_create(yezzey_rel, yezzey_expire_index_indx_relname.c_str(),
+                     YEZZEY_EXPIRE_INDEX_RELATION_INDX, InvalidOid, InvalidOid,
+                     InvalidOid, indexInfo, indexColNames, BTREE_AM_OID,
+                     0 /* tablespace */, collationObjectId, classObjectId,
+                     coloptions, (Datum)0, flags, constr_flags, true, true, NULL);
 #endif
 
   /* Unlock target table -- no one can see it */

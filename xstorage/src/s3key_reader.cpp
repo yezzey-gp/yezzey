@@ -210,20 +210,8 @@ void S3KeyReader::open(const S3Params& params) {
     }
 }
 
-int myfd = -1;
-
-void lol() {
-
-    if (myfd == -1) {
-        myfd = open("/home/reshke/tmp/loh.txt", O_RDWR);
-    }
-
-}
-
 uint64_t S3KeyReader::read(char* buf, uint64_t count) {
-    uint64_t fileLen = this->offsetMgr.getKeySize();
     uint64_t readLen = 0;
-    lol();
 
     do {
         // confirm there is no more available data, done with this file

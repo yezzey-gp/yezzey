@@ -135,12 +135,12 @@ BEGIN
         RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
     END IF;
 
-    SELECT parrelid 
-        FROM pg_partition
-    INTO v_par_reloid 
-    WHERE parrelid = v_reloid;
+    -- SELECT parrelid 
+    --     FROM pg_partition
+    -- INTO v_par_reloid 
+    -- WHERE parrelid = v_reloid;
 
-    IF NOT FOUND THEN
+    -- IF NOT FOUND THEN
         -- non-partitioned relation
         PERFORM yezzey_define_relation_offload_policy_internal_seg(
             v_reloid
@@ -148,23 +148,23 @@ BEGIN
         PERFORM yezzey_define_relation_offload_policy_internal(
             v_reloid
         );
-    ELSE 
+    -- ELSE 
 
-        FOR v_tmprow IN 
-            SELECT partitiontablename::regclass::oid FROM pg_partitions WHERE schemaname = i_offload_nspname AND tablename = i_offload_relname
-        LOOP
+    --     FOR v_tmprow IN 
+    --         SELECT partitiontablename::regclass::oid FROM pg_partitions WHERE schemaname = i_offload_nspname AND tablename = i_offload_relname
+    --     LOOP
 
-            RAISE NOTICE 'offloading partition oid %', v_tmprow;
-            -- offload each part
-            PERFORM yezzey_define_relation_offload_policy_internal_seg(
-                v_tmprow
-            );
-            PERFORM yezzey_define_relation_offload_policy_internal(
-                v_tmprow
-            );
-        END LOOP;
+    --         RAISE NOTICE 'offloading partition oid %', v_tmprow;
+    --         -- offload each part
+    --         PERFORM yezzey_define_relation_offload_policy_internal_seg(
+    --             v_tmprow
+    --         );
+    --         PERFORM yezzey_define_relation_offload_policy_internal(
+    --             v_tmprow
+    --         );
+    --     END LOOP;
 
-    END IF;
+    -- END IF;
 
 
 END;
