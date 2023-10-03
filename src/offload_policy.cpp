@@ -41,7 +41,7 @@ bool YezzeyCheckRelationOffloaded(Oid i_reloid) {
 
   heap_close(offrel, RowExclusiveLock);
 
-  heap_endscan(scan);
+  yezzey_endscan(scan);
   UnregisterSnapshot(snap);
 
   return found;
@@ -194,7 +194,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
 
   heap_close(offrel, RowExclusiveLock);
 
-  heap_endscan(scan);
+  yezzey_endscan(scan);
   UnregisterSnapshot(snap);
 
   /* make changes visible */
@@ -328,7 +328,7 @@ void YezzeyLoadRealtion(Oid i_reloid) {
     elog(ERROR, "yezzey metadata relation corrupted for %d", i_reloid);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);

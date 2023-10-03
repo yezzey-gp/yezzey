@@ -13,7 +13,11 @@ extern "C" {
 
 #include "access/extprotocol.h"
 #include "access/xact.h"
+
+#if GP_VERSION_NUM < 70000
 #include "catalog/pg_exttable.h"
+#endif
+
 #include "catalog/pg_proc.h"
 #include "fmgr.h"
 #include "funcapi.h"
@@ -95,20 +99,6 @@ void MaskThreadSignals() {
     sigaddset(&sigs, SIGUSR2);
 
     pthread_sigmask(SIG_BLOCK, &sigs, NULL);
-}
-
-/*
- * Detect data format
- * used to set file extension on S3 in gpwriter.
- */
-static const char *getFormatStr(FunctionCallInfo fcinfo) {
-    Relation rel = EXTPROTOCOL_GET_RELATION(fcinfo);
-    ExtTableEntry *exttbl = GetExtTableEntry(rel->rd_id);
-    char fmtcode = exttbl->fmtcode;
-
-    if (fmttype_is_text(fmtcode)) return "txt";
-    if (fmttype_is_csv(fmtcode)) return "csv";
-    return S3_DEFAULT_FORMAT;
 }
 
 bool hasHeader = false;

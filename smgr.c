@@ -289,9 +289,15 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
 #endif
 };
 
+#if GP_VERSION_NUM < 70000
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode) {
   return &yezzey_smgr;
 }
+#else
+const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which) {
+  return &yezzey_smgr;
+}
+#endif
 
 const f_smgr_ao *smgrao_yezzey() { return &yezzey_smgr_ao; }
 

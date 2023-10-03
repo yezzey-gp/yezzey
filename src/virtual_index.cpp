@@ -2,6 +2,7 @@
 #include "virtual_index.h"
 
 #include <algorithm>
+#include "yezzey_heap_api.h"
 
 Oid YezzeyFindAuxIndex_internal(Oid reloid);
 
@@ -139,7 +140,7 @@ void emptyYezzeyIndex(Oid yezzey_index_oid, Oid relfilenode) {
     simple_heap_delete(rel, &tuple->t_self);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);
@@ -182,7 +183,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid /* not used */, Oid 
     simple_heap_delete(rel, &tuple->t_self);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);
@@ -228,7 +229,11 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
   simple_heap_insert(yandxrel, yandxtuple);
+#if GP_VERSION_NUM < 70000
   CatalogUpdateIndexes(yandxrel, yandxtuple);
+#else
+	CatalogTupleUpdate(yandxrel, &yandxtuple->t_self, yandxtuple);
+#endif
 
   heap_freetuple(yandxtuple);
   heap_close(yandxrel, RowExclusiveLock);
@@ -273,7 +278,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid /
         ChunkInfo(ytup->lsn, ytup->modcount, text_to_cstring(&ytup->x_path)));
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);

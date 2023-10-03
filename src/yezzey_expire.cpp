@@ -1,8 +1,15 @@
+/*
+*
+* file: src/yezzey_expire.cpp
+*/
+
+
 #include "yezzey_expire.h"
 #include "offload_policy.h"
 #include "string"
 #include "url.h"
 #include "util.h"
+#include "yezzey_heap_api.h"
 
 void YezzeyRecordRelationExpireLsn(Relation rel) {
   if (Gp_role != GP_ROLE_EXECUTE) {
@@ -85,12 +92,17 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     auto yandxtuple = heap_form_tuple(RelationGetDescr(yexprel), values, nulls);
 
     simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
-    CatalogUpdateIndexes(yexprel, yandxtuple);
+
+#if GP_VERSION_NUM < 70000
+  CatalogUpdateIndexes(yexprel, yandxtuple);
+#else
+	CatalogTupleUpdate(yexprel, &yandxtuple->t_self, yandxtuple);
+#endif
 
     heap_freetuple(yandxtuple);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(yexprel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);
@@ -262,7 +274,13 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     simple_heap_update(rel, &tuple->t_self, yandxtuple);
-    CatalogUpdateIndexes(rel, yandxtuple);
+
+#if GP_VERSION_NUM < 70000
+  CatalogUpdateIndexes(rel, yandxtuple);
+#else
+	CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
+#endif
+
 
     heap_freetuple(yandxtuple);
   } else {
@@ -270,12 +288,17 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
     simple_heap_insert(rel, yandxtuple);
-    CatalogUpdateIndexes(rel, yandxtuple);
+
+#if GP_VERSION_NUM < 70000
+  CatalogUpdateIndexes(rel, yandxtuple);
+#else
+	CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
+#endif
 
     heap_freetuple(yandxtuple);
   }
 
-  heap_endscan(desc);
+  yezzey_endscan(desc);
   heap_close(rel, RowExclusiveLock);
 
   UnregisterSnapshot(snap);

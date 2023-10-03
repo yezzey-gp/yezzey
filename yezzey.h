@@ -75,7 +75,12 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
 void addToMoveTable(char *tableName);
 void processTables(void);
 
+#if GP_VERSION_NUM < 70000
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
+#else
+const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which);
+#endif
+
 #ifdef GPBUILD
 const f_smgr_ao *smgrao_yezzey();
 #endif

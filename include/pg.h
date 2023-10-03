@@ -21,7 +21,6 @@ extern "C" {
 
 #include "utils/elog.h"
 
-#include "pgstat.h"
 #include "utils/builtins.h"
 
 #include "access/relation.h"
@@ -51,6 +50,8 @@ extern "C" {
 #include "access/aocssegfiles.h"
 #include "access/aosegfiles.h"
 #include "storage/lmgr.h"
+#include "storage/bufmgr.h"
+
 #if PG_VERSION_NUM < 10000
 #include "utils/tqual.h"
 #endif
@@ -109,6 +110,7 @@ extern "C" {
 
 #if PG_VERSION_NUM >= 120000
 #include "access/table.h"
+#include "access/tupdesc.h"
 #endif
 
 #ifdef __cplusplus

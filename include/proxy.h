@@ -48,4 +48,9 @@ EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset, uint32 wait_event_i
 EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset);
 #endif 
 
+#if GP_VERSION_NUM >= 70000
+EXTERNC int yezzey_FileDiskSize(SMGRFile file);
+#endif
+
+
 #endif /* YEZZEY_PROXY_H */

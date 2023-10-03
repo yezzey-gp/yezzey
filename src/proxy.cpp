@@ -493,3 +493,10 @@ EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset)
   return FileTruncate(actual_fd, offset);
 #endif 
 }
+
+
+#if GP_VERSION_NUM >= 70000
+EXTERNC int yezzey_FileDiskSize(SMGRFile file) {
+  return FileDiskSize(file);
+}
+#endif
