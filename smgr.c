@@ -343,7 +343,6 @@ typedef struct f_smgr_ao {
 */
 
 static const struct f_smgr_ao yezzey_smgr_ao = {
-    .smgr_NonVirtualCurSeek = yezzey_NonVirtualCurSeek,
     .smgr_FileClose = yezzey_FileClose,
     .smgr_AORelOpenSegFile = yezzey_AORelOpenSegFile,
     .smgr_FileWrite = yezzey_FileWrite,
@@ -351,6 +350,7 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileSync = yezzey_FileSync,
     .smgr_FileTruncate = yezzey_FileTruncate,
 #if GP_VERSION_NUM < 70000
+    .smgr_NonVirtualCurSeek = yezzey_NonVirtualCurSeek,
     .smgr_FileSeek = yezzey_FileSeek,
 #else
     .smgr_FileDiskSize = yezzey_FileDiskSize,
