@@ -8,13 +8,13 @@ Data offloading means physical move of relation data to external cloud storage, 
 
 Difficulties:
 
-- no generic wal availabale in gp6 (pg 9.4)
+- no generic wal availabale in gp6 (pg 9.4) (but available in greenplum 7)
 - no custom access method in pg9.4
 - no custom wal redo routines
 
 # Design goals:
 
-Greenplum 6 compatibility.
+Greenplum 6/7 compatibility.
 
 Avoid binary incompatibilities, such as custom WAL records, which will not be replayabe in upstream GP.
 
