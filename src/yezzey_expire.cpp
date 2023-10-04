@@ -86,7 +86,6 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
     values[Anum_yezzey_expire_index_fqnmd5 - 1] =
         PointerGetDatum(cstring_to_text(md.c_str()));
-    ;
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(yexprel), values, nulls);
 
@@ -94,7 +93,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(yexprel, yandxtuple);
 #else
-    CatalogTupleUpdate(yexprel, &yandxtuple->t_self, yandxtuple);
+    CatalogTupleUpdate(yexprel, &tuple->t_self, yandxtuple);
 #endif
 
     heap_freetuple(yandxtuple);
@@ -315,7 +314,7 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     simple_heap_update(rel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
 #else
-    CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
+    CatalogTupleUpdate(rel, &tuple->t_self, yandxtuple);
 #endif
 
     heap_freetuple(yandxtuple);

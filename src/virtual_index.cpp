@@ -250,8 +250,8 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
-  simple_heap_insert(yandxrel, yandxtuple);
 #if GP_VERSION_NUM < 70000
+  simple_heap_insert(yandxrel, yandxtuple);
   CatalogUpdateIndexes(yandxrel, yandxtuple);
 #else
   CatalogTupleInsert(yandxrel, yandxtuple);
