@@ -90,9 +90,8 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(yexprel), values, nulls);
 
-    simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
-
 #if GP_VERSION_NUM < 70000
+    simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(yexprel, yandxtuple);
 #else
     CatalogTupleUpdate(yexprel, &yandxtuple->t_self, yandxtuple);
@@ -190,6 +189,7 @@ void YezzeyCreateRelationExpireIndex(void) {
 #else
   indexInfo->ii_IndexAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
   indexInfo->ii_IndexAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
+  indexInfo->ii_NumIndexKeyAttrs = indexInfo->ii_NumIndexAttrs;
 #endif
 
   indexInfo->ii_Expressions = NIL;
@@ -311,9 +311,8 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
-    simple_heap_update(rel, &tuple->t_self, yandxtuple);
-
 #if GP_VERSION_NUM < 70000
+    simple_heap_update(rel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
 #else
     CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
@@ -324,12 +323,11 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     // insert
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
-    simple_heap_insert(rel, yandxtuple);
-
 #if GP_VERSION_NUM < 70000
+    simple_heap_insert(rel, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
 #else
-    CatalogTupleUpdate(rel, &yandxtuple->t_self, yandxtuple);
+    CatalogTupleInsert(rel, yandxtuple);
 #endif
 
     heap_freetuple(yandxtuple);

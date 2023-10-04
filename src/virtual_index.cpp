@@ -254,7 +254,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 #if GP_VERSION_NUM < 70000
   CatalogUpdateIndexes(yandxrel, yandxtuple);
 #else
-  CatalogTupleUpdate(yandxrel, &yandxtuple->t_self, yandxtuple);
+  CatalogTupleInsert(yandxrel, yandxtuple);
 #endif
 
   heap_freetuple(yandxtuple);

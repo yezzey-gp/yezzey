@@ -1,3 +1,7 @@
+/*
+* file: xstorage/src/s3restful_service.cpp
+*/
+
 #include "s3restful_service.h"
 
 S3RESTfulService::S3RESTfulService()

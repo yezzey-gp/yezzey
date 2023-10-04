@@ -120,6 +120,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
 #else
   indexInfo->ii_IndexAttrNumbers[0] = Anum_offload_metadata_reloid;
+  indexInfo->ii_NumIndexKeyAttrs = indexInfo->ii_NumIndexAttrs;
 #endif
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
