@@ -171,7 +171,7 @@ void Crypter::io_dispatch_encrypt() {
                            GPGME_ENCRYPT_ALWAYS_TRUST, crypto_in, crypto_out);
     if (err) {
       auto errstr = gpgme_strerror(err);
-      std::cerr << "failed to dipatch encrypt " << errstr << '\n';
+      std::cerr << "failed to dispatch encrypt " << errstr << '\n';
       elog(ERROR, "encrypt failed");
       return;
       // bad
