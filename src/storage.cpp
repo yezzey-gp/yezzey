@@ -85,6 +85,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
       ioadv, GpIdentity.segindex, modcount, external_storage_path);
 
   if (virtual_size == -1) {
+    elog(NOTICE, "yezzey: failed to calculate virtual size");
     return -1;
   }
 

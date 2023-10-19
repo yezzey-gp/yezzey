@@ -32,7 +32,7 @@ bool EncryptedStorageWriter::write(const char *buffer, size_t *amount) {
     if (!write_initialized_) {
       if (prepare()) {
         // throw can cath ex here
-        // elog(ERROR, "failed to prepare write");
+        elog(ERROR, "failed to prepare write");
         return false;
       }
       write_initialized_ = true;
