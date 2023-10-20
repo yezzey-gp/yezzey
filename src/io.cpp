@@ -13,7 +13,7 @@
 
 #include "virtual_index.h"
 
-#define USE_WLG_WRITER 0
+#define USE_WLG_WRITER 1
 #define USE_WLG_READER 1
 #if HAVE_CRYPTO
 #else
