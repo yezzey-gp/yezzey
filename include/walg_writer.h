@@ -33,7 +33,8 @@ private:
   std::string storage_path_;
   std::string cmd_;
 
-  std::unique_ptr<redi::pstream> wal_g_{nullptr};
+  // std::unique_ptr<redi::pstream> wal_g_{nullptr};
+  FILE * wal_g_{nullptr};
   bool initialized_{false};
 
 public:
