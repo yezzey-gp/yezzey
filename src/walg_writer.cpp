@@ -24,7 +24,7 @@ std::string WALGWriter::craftString(const std::shared_ptr<IOadv> &adv,
   std::string cmd = adv->walg_bin_path;
 
   cmd += " --config=" + adv->walg_config_path;
-  cmd += " st put -s --no-compress ";
+  cmd += " st put --no-compress --read-stdin ";
 
   cmd += storage_path_;
   return cmd;
