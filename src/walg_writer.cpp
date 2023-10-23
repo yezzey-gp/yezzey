@@ -50,7 +50,7 @@ bool WALGWriter::close() {
       // out of sync
       return false;
     }
-    fclose(wal_g_);
+    //fclose(wal_g_);
     pclose(wal_g_);
     wal_g_ = nullptr;
     initialized_ = false;
