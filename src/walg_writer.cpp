@@ -51,6 +51,7 @@ bool WALGWriter::close() {
       return false;
     }
     fclose(wal_g_);
+    pclose(wal_g_);
     wal_g_ = nullptr;
     initialized_ = false;
   }
@@ -61,6 +62,10 @@ bool WALGWriter::write(const char *buffer, size_t *amount) {
   if (!initialized_) {
     // wal_g_ = make_unique<redi::pstream>(cmd_);
     wal_g_ = popen(cmd_.c_str(), "w");
+    if (wal_g_ == nullptr) {
+      return false;
+    }
+
     initialized_ = true;
   }
 
