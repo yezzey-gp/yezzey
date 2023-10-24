@@ -357,10 +357,15 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
          aorel->rd_rel->relname.data);
   }
 
+
   elog(INFO,
-       "yezzey: relation segment reached external storage (blkno=%ld), virtual "
-       "size %ld, logical eof %ld",
-       coords.blkno, virtual_sz, logicalEof);
+       "yezzey: relation segment reached external storage (blkno=%ld), up to logical eof %ld",
+       coords.blkno, logicalEof);
+
+  // elog(INFO,
+  //      "yezzey: relation segment reached external storage (blkno=%ld), virtual "
+  //      "size %ld, logical eof %ld",
+  //      coords.blkno, virtual_sz, logicalEof);
   return 0;
 }
 

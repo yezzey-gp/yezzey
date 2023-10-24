@@ -170,12 +170,12 @@ std::string make_yezzey_url(const std::string &prefix, int64_t modcount,
 int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                      int32_t segid) {
   try {
-    auto lister = StorageLister(adv, GpIdentity.segindex);
+    // auto lister = StorageLister(adv, GpIdentity.segindex);
     int64_t sz = 0;
-    for (auto key : lister.reader_->getKeyList().contents) {
-      sz +=
-          lister.reader_->bucketReader.constructReaderParams(key).getKeySize();
-    }
+    // for (auto key : lister.reader_->getKeyList().contents) {
+    //   sz +=
+    //       lister.reader_->bucketReader.constructReaderParams(key).getKeySize();
+    // }
     /* external reader destruct */
     return sz;
   } catch (...) {
