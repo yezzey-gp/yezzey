@@ -64,5 +64,5 @@ private:
   const std::vector<ChunkInfo> order_;
   std::string cmd_;
 
-  std::unique_ptr<redi::ipstream> wal_g_{nullptr};
+  FILE* wal_g_{nullptr};
 };

@@ -1,6 +1,7 @@
 #include "meta.h"
 #include "url.h"
 #include "util.h"
+#include "gucs.h"
 #include "walg_reader.h"
 #include <iostream>
 
@@ -30,26 +31,42 @@ WALGSTReader::~WALGSTReader() { close(); }
 
 bool WALGSTReader::close() {
   if (wal_g_ != nullptr) {
-    auto *pbuf = wal_g_->rdbuf();
-    pbuf->kill(SIGTERM);
-    wal_g_->close();
+    pclose(wal_g_);
+    wal_g_ = nullptr;
   }
   return true;
 }
 bool WALGSTReader::read(char *buffer, size_t *amount) {
-  if (wal_g_ == nullptr || wal_g_->eof()) {
+  if (wal_g_ == nullptr) {
     if (order_ptr_ == order_.size()) {
       return false;
     }
     cmd_ = craftString(order_[order_ptr_].x_path, GpIdentity.segindex);
-    wal_g_ = make_unique<redi::ipstream>(cmd_);
+    if (wal_g_ != nullptr) {
+      pclose(wal_g_);
+      wal_g_ = nullptr;
+    }
+    wal_g_ = popen(cmd_.c_str(), "r");
+    if (wal_g_ == nullptr) {
+      elog(yezzey_log_level, "failed to open wal-g reader for %s", order_[order_ptr_].x_path.c_str());
+      return false;
+    }
+
     ++order_ptr_;
   }
 
-  wal_g_->read(buffer, *amount);
-  *amount = wal_g_->gcount();
+  auto rc = fread(buffer, sizeof(char), *amount, wal_g_);
+  if (rc <= 0) {
+      elog(yezzey_log_level, "failed to read wal-g for %s, %m", order_[order_ptr_].x_path.c_str());
+  }
 
-  return *amount > 0;
+  *amount = rc;
+
+  if (feof(wal_g_)) {
+    wal_g_ = nullptr;
+    return true;
+  }
+  return rc > 0;
 }
 int WALGSTReader::prepare() { return 0; }
 
@@ -57,5 +74,5 @@ bool WALGSTReader::empty() {
   if (wal_g_ == nullptr)
     return order_ptr_ == order_.size();
   else
-    return order_ptr_ == order_.size() && wal_g_->eof();
+    return order_ptr_ == order_.size() && feof(wal_g_);
 };
