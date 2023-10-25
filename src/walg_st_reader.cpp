@@ -40,6 +40,7 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
   while (1) {
     if (wal_g_ == nullptr) {
       if (order_ptr_ == order_.size()) {
+        *amount = -6;
         return false;
       }
       cmd_ = craftString(order_[order_ptr_].x_path, GpIdentity.segindex);
@@ -49,6 +50,7 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
       }
       wal_g_ = popen(cmd_.c_str(), "r");
       if (wal_g_ == nullptr) {
+        *amount = -5;
         elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_)); 
         return false;
       }
@@ -58,8 +60,9 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
 
     auto rc = fread(buffer, sizeof(char), *amount, wal_g_);
     if (rc < 0) {
-        elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_)); 
-        return rc;
+        elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_));
+        *amount = -7; 
+        return false;
     }
 
     if (rc == 0) {
@@ -67,8 +70,9 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
         wal_g_ = nullptr;
         continue;
       }
+      *amount = -4;
       elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_)); 
-      return -1;
+      return false;
     }
 
     *amount = rc;
@@ -77,7 +81,7 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
       wal_g_ = nullptr;
       return true;
     }
-    return rc > 0;
+    return true;
   }
 }
 
