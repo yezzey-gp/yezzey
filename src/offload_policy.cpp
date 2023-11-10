@@ -367,7 +367,8 @@ void YezzeyLoadRealtion(Oid i_reloid) {
 
     heap_freetuple(offtuple);
   } else {
-    elog(ERROR, "yezzey metadata relation corrupted for %d", i_reloid);
+    // Todo: add force param setting to change behaviour between ERROR and WARNING here 
+    elog(WARNING, "yezzey metadata relation corrupted for %d", i_reloid);
   }
 
   yezzey_endscan(desc);
