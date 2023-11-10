@@ -87,6 +87,10 @@ bool use_gpg_crypto = false;
 char *walg_bin_path = NULL;
 char *walg_config_path = NULL;
 
+/* YPROXY */
+
+char *yproxy_socket = NULL;
+
 PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(yezzey_offload_relation);
