@@ -46,6 +46,7 @@ OBJS = \
 	src/partition.o \
 	src/xvacuum.o \
 	src/yezzey_expire.o \
+	src/yproxy.o \
 	src/init.o \
 	src/meta.o \
 	src/json.o \

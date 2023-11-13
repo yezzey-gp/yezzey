@@ -505,6 +505,10 @@ void yezzey_define_gucs() {
   DefineCustomIntVariable(
       "yezzey.oflload_worker_naptime", "Auto-offloading worker naptime", NULL,
       &yezzey_naptime, 10000, 500, INT_MAX, PGC_SUSET, 0, NULL, NULL, NULL);
+
+  DefineCustomStringVariable("yezzey.yproxy_socket", "wal-g config path",
+                          NULL, &yproxy_socket, "/tmp/yproxy.sock",
+                          PGC_SUSET, 0, NULL, NULL, NULL);
 }
 
 void _PG_init(void) {
