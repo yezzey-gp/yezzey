@@ -395,7 +395,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
     } else {
       if (!yfd.handler->io_read(buffer, &curr)) {
         elog(yezzey_ao_log_level,
-             "problem while direct read from s3 read with %d curr: %ld", file,
+             "yezzey_FileRead: problem while direct read from s3 read with %d curr: %ld", file,
              curr);
         return -1;
       }
@@ -407,7 +407,7 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
     yfd.offset += curr;
 
     elog(yezzey_ao_log_level,
-         "file read with %d, actual %d, amount %d real %ld", file, actual_fd,
+         "yezzey_FileRead: file read with %d, actual %d, amount %d real %ld", file, actual_fd,
          amount, curr);
     return curr;
   }

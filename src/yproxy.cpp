@@ -28,15 +28,15 @@ const char MessageTypeCat = 42;
 
 std::vector<char> YProxyReader::CostructCatRequest(const ChunkInfo & ci) {
     std::vector<char> buff(8 + 4 + ci.x_path.size() + 1, 0);
-    buff[9] = MessageTypeCat;
-    buff[10] = DecrpytRequest;
+    buff[8] = MessageTypeCat;
+    buff[9] = DecrpytRequest;
     uint64_t len = buff.size();
 
     strncpy(buff.data() + 12, ci.x_path.c_str(), ci.x_path.size());
 
     uint64_t cp = len;
-    for (size_t i = 7; i >= 0; --i) {
-        buff[i] = cp & (1 << 8);
+    for (ssize_t i = 7; i >= 0; --i) {
+        buff[i] = cp & ((1 << 8) - 1);
         cp >>= 8;
     }
 
@@ -81,7 +81,7 @@ int YProxyReader::prepareYproxyConnection(const ChunkInfo & ci) {
 }
 
 bool YProxyReader::read(char *buffer, size_t *amount) {
-    if (current_chunk_remaining_bytes_ == 0) {
+    if (current_chunk_remaining_bytes_ <= 0) {
 
         // no more data to read
         if (order_ptr_ == order_.size()) {
@@ -101,19 +101,18 @@ bool YProxyReader::read(char *buffer, size_t *amount) {
     // preparing done, read data
 
     auto rc = ::read(client_fd_, buffer, *amount);
-
     if (rc <= 0) {
         // error 
         *amount = rc;
         return false;
     }
+    // what if rc > current_chunk_remaining_bytes_ ? 
+    current_chunk_remaining_bytes_ -= rc;
     *amount = rc;
-
-    current_chunk_remaining_bytes_ = rc;
 
     return true;
 }
 
 bool YProxyReader::empty() {
-    return order_ptr_ == order_.size();
+    return order_ptr_ == order_.size() && current_chunk_remaining_bytes_ <= 0;
 };
