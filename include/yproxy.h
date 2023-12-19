@@ -8,7 +8,7 @@
 #include <vector>
 
 
-/* wal-g reader useing only wal-g st */
+/* reader using yproxy */
 class YProxyReader : public YReader {
 public:
   friend class ExternalWriter;
