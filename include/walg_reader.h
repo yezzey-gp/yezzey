@@ -35,7 +35,7 @@ private:
   bool initialized_{false};
 };
 
-/* wal-g reader useing only wal-g st */
+/* wal-g reader using only wal-g st */
 class WALGSTReader : public YReader {
 public:
   friend class ExternalWriter;
