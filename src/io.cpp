@@ -49,7 +49,10 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
 #    endif
 #endif
 
-#if USE_WLG_WRITER
+#if USE_YPX_WRITER
+  writer_ =
+      std::make_shared<YProxyWriter>(adv_, segindx_, modcount, storage_path);
+#elif USE_WLG_WRITER
   writer_ =
       std::make_shared<WALGWriter>(adv_, segindx_, modcount, storage_path);
 #else

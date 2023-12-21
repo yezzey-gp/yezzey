@@ -38,3 +38,42 @@ private:
 
   int client_fd_{-1};
 };
+
+// write to external storage, using gpwriter.
+// encrypt all data with gpg
+class YProxyWriter : public YWriter {
+
+public:
+  explicit YProxyWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
+                      ssize_t modcount, const std::string &storage_path);
+
+  virtual ~YProxyWriter();
+
+  virtual bool close();
+
+  virtual bool write(const char *buffer, size_t *amount);
+
+protected:
+  /* prepare connection for chunk reading */ 
+  int prepareYproxyConnection();
+  std::vector<char> ConstructPutRequest(const char *buffer, size_t amount);
+  std::vector<char> CostructCommandCompleteRequest();
+  int readRFQResponce();
+
+private:
+  std::string createXPath();
+
+
+  std::shared_ptr<IOadv> adv_;
+  ssize_t segindx_;
+  ssize_t modcount_;
+  XLogRecPtr insertion_rec_ptr_;
+  std::string storage_path_;
+
+  int client_fd_{-1};
+
+public:
+  std::string getExternalStoragePath() { return storage_path_; }
+
+  XLogRecPtr getInsertionStorageLsn() { return insertion_rec_ptr_; }
+};
