@@ -27,7 +27,7 @@ public:
 protected:
   /* prepare connection for chunk reading */ 
   int prepareYproxyConnection(const ChunkInfo & ci);
-  std::vector<char> CostructCatRequest(const ChunkInfo & ci);
+  std::vector<char> ConstructCatRequest(const ChunkInfo & ci);
 
 private:
   std::shared_ptr<IOadv> adv_{nullptr};

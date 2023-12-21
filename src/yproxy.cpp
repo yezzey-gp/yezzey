@@ -26,7 +26,7 @@ bool YProxyReader::close() {
 const char DecrpytRequest = 1;
 const char MessageTypeCat = 42;
 
-std::vector<char> YProxyReader::CostructCatRequest(const ChunkInfo & ci) {
+std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo & ci) {
     std::vector<char> buff(8 + 4 + ci.x_path.size() + 1, 0);
     buff[8] = MessageTypeCat;
     buff[9] = DecrpytRequest;
@@ -67,7 +67,7 @@ int YProxyReader::prepareYproxyConnection(const ChunkInfo & ci) {
         return -1;
     }
 
-    auto msg = CostructCatRequest(ci);
+    auto msg = ConstructCatRequest(ci);
 
     size_t rc = ::write(client_fd_, msg.data(), msg.size());
 
