@@ -3,8 +3,10 @@
 
 #include "io_adv.h"
 #include "yreader.h"
+#include "ywriter.h"
 #include <memory>
 #include <string>
+#include "chunkinfo.h"
 #include <vector>
 
 /* reader using yproxy */
