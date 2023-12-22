@@ -22,7 +22,6 @@ extern char *storage_host;
 extern char *walg_bin_path;
 extern char *walg_config_path;
 
-
 /* Y-PROXY */
 extern char *yproxy_socket;
 

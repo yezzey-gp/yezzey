@@ -10,7 +10,6 @@
 // write to external storage, using gpwriter.
 // encrypt all data with gpg
 class WALGWriter : public YWriter {
-
 public:
   explicit WALGWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
                       ssize_t modcount, const std::string &storage_path);
@@ -34,7 +33,7 @@ private:
   std::string cmd_;
 
   // std::unique_ptr<redi::pstream> wal_g_{nullptr};
-  FILE * wal_g_{nullptr};
+  FILE *wal_g_{nullptr};
   bool initialized_{false};
 
 public:

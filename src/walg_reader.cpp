@@ -15,7 +15,6 @@ wal-g
 */
 
 std::string craftString(std::shared_ptr<IOadv> adv, size_t segindx) {
-
   std::string cmd = adv->walg_bin_path;
 
   cmd += " --config=" + adv->walg_config_path;
@@ -41,7 +40,6 @@ WALGReader::~WALGReader() { close(); }
 
 bool WALGReader::close() {
   if (initialized_) {
-
     auto *pbuf = wal_g_->rdbuf();
     pbuf->kill(SIGTERM);
     wal_g_->close();

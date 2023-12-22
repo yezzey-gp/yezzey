@@ -20,7 +20,6 @@ std::string craftStoragePath(const std::shared_ptr<YLister> &lister,
 
 std::string WALGWriter::craftString(const std::shared_ptr<IOadv> &adv,
                                     ssize_t segindx, ssize_t modcount) {
-
   std::string cmd = adv->walg_bin_path;
 
   cmd += " --config=" + adv->walg_config_path;
@@ -50,7 +49,7 @@ bool WALGWriter::close() {
       // out of sync
       return false;
     }
-    //fclose(wal_g_);
+    // fclose(wal_g_);
     pclose(wal_g_);
     wal_g_ = nullptr;
     initialized_ = false;
@@ -70,7 +69,7 @@ bool WALGWriter::write(const char *buffer, size_t *amount) {
   }
 
   auto rv = fwrite(buffer, sizeof(char), *amount, wal_g_);
-  
+
   if (rv <= 0) {
     *amount = 0;
     return false;

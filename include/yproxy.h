@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-
 /* reader using yproxy */
 class YProxyReader : public YReader {
 public:
@@ -23,11 +22,10 @@ public:
   virtual bool empty();
 
 public:
-
 protected:
-  /* prepare connection for chunk reading */ 
-  int prepareYproxyConnection(const ChunkInfo & ci);
-  std::vector<char> ConstructCatRequest(const ChunkInfo & ci);
+  /* prepare connection for chunk reading */
+  int prepareYproxyConnection(const ChunkInfo &ci);
+  std::vector<char> ConstructCatRequest(const ChunkInfo &ci);
 
 private:
   std::shared_ptr<IOadv> adv_{nullptr};
@@ -42,10 +40,9 @@ private:
 // write to external storage, using gpwriter.
 // encrypt all data with gpg
 class YProxyWriter : public YWriter {
-
 public:
   explicit YProxyWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
-                      ssize_t modcount, const std::string &storage_path);
+                        ssize_t modcount, const std::string &storage_path);
 
   virtual ~YProxyWriter();
 
@@ -54,7 +51,7 @@ public:
   virtual bool write(const char *buffer, size_t *amount);
 
 protected:
-  /* prepare connection for chunk reading */ 
+  /* prepare connection for chunk reading */
   int prepareYproxyConnection();
   std::vector<char> ConstructPutRequest(std::string fileName);
   std::vector<char> ConstructCopyDataRequest(const char *buffer, size_t amount);
@@ -64,7 +61,6 @@ protected:
 private:
   std::string createXPath();
   int write_full(const std::vector<char> &msg);
-
 
   std::shared_ptr<IOadv> adv_;
   ssize_t segindx_;

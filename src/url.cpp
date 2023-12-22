@@ -24,7 +24,6 @@ std::string yezzey_fqrelname_md5(const std::string &nspname,
 std::string yezzey_block_file_path(const std::string &nspname,
                                    const std::string &relname,
                                    relnodeCoord coords, int32_t segid) {
-
   std::string url =
       "/segments_005/seg" + std::to_string(segid) + baseYezzeyPath;
 
@@ -53,7 +52,6 @@ std::string craftStoragePrefixedPath(const std::shared_ptr<IOadv> &adv,
 std::string craftStorageUnPrefixedPath(const std::shared_ptr<IOadv> &adv,
                                        ssize_t segindx, ssize_t modcount,
                                        XLogRecPtr current_recptr) {
-
   auto prefix =
       yezzey_block_file_path(adv->nspname, adv->relname, adv->coords_, segindx);
 
@@ -63,7 +61,6 @@ std::string craftStorageUnPrefixedPath(const std::shared_ptr<IOadv> &adv,
 /* Create prefixed (x storage prefix) path to x storage with bucket and host */
 std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
                      ssize_t modcount, XLogRecPtr insertion_rec_ptr) {
-
   auto path = craftStoragePrefixedPath(
       adv, segindx, modcount, adv->external_storage_prefix, insertion_rec_ptr);
 
