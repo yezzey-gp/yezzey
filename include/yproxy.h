@@ -63,6 +63,7 @@ protected:
 
 private:
   std::string createXPath();
+  int write_full(const std::vector<char> &msg);
 
 
   std::shared_ptr<IOadv> adv_;
