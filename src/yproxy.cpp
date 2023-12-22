@@ -34,7 +34,7 @@ const char MessageTypeCopyData = 46;
 const size_t MSG_HEADER_SIZE = 8;
 const size_t PROTO_HEADER_SIZE = 4;
 
-std::vector<char> YProxyReader::CostructCatRequest(const ChunkInfo &ci) {
+std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci) {
   std::vector<char> buff(
       MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1, 0);
   buff[8] = MessageTypeCat;
