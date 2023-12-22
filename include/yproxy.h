@@ -56,7 +56,8 @@ public:
 protected:
   /* prepare connection for chunk reading */ 
   int prepareYproxyConnection();
-  std::vector<char> ConstructPutRequest(const char *buffer, size_t amount);
+  std::vector<char> ConstructPutRequest(std::string fileName);
+  std::vector<char> ConstructCopyDataRequest(const char *buffer, size_t amount);
   std::vector<char> CostructCommandCompleteRequest();
   int readRFQResponce();
 

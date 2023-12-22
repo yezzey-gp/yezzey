@@ -9,6 +9,7 @@
 #include "virtual_index.h"
 
 #define USE_YPX_READER 1
+#define USE_YPX_WRITER 1
 
 #define USE_WLG_WRITER 1
 #define USE_WLG_READER 1

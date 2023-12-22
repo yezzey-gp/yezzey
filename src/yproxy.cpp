@@ -24,10 +24,12 @@ bool YProxyReader::close() {
 }
 
 const char DecrpytRequest = 1;
+const char EncryptRequest = 1;
 const char MessageTypeCat = 42;
 const char MessageTypePut = 43;
 const char MessageTypeCommandComplete = 44;
 const char MessageTypeReadyForQuery = 45;
+const char MessageTypeCopyData = 46;
 
 std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo & ci) {
     std::vector<char> buff(8 + 4 + ci.x_path.size() + 1, 0);
@@ -149,24 +151,28 @@ bool YProxyWriter::write(const char *buffer, size_t *amount) {
         return false;
     }
 
-    int written = 0;
-    while (*amount > 0) {
-        auto msg = ConstructPutRequest(buffer + written, *amount);
-        size_t rc = ::write(client_fd_, msg.data(), msg.size());
+    auto msg = ConstructPutRequest(storage_path_);
+    size_t rc = ::write(client_fd_, msg.data(), msg.size());
 
-        if (rc <= 0) {
-            // handle
-            return -1;
-        }
-        *amount -= rc;
-        written += rc;
+    if (rc != msg.size()) {
+        *amount = 0;
+        return false;
     }
 
-    auto msg = CostructCommandCompleteRequest();
+    msg = ConstructCopyDataRequest(buffer, *amount);
+    rc = ::write(client_fd_, msg.data(), msg.size());
+
+    if (rc != msg.size()) {
+        *amount = 0;
+        return false;
+    }
+    *amount = msg.size() - 12;
+
+    msg = CostructCommandCompleteRequest();
     int len = msg.size();
     while (len > 0)
     {
-        size_t rc = ::write(client_fd_, msg.data() + (12 - len), len);
+        rc = ::write(client_fd_, msg.data() + (12 - len), len);
 
         if (rc <= 0) {
             // handle
@@ -199,14 +205,37 @@ int YProxyWriter::prepareYproxyConnection() {
                           sizeof(addr));
 }
 
-std::vector<char> YProxyWriter::ConstructPutRequest(const char *buffer, size_t amount) {
-    std::vector<char> buff(8 + 4 + amount + 1, 0);
+std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
+    std::vector<char> buff(8 + 4 + fileName.size() + 1, 0);
     buff[8] = MessageTypePut;
+    buff[9] = EncryptRequest;
     uint64_t len = buff.size();
 
-    strncpy(buff.data() + 12, buffer, amount);
+    strncpy(buff.data() + 12, fileName.c_str(), fileName.size());
 
     uint64_t cp = len;
+    for (ssize_t i = 7; i >= 0; --i) {
+        buff[i] = cp & ((1 << 8) - 1);
+        cp >>= 8;
+    }
+
+    return buff;
+}
+
+std::vector<char> YProxyWriter::ConstructCopyDataRequest(const char *buffer, size_t amount) {
+    std::vector<char> buff(8 + 12 + amount, 0);
+    buff[8] = MessageTypeCopyData;
+    uint64_t len = buff.size();
+
+    memcpy(buff.data() + 20, buffer, amount);
+
+    uint64_t cp = amount;
+    for (ssize_t i = 19; i >= 12; --i) {
+        buff[i] = cp & ((1 << 8) - 1);
+        cp >>= 8;
+    }
+
+    cp = len;
     for (ssize_t i = 7; i >= 0; --i) {
         buff[i] = cp & ((1 << 8) - 1);
         cp >>= 8;
