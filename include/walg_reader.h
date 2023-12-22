@@ -64,5 +64,5 @@ private:
   const std::vector<ChunkInfo> order_;
   std::string cmd_;
 
-  FILE* wal_g_{nullptr};
+  FILE *wal_g_{nullptr};
 };

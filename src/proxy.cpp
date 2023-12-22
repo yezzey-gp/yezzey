@@ -280,7 +280,6 @@ void yezzey_FileClose(SMGRFile file) {
   }
   YVirtFD &yfd = YVirtFD_cache[file];
   if (yfd.y_vfd != -1 && yfd.y_vfd != YEZZEY_OFFLOADED_FD) {
-
     elog(yezzey_ao_log_level, "file close with %d actual %d", file, yfd.y_vfd);
 
     FileClose(yfd.y_vfd);
@@ -311,7 +310,6 @@ void yezzey_FileClose(SMGRFile file) {
             yezzey_fqrelname_md5(yfd.nspname, yfd.relname).c_str());
       }
     } else {
-
       /* not need to do anything */
     }
   }
@@ -395,8 +393,9 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
     } else {
       if (!yfd.handler->io_read(buffer, &curr)) {
         elog(yezzey_ao_log_level,
-             "yezzey_FileRead: problem while direct read from s3 read with %d curr: %ld", file,
-             curr);
+             "yezzey_FileRead: problem while direct read from s3 read with %d "
+             "curr: %ld",
+             file, curr);
         return -1;
       }
 #ifdef DISKCACHE
@@ -407,8 +406,8 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
     yfd.offset += curr;
 
     elog(yezzey_ao_log_level,
-         "yezzey_FileRead: file read with %d, actual %d, amount %d real %ld", file, actual_fd,
-         amount, curr);
+         "yezzey_FileRead: file read with %d, actual %d, amount %d real %ld",
+         file, actual_fd, amount, curr);
     return curr;
   }
 

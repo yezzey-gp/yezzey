@@ -10,7 +10,6 @@ static inline Oid
 yezzey_create_index_internal(Oid relid, const std::string &relname,
                              Oid relowner, char relpersistence,
                              bool shared_relation, bool mapped_relation) {
-
 #if GP_VERSION_NUM < 70000
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 #else
@@ -175,7 +174,6 @@ void emptyYezzeyIndex(Oid yezzey_index_oid, Oid relfilenode) {
 
 void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid /* not used */,
                            Oid relfilenode, int blkno) {
-
   HeapTuple tuple;
   ScanKeyData skey[YezzeyVirtualIndexScanCols];
 
@@ -266,7 +264,6 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 std::vector<ChunkInfo>
 YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
                       Oid reloid /* not used */, Oid relfilenode, int blkno) {
-
   /* SELECT external_path
    * FROM yezzey.yezzey_virtual_index_<oid>
    * WHERE segno = .. and filenode = ..
@@ -297,8 +294,9 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
   while (HeapTupleIsValid(tuple = heap_getnext(desc, ForwardScanDirection))) {
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
     // unpack text to str
-    res.push_back(
-        ChunkInfo(ytup->lsn, ytup->modcount, text_to_cstring(&ytup->x_path), ytup->finish_offset - ytup->start_offset));
+    res.push_back(ChunkInfo(ytup->lsn, ytup->modcount,
+                            text_to_cstring(&ytup->x_path),
+                            ytup->finish_offset - ytup->start_offset));
   }
 
   yezzey_endscan(desc);

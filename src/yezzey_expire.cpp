@@ -266,7 +266,6 @@ void YezzeyCreateRelationExpireIndex(void) {
 
 void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
                             XLogRecPtr lsn) {
-
   ScanKeyData skey[YezzeyExpireIndexCols];
 
   bool nulls[Natts_yezzey_expire_index];

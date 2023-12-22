@@ -61,7 +61,6 @@ std::string storage_url_add_options(const std::string &s3path,
 }
 
 relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
-
   Oid dbOid = 0, relfilenodeOid = 0;
   int64_t blkno = 0;
 
@@ -187,7 +186,6 @@ int64_t yezzey_virtual_relation_size(std::shared_ptr<IOadv> adv,
 int64_t yezzey_calc_virtual_relation_size(std::shared_ptr<IOadv> adv,
                                           ssize_t segindx, ssize_t modcount,
                                           const std::string &storage_path) {
-
 #if USE_WALG_BACKUPS
   try {
     auto ioh = YIO(adv, segindx, modcount, storage_path);

@@ -1,7 +1,7 @@
+#include "gucs.h"
 #include "meta.h"
 #include "url.h"
 #include "util.h"
-#include "gucs.h"
 #include "walg_reader.h"
 #include <iostream>
 
@@ -51,7 +51,8 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
       wal_g_ = popen(cmd_.c_str(), "r");
       if (wal_g_ == nullptr) {
         *amount = -5;
-        elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_)); 
+        elog(WARNING, "failed to read wal-g for %s, %d, %m",
+             order_[order_ptr_].x_path.c_str(), ferror(wal_g_));
         return false;
       }
 
@@ -60,9 +61,10 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
 
     auto rc = fread(buffer, sizeof(char), *amount, wal_g_);
     if (rc < 0) {
-        elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_));
-        *amount = -7; 
-        return false;
+      elog(WARNING, "failed to read wal-g for %s, %d, %m",
+           order_[order_ptr_].x_path.c_str(), ferror(wal_g_));
+      *amount = -7;
+      return false;
     }
 
     if (rc == 0) {
@@ -71,7 +73,8 @@ bool WALGSTReader::read(char *buffer, size_t *amount) {
         continue;
       }
       *amount = -4;
-      elog(WARNING, "failed to read wal-g for %s, %d, %m", order_[order_ptr_].x_path.c_str(), ferror(wal_g_)); 
+      elog(WARNING, "failed to read wal-g for %s, %d, %m",
+           order_[order_ptr_].x_path.c_str(), ferror(wal_g_));
       return false;
     }
 
