@@ -497,7 +497,10 @@ std::vector<storageChunkMeta> YproxyLister::readObjectMetaBody(std::vector<char>
     }
     i += 8;
 
-    res.emplace_back(size, path);
+    storageChunkMeta meta;
+    meta.chunkName = path;
+    meta.chunkSize = size;
+    res.push_back(meta);
   }
   
   return res;
