@@ -383,8 +383,9 @@ std::vector<storageChunkMeta> YproxyLister::list_relation_chunks() {
     // throw?
     return res;
   }
-
-  auto msg = ConstructListRequest("");
+  
+  auto msg = ConstructListRequest(yezzey_block_file_path(adv_->nspname, adv_->relname,
+                                         adv_->coords_, segindx_));
   size_t rc = ::write(client_fd_, msg.data(), msg.size());
   if (rc <= 0) {
     // throw?
