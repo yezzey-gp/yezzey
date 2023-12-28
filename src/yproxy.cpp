@@ -30,6 +30,8 @@ const char MessageTypePut = 43;
 const char MessageTypeCommandComplete = 44;
 const char MessageTypeReadyForQuery = 45;
 const char MessageTypeCopyData = 46;
+const char MessageTypeList = 48;
+const char MessageTypeObjectMeta = 49;
 
 const size_t MSG_HEADER_SIZE = 8;
 const size_t PROTO_HEADER_SIZE = 4;
@@ -330,4 +332,172 @@ int YProxyWriter::readRFQResponce() {
     return 2;
   }
   return 0;
+}
+
+YproxyLister::YproxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
+    : adv_(adv), segindx_(segindx) { }
+
+
+YproxyLister::~YproxyLister() { close(); }
+
+bool YproxyLister::close() {
+  if (client_fd_ != -1) {
+    ::close(client_fd_);
+    client_fd_ = -1;
+  }
+  return true;
+}
+
+int YproxyLister::prepareYproxyConnection() {
+  // open unix data socket
+
+  client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (client_fd_ == -1) {
+    // throw here?
+    return -1;
+  }
+
+  struct sockaddr_un addr;
+  /* Bind socket to socket name. */
+
+  memset(&addr, 0, sizeof(addr));
+
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, adv_->yproxy_socket.c_str(),
+          sizeof(addr.sun_path) - 1);
+
+  auto ret =
+      ::connect(client_fd_, (const struct sockaddr *)&addr, sizeof(addr));
+
+  if (ret == -1) {
+    return -1;
+  }
+
+  return 0;
+}
+
+std::vector<storageChunkMeta> YproxyLister::list_relation_chunks() {
+  std::vector<storageChunkMeta> res;
+  auto ret = prepareYproxyConnection();
+  if (ret != 0) {
+    // throw?
+    return res;
+  }
+
+  auto msg = ConstructListRequest("");
+  size_t rc = ::write(client_fd_, msg.data(), msg.size());
+  if (rc <= 0) {
+    // throw?
+    return res;
+  }
+
+  while(true) {
+    auto message = readMessage();
+    switch (message.type)
+    {
+    case MessageTypeObjectMeta:
+      auto meta = readObjectMetaBody(message.content);
+      res.insert(res.end(), meta.begin(), meta.end());
+      break;
+    case MessageTypeReadyForQuery:
+      return res;
+    
+    default:
+      //throw?
+      return res;
+    }
+  }  
+}
+
+std::vector<std::string> YproxyLister::list_chunk_names() {
+  auto chunk_meta = list_relation_chunks();
+  std::vector<std::string> res(chunk_meta.size());
+
+  for (int i = 0; i < chunk_meta.size(); i++) {
+    res[i] = chunk_meta[i].chunkName;
+  }
+  return res;
+}
+
+std::vector<char> YproxyLister::ConstructListRequest(std::string fileName) {
+  std::vector<char> buff(
+      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1, 0);
+  buff[8] = MessageTypeList;
+  uint64_t len = buff.size();
+
+  strncpy(buff.data() + MSG_HEADER_SIZE + PROTO_HEADER_SIZE, fileName.c_str(),
+          fileName.size());
+
+  uint64_t cp = len;
+  for (ssize_t i = 7; i >= 0; --i) {
+    buff[i] = cp & ((1 << 8) - 1);
+    cp >>= 8;
+  }
+
+  return buff;
+}
+
+YproxyLister::message YproxyLister::readMessage() {
+  YproxyLister::message res;
+  int len = MSG_HEADER_SIZE;
+  char buffer[len];
+  // try to read small number of bytes in one op
+  // if failed, give up
+  int rc = ::read(client_fd_, buffer, len);
+  if (rc != len) {
+    // handle
+    res.retCode = -1;
+    return res;
+  }
+
+  uint64_t msgLen = 0;
+  for (int i = 0; i < 8; i++) {
+    msgLen <<= 8;
+    msgLen += buffer[i];
+  }
+
+  // substract header
+  msgLen -= len;
+
+  char data[msgLen];
+  rc = ::read(client_fd_, data, msgLen);
+
+  if (rc != msgLen) {
+    // handle
+    res.retCode = -1;
+    return res;
+  }
+
+  res.type = data[0];
+  res.content = std::vector<char>(data, data + msgLen);
+  return res;
+}
+
+std::vector<storageChunkMeta> YproxyLister::readObjectMetaBody(std::vector<char> *body) {
+  std::vector<storageChunkMeta> res;
+  int i = PROTO_HEADER_SIZE;
+  while (i < body->size())
+  {
+    std::vector<char> buff;
+    while (body[i] != 0 && i < body->size()) {
+      buff.push_back(body[i]);
+      i++;
+    }
+    i++;
+    std::string path(buff.begin(), buff.end());
+    if (body->size() - i < 8) {
+      //throw?
+      return res;
+    }
+    int64_t size = 0;
+    for (int j = i; j < i + 8; j++) {
+      size <<= 8;
+      size += body[j];
+    }
+    i += 8;
+
+    res.emplace_back(size, path);
+  }
+  
+  return res;
 }
