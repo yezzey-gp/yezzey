@@ -20,6 +20,7 @@
 #include "s3memory_mgmt.h"
 
 #include "storage_lister.h"
+#include "yproxy.h"
 #include "url.h"
 
 #include "yezzey_meta.h"
