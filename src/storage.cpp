@@ -24,6 +24,8 @@
 
 #include "yezzey_meta.h"
 
+#define USE_YPX_LISTER = 1
+
 int yezzey_log_level = INFO;
 int yezzey_ao_log_level = INFO;
 
@@ -460,8 +462,12 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/
 
+  #ifdef USE_YPX_LISTER
+  auto lister = YproxyLister(ioadv, GpIdentity.segindex);
+  #else
   /* ro - handler */
   auto lister = StorageLister(ioadv, GpIdentity.segindex);
+  #endif
 
   /* stat external storage usage */
 
