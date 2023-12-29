@@ -80,11 +80,11 @@ public:
 };
 
 // list external storage using yproxy
-class YproxyLister : public YLister {
+class YProxyLister : public YLister {
 public:
-  explicit YproxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx);
+  explicit YProxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx);
 
-  virtual ~YproxyLister();
+  virtual ~YProxyLister();
 
   virtual bool close();
 

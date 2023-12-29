@@ -334,13 +334,13 @@ int YProxyWriter::readRFQResponce() {
   return 0;
 }
 
-YproxyLister::YproxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
+YProxyLister::YProxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
     : adv_(adv), segindx_(segindx) { }
 
 
-YproxyLister::~YproxyLister() { close(); }
+YProxyLister::~YProxyLister() { close(); }
 
-bool YproxyLister::close() {
+bool YProxyLister::close() {
   if (client_fd_ != -1) {
     ::close(client_fd_);
     client_fd_ = -1;
@@ -348,7 +348,7 @@ bool YproxyLister::close() {
   return true;
 }
 
-int YproxyLister::prepareYproxyConnection() {
+int YProxyLister::prepareYproxyConnection() {
   // open unix data socket
 
   client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -376,7 +376,7 @@ int YproxyLister::prepareYproxyConnection() {
   return 0;
 }
 
-std::vector<storageChunkMeta> YproxyLister::list_relation_chunks() {
+std::vector<storageChunkMeta> YProxyLister::list_relation_chunks() {
   std::vector<storageChunkMeta> res;
   auto ret = prepareYproxyConnection();
   if (ret != 0) {
@@ -392,12 +392,13 @@ std::vector<storageChunkMeta> YproxyLister::list_relation_chunks() {
     return res;
   }
 
+  std::vector<storageChunkMeta> meta;
   while(true) {
     auto message = readMessage();
     switch (message.type)
     {
     case MessageTypeObjectMeta:
-      auto meta = readObjectMetaBody(message.content);
+      meta = readObjectMetaBody(&message.content);
       res.insert(res.end(), meta.begin(), meta.end());
       break;
     case MessageTypeReadyForQuery:
@@ -410,7 +411,7 @@ std::vector<storageChunkMeta> YproxyLister::list_relation_chunks() {
   }  
 }
 
-std::vector<std::string> YproxyLister::list_chunk_names() {
+std::vector<std::string> YProxyLister::list_chunk_names() {
   auto chunk_meta = list_relation_chunks();
   std::vector<std::string> res(chunk_meta.size());
 
@@ -420,7 +421,7 @@ std::vector<std::string> YproxyLister::list_chunk_names() {
   return res;
 }
 
-std::vector<char> YproxyLister::ConstructListRequest(std::string fileName) {
+std::vector<char> YProxyLister::ConstructListRequest(std::string fileName) {
   std::vector<char> buff(
       MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1, 0);
   buff[8] = MessageTypeList;
@@ -438,8 +439,8 @@ std::vector<char> YproxyLister::ConstructListRequest(std::string fileName) {
   return buff;
 }
 
-YproxyLister::message YproxyLister::readMessage() {
-  YproxyLister::message res;
+YProxyLister::message YProxyLister::readMessage() {
+  YProxyLister::message res;
   int len = MSG_HEADER_SIZE;
   char buffer[len];
   // try to read small number of bytes in one op
@@ -474,14 +475,14 @@ YproxyLister::message YproxyLister::readMessage() {
   return res;
 }
 
-std::vector<storageChunkMeta> YproxyLister::readObjectMetaBody(std::vector<char> *body) {
+std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char> *body) {
   std::vector<storageChunkMeta> res;
   int i = PROTO_HEADER_SIZE;
   while (i < body->size())
   {
     std::vector<char> buff;
-    while (body[i] != 0 && i < body->size()) {
-      buff.push_back(body[i]);
+    while (body->at(i) != 0 && i < body->size()) {
+      buff.push_back(body->at(i));
       i++;
     }
     i++;
@@ -493,7 +494,7 @@ std::vector<storageChunkMeta> YproxyLister::readObjectMetaBody(std::vector<char>
     int64_t size = 0;
     for (int j = i; j < i + 8; j++) {
       size <<= 8;
-      size += body[j];
+      size += body->at(j);
     }
     i += 8;
 

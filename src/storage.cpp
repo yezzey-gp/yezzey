@@ -464,7 +464,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   /* we dont need to interact with s3 while in recovery*/
 
   #ifdef USE_YPX_LISTER
-  auto lister = YproxyLister(ioadv, GpIdentity.segindex);
+  auto lister = YProxyLister(ioadv, GpIdentity.segindex);
   #else
   /* ro - handler */
   auto lister = StorageLister(ioadv, GpIdentity.segindex);
