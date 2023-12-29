@@ -309,7 +309,7 @@ int YProxyWriter::readRFQResponce() {
   uint64_t msgLen = 0;
   for (int i = 0; i < 8; i++) {
     msgLen <<= 8;
-    msgLen += buffer[i];
+    msgLen += uint8_t(buffer[i]);
   }
 
   if (msgLen != MSG_HEADER_SIZE + PROTO_HEADER_SIZE) {
@@ -455,7 +455,7 @@ YProxyLister::message YProxyLister::readMessage() {
   uint64_t msgLen = 0;
   for (int i = 0; i < 8; i++) {
     msgLen <<= 8;
-    msgLen += buffer[i];
+    msgLen += uint8_t(buffer[i]);
   }
 
   // substract header
@@ -494,7 +494,7 @@ std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char>
     int64_t size = 0;
     for (int j = i; j < i + 8; j++) {
       size <<= 8;
-      size += body->at(j);
+      size += uint8_t(body->at(j));
     }
     i += 8;
 
