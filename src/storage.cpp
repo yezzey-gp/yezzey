@@ -478,13 +478,15 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   Assert((*cnt_chunks) >= 0);
 
   // do copy;
-  // list will be allocated in current PostgreSQL mempry context
+  // list will be allocated via malloc, not PostgreSQL memory context, so should
+  // be free in the end of function call
+  // this actually may lead to memory leak in multiple ways
   *list = (struct yezzeyChunkMeta *)palloc(sizeof(struct yezzeyChunkMeta) *
                                            (*cnt_chunks));
 
   for (size_t i = 0; i < *cnt_chunks; ++i) {
     (*list)[i].chunkSize = meta[i].chunkSize;
-    (*list)[i].chunkName = pstrdup(meta[i].chunkName.c_str());
+    (*list)[i].chunkName = strdup(meta[i].chunkName.c_str());
   }
 
   /* No local storage cache logic for now */
