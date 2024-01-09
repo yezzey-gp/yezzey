@@ -12,13 +12,17 @@ COMMON_OBJS = \
 	decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o \
 	xstorage.o
 
-COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lgpgme -lstdc++fs
+COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lstdc++fs
+
+# COMMON_LINK_OPTIONS += -lgpgme
 
 COMMON_CPP_FLAGS = -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS 
 
-COMMON_CPP_FLAGS += -DHAVE_CRYPTO
+# COMMON_CPP_FLAGS += -DHAVE_CRYPTO
 
-override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lgpgme -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -Iinclude -Ilib -I../../src/interfaces/libpq -I../../src/interfaces/libpq/postgresql/server/utils -g -I. -I. -I../../src/include -D_GNU_SOURCE -I/usr/include/libxml2 -I./xstorage/include -I./xstorage/lib  -DGPBUILD
+override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lxml2 -lpthread -lcrypto -lcurl  -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -Iinclude -Ilib -I../../src/interfaces/libpq -I../../src/interfaces/libpq/postgresql/server/utils -g -I. -I. -I../../src/include -D_GNU_SOURCE -I/usr/include/libxml2 -I./xstorage/include -I./xstorage/lib  -DGPBUILD
+
+# CPPFLAGS += -lgpgme
 
 
 SHLIB_LINK += $(COMMON_LINK_OPTIONS)
