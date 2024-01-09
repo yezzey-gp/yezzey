@@ -721,8 +721,6 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   Oid segrelid;
 #endif
 
-  chunkInfo = palloc(sizeof(yezzeyChunkMetaInfo));
-
   reloid = PG_GETARG_OID(0);
 
   segfile_array_cs = NULL;
@@ -746,6 +744,8 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   if (SRF_IS_FIRSTCALL()) {
     /* create a function context for cross-call persistence */
     funcctx = SRF_FIRSTCALL_INIT();
+
+    chunkInfo = NULL;
 
     /*
      * switch to memory context appropriate for multiple function calls
@@ -792,7 +792,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
         external_bytes = curr_external_bytes;
         local_commited_bytes = curr_local_commited_bytes;
 
-        chunkInfo = repalloc(chunkInfo, sizeof(yezzeyChunkMetaInfo) *
+        chunkInfo = realloc(chunkInfo, sizeof(yezzeyChunkMetaInfo) *
                                             (total_row + cnt_chunks));
 
         for (size_t chunk_index = 0; chunk_index < cnt_chunks; ++chunk_index) {
@@ -855,7 +855,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
           external_bytes = curr_external_bytes;
           local_commited_bytes = curr_local_commited_bytes;
 
-          chunkInfo = repalloc(chunkInfo, sizeof(yezzeyChunkMetaInfo) *
+          chunkInfo = realloc(chunkInfo, sizeof(yezzeyChunkMetaInfo) *
                                               (total_row + cnt_chunks));
 
           for (size_t chunk_index = 0; chunk_index < cnt_chunks;
@@ -920,6 +920,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
       /* fast track when no results */
       MemoryContextSwitchTo(oldcontext);
       relation_close(aorel, AccessShareLock);
+
       SRF_RETURN_DONE(funcctx);
     }
 
@@ -932,15 +933,23 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   call_cntr = funcctx->call_cntr;
 
   attinmeta = funcctx->attinmeta;
+  chunkInfo = funcctx->user_fctx;
 
   if (call_cntr == funcctx->max_calls) {
     /* no pfree on segfile_array because context will be destroyed */
     relation_close(aorel, AccessShareLock);
+
+    /* cleanup */
+    for (int j = 0; j < funcctx->max_calls; ++ j) {
+      free(chunkInfo[j].external_storage_filepath);
+    }
+
+    free(chunkInfo);
+
     /* do when there is no more left */
     SRF_RETURN_DONE(funcctx);
   }
 
-  chunkInfo = funcctx->user_fctx;
 
   i = call_cntr;
 
@@ -952,7 +961,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   values[0] = ObjectIdGetDatum(chunkInfo[i].reloid);
   values[1] = Int32GetDatum(GpIdentity.segindex);
   values[2] = Int32GetDatum(chunkInfo[i].segfileindex);
-  values[3] = CStringGetTextDatum(chunkInfo[i].external_storage_filepath);
+  values[3] = CStringGetTextDatum(pstrdup(chunkInfo[i].external_storage_filepath));
   values[4] = Int64GetDatum(chunkInfo[i].local_bytes);
   values[5] = Int64GetDatum(chunkInfo[i].local_commited_bytes);
   values[6] = Int64GetDatum(chunkInfo[i].external_bytes);

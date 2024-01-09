@@ -4,6 +4,7 @@
 #include "io_adv.h"
 #include "yreader.h"
 #include "ywriter.h"
+#include "ylister.h"
 #include <memory>
 #include <string>
 #include "chunkinfo.h"
@@ -76,4 +77,36 @@ public:
   std::string getExternalStoragePath() { return storage_path_; }
 
   XLogRecPtr getInsertionStorageLsn() { return insertion_rec_ptr_; }
+};
+
+// list external storage using yproxy
+class YProxyLister : public YLister {
+public:
+  explicit YProxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx);
+
+  virtual ~YProxyLister();
+
+  virtual bool close();
+
+  virtual std::vector<storageChunkMeta> list_relation_chunks();
+  virtual std::vector<std::string> list_chunk_names();
+
+protected:
+  std::vector<char> ConstructListRequest(std::string fileName);
+  int prepareYproxyConnection();
+
+  struct message
+  {
+    char type;
+    std::vector<char> content;
+    int retCode;
+  };
+  message readMessage();
+  std::vector<storageChunkMeta> readObjectMetaBody(std::vector<char> *body);
+
+private:
+  std::shared_ptr<IOadv> adv_;
+  ssize_t segindx_;
+
+  int client_fd_{-1};
 };
