@@ -168,12 +168,12 @@ BEGIN
         RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
     END IF;
 
- --   SELECT parrelid 
-   --      FROM pg_partition
-   -- INTO v_par_reloid 
-   -- WHERE parrelid = v_reloid;
+    SELECT parrelid 
+         FROM pg_partition
+    INTO v_par_reloid 
+    WHERE parrelid = v_reloid;
 
-    IF TRUE THEN
+    IF NOT FOUND THEN
         -- non-partitioned relation
         PERFORM yezzey_define_relation_offload_policy_internal_seg(
             v_reloid
