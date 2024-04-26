@@ -217,7 +217,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
     auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(oldtuple);
 
     values[Anum_offload_metadata_relpolicy - 1] =
-        Int32GetDatum(meta->relpolicy);
+        Int32GetDatum(i_relpolicy);
     values[Anum_offload_metadata_relext_time - 1] =
         TimestampGetDatum(meta->relext_time);
 
