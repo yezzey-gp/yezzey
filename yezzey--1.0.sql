@@ -167,6 +167,19 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'relation % is not found in pg_class', i_offload_relname;
     END IF;
+    
+    SELECT 
+        reloid
+    FROM
+        yezzey.offload_metadata
+    INTO v_tmprow 
+    WHERE 
+        reloid = v_reloid;
+
+    IF FOUND THEN
+        RAISE NOTICE 'relation % already offloaded', i_offload_relname;
+	return ;
+    END IF;
 
     SELECT parrelid 
          FROM pg_partition
@@ -198,8 +211,6 @@ BEGIN
          END LOOP;
 
     END IF;
-
-
 END;
 $$
 LANGUAGE PLPGSQL;
