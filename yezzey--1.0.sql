@@ -178,7 +178,6 @@ BEGIN
 
     IF FOUND THEN
         RAISE NOTICE 'relation % already offloaded', i_offload_relname;
-	return ;
     END IF;
 
     SELECT parrelid 
