@@ -296,7 +296,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
     // unpack text to str
     res.push_back(ChunkInfo(ytup->lsn, ytup->modcount,
                             text_to_cstring(&ytup->x_path),
-                            ytup->finish_offset - ytup->start_offset));
+                            ytup->finish_offset - ytup->start_offset, ytup->start_offset));
   }
 
   yezzey_endscan(desc);
@@ -310,8 +310,32 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
   /* sort by modcount - they are unic */
   std::sort(res.begin(), res.end(),
             [](const ChunkInfo &lhs, const ChunkInfo &rhs) {
-              return lhs.modcount < rhs.modcount;
+              return lhs.modcount == rhs.modcount ? lhs.lsn < rhs.lsn : lhs.modcount < rhs.modcount;
             });
 
-  return std::move(res);
+  
+  std::vector<ChunkInfo> modcnt_uniqres;
+
+  /* remove duplicated data chunks while read. 
+  * report correuption in case of offset mismatch.
+  */
+
+  for (uint i = 0; i < res.size(); ++ i) {
+    if (i + 1 < res.size() && res[i + 1].modcount == res[i].modcount) {
+      if (res[i + 1].start_off != res[i].start_off) {
+        ereport(ERROR,
+						(errcode(ERRCODE_DATA_CORRUPTED),
+						 errmsg_internal("found duplicated modcount data chunk with diffferent offsets: %llu vs %llu",
+										 res[i].start_off, res[i + 1].start_off)));
+      } else {
+          ereport(NOTICE,
+						(errcode(ERRCODE_DATA_CORRUPTED),
+						 errmsg_internal("found duplicated modcount data chunk, skip")));
+      }
+      continue;
+    }
+    modcnt_uniqres.push_back(res[i]);
+  }
+
+  return std::move(modcnt_uniqres);
 }

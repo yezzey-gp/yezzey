@@ -26,10 +26,12 @@ protected:
   std::unique_ptr<Crypter> crypter_;
   std::shared_ptr<YReader> reader_{nullptr};
   bool read_initialized_{false};
-  std::vector<ChunkInfo> order_;
 
 private:
   std::shared_ptr<IOadv> adv_;
-  std::shared_ptr<BlockingBuffer> buf_;
+protected:
+  std::vector<ChunkInfo> order_;
+private:
   ssize_t segindx_;
+  std::shared_ptr<BlockingBuffer> buf_;
 };
