@@ -52,7 +52,7 @@ bool YezzeyCheckRelationOffloaded(Oid relid);
 
 EXTERNC void YezzeyCreateOffloadPolicyRelation();
 
-EXTERNC void
+EXTERNC bool
 YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,
                              int i_relpolicy /* offload relation policy */,
                              Timestamp i_relexp);

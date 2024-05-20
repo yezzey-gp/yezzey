@@ -183,7 +183,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   CommandCounterIncrement();
 }
 
-void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
+bool YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
                                   Timestamp i_relexp) {
   /**/
   ScanKeyData skey[1];
@@ -216,6 +216,16 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   if (HeapTupleIsValid(oldtuple)) {
     auto meta = (Form_yezzey_offload_metadata)GETSTRUCT(oldtuple);
 
+    if (meta->relpolicy == i_relpolicy) {
+      elog(NOTICE, "relation policy is already same as requested");
+
+      heap_close(offrel, RowExclusiveLock);
+
+      yezzey_endscan(scan);
+      UnregisterSnapshot(snap);
+      return false;
+    }
+
     values[Anum_offload_metadata_relpolicy - 1] =
         Int32GetDatum(i_relpolicy);
     values[Anum_offload_metadata_relext_time - 1] =
@@ -241,6 +251,7 @@ void YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
 
   /* make changes visible */
   CommandCounterIncrement();
+  return true;
 }
 
 /*
@@ -275,6 +286,19 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
   extensionAddr.objectSubId = 0;
 
   /*
+  * 1.1: check if data has been already offloaded (maybe in the same transaction)
+  */
+
+
+  /* record entry in offload metadata */
+  /* Bump rellast acrhive, or insert proper metadata tuple */
+  if (!YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
+                                     GetCurrentTimestamp())) {
+    /* nothing to do */
+    return;
+  }
+
+  /*
    * 2) Create auxularry yezzey table to track external storage
    * chunks
    */
@@ -306,11 +330,6 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
 
   /* change relation tablespace */
   (void)YezzeyATExecSetTableSpace(aorel, reloid, YEZZEYTABLESPACE_OID);
-
-  /* record entry in offload metadata */
-  /* Bump rellast acrhive, or insert proper metadata tuple */
-  (void)YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
-                                     GetCurrentTimestamp());
 
   /*
    * OK, add the dependency.
