@@ -307,7 +307,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   */
   /* cleanup */
 
-  relation_close(aorel, AccessExclusiveLock);
+  relation_close(aorel, NoLock);
 
   return 0;
 }
