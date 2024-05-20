@@ -151,6 +151,6 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
   rc = yezzey_offload_relation_internal_rel(aorel, remove_locally,
                                             external_storage_path);
 
-  relation_close(aorel, AccessExclusiveLock);
+  relation_close(aorel, NoLock);
   return rc;
 }

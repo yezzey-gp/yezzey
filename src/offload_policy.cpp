@@ -5,6 +5,8 @@
 #include "offload_policy.h"
 #include "offload.h"
 #include "yezzey_heap_api.h"
+#include<unistd.h> 
+
 
 /*
 
@@ -338,7 +340,7 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
   // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_NORMAL);
   recordDependencyOn(&relationAddr, &extensionAddr, DEPENDENCY_NORMAL);
   // recordDependencyOn(&extensionAddr, &relationAddr, DEPENDENCY_INTERNAL);
-  relation_close(aorel, AccessExclusiveLock);
+  relation_close(aorel, NoLock);
 }
 
 /*
