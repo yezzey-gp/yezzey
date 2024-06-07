@@ -321,6 +321,9 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
   */
 
   for (uint i = 0; i < res.size(); ++ i) {
+    if (res[i].size == 0) {
+      continue;
+    }
     if (i + 1 < res.size() && res[i + 1].modcount == res[i].modcount) {
       if (res[i + 1].start_off != res[i].start_off) {
         ereport(ERROR,

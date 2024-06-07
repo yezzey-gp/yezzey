@@ -27,17 +27,21 @@ public:
 public:
 protected:
   /* prepare connection for chunk reading */
-  int prepareYproxyConnection(const ChunkInfo &ci);
-  std::vector<char> ConstructCatRequest(const ChunkInfo &ci);
+  int prepareYproxyConnection(const ChunkInfo &ci, size_t start_off);
+  std::vector<char> ConstructCatRequest(const ChunkInfo &ci, size_t start_off);
 
 private:
   std::shared_ptr<IOadv> adv_{nullptr};
   ssize_t segindx_{0};
   int64_t order_ptr_{0};
   int64_t current_chunk_remaining_bytes_{0};
+  int64_t current_chunk_offset_{0};
   const std::vector<ChunkInfo> order_;
 
   int client_fd_{-1};
+
+  int current_retry{0};
+  int retry_limit{1};
 };
 
 // write to external storage, using gpwriter.
