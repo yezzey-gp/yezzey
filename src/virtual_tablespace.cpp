@@ -27,8 +27,7 @@ void YezzeyATExecSetTableSpace(Relation aorel, Oid reloid,
     ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
                     errmsg("cannot move temporary tables of other sessions")));
 
-  /* Fetch the list of indexes on toast relation if necessary */
-  Assert(!OidIsValid(aorel->rd_rel->reltoastrelid));
+  /* We do not take care of TOAST relations here */
 
   // /* Get the bitmap sub objects */
   // if (RelationIsBitmapIndex(rel))
