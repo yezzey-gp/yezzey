@@ -264,7 +264,9 @@ static const struct f_smgr yezzey_smgr = {
 #endif
     .smgr_close = yezzey_close,
     .smgr_create = yezzey_create,
+  #if GP_VERSION_NUM < 70000
     .smgr_create_ao = yezzey_create_ao,
+  #endif
     .smgr_exists = yezzey_exists,
     .smgr_unlink = yezzey_unlink,
     .smgr_extend = yezzey_extend,
@@ -287,7 +289,10 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
+
+  #if GP_VERSION_NUM < 70000
     .smgr_create_ao = yezzey_create_ao,
+  #endif
 		.smgr_exists = yezzey_exists,
 		.smgr_unlink = yezzey_unlink,
 		.smgr_extend = yezzey_extend,
@@ -311,7 +316,10 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
+
+  #if GP_VERSION_NUM < 70000
     .smgr_create_ao = yezzey_create_ao,
+  #endif
 		.smgr_exists = yezzey_exists,
 		.smgr_unlink = yezzey_unlink_ao,
 		.smgr_extend = yezzey_extend,
