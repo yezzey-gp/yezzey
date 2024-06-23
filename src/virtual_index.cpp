@@ -212,6 +212,7 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid /* not used */,
   CommandCounterIncrement();
 } /* end emptyYezzeyIndexBlkno */
 
+
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               Oid reloid, Oid relfilenodeOid, int64_t blkno,
                               int64_t offset_start, int64_t offset_finish,
@@ -248,11 +249,35 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+  /* send tuple messages to master */ 
+
+#if GP_VERSION_NUM >= 70000
+
+  auto mt_bind = create_memtuple_binding(
+      RelationGetDescr(yandxrel), RelationGetNumberOfAttributes(yandxrel));
+
+
+  auto memtup = memtuple_form(mt_bind, values, nulls);
+
+  /*
+   * get space to insert our next item (tuple)
+   */
+  auto itemLen = memtuple_get_size(memtup);
+
+	StringInfoData buf;
+
+  pq_beginmessage(&buf, 'z');
+  pq_sendint(&buf, itemLen, sizeof(itemLen));
+  pq_sendbytes(&buf, (const char*) memtup, itemLen);
+  pq_endmessage(&buf);
+
+
+  // CatalogTupleInsert(yandxrel, yandxtuple);
+#else
+  /* if gp6 insert tuples locally */
   simple_heap_insert(yandxrel, yandxtuple);
   CatalogUpdateIndexes(yandxrel, yandxtuple);
-#else
-  CatalogTupleInsert(yandxrel, yandxtuple);
+
 #endif
 
   heap_freetuple(yandxtuple);

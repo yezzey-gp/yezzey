@@ -117,6 +117,8 @@ extern "C" {
 #include "access/tupdesc.h"
 #endif
 
+#include "libpq/pqformat.h"
+
 #ifdef __cplusplus
 }
 #endif

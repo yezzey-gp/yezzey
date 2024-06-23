@@ -330,6 +330,11 @@ int yezzey_FileWrite(SMGRFile file, char *buffer, int amount)
 #endif
 {
   YVirtFD &yfd = YVirtFD_cache[file];
+
+#if GP_VERSION_NUM >= 70000
+  yfd.op_start_offset = offset;
+#endif
+
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     assert(yfd.modcount);
@@ -381,6 +386,11 @@ int yezzey_FileRead(SMGRFile file, char *buffer, int amount) {
 
   size_t curr = amount;
   YVirtFD &yfd = YVirtFD_cache[file];
+
+#if GP_VERSION_NUM >= 70000
+  yfd.op_start_offset = offset;
+#endif
+
   File actual_fd = yfd.y_vfd;
   if (actual_fd == YEZZEY_OFFLOADED_FD) {
     if (yfd.handler->reader_empty()) {
