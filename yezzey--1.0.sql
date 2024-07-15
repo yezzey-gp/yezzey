@@ -174,7 +174,7 @@ BEGIN
         yezzey.offload_metadata
     INTO v_tmprow 
     WHERE 
-        reloid = v_reloid;
+        reloid = v_reloid AND relpolicy = 1;
 
     IF FOUND THEN
         RAISE NOTICE 'relation % already offloaded', i_offload_relname;
