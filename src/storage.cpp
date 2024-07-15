@@ -99,9 +99,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   FileSeek(vfd, progress, SEEK_SET);
 #endif
   rc = 0;
-
-  
-	auto fLen = FileSeek(vfd, 0L, SEEK_END);
+  auto fLen = FileSeek(vfd, 0L, SEEK_END);
 
   if (fLen < logicalEof) {
     elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %d < %d", localPath.c_str(), fLen, logicalEof);
