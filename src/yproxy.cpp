@@ -27,8 +27,10 @@ bool YProxyReader::close() {
 }
 
 const char DecryptRequest = 1;
+const char NoDecryptRequest = 0;
 const char ExtendedMessage = 1;
 const char EncryptRequest = 1;
+const char NoEncryptRequest = 0;
 const char MessageTypeCat = 42;
 const char MessageTypePut = 43;
 const char MessageTypeCommandComplete = 44;
@@ -45,7 +47,12 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci, size_t 
   std::vector<char> buff(
       MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + (start_off == 0 ? 0 : OFFSET_SZ), 0);
   buff[8] = MessageTypeCat;
-  buff[9] = DecryptRequest;
+  if (ci.enc) {
+    buff[9] = DecryptRequest;
+  } else {
+    buff[9] = NoDecryptRequest;
+  }
+
   if (start_off != 0) {
     buff[10] = ExtendedMessage;
   }
@@ -287,7 +294,11 @@ std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
   std::vector<char> buff(
       MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1, 0);
   buff[8] = MessageTypePut;
-  buff[9] = EncryptRequest;
+  if (adv_->use_gpg_crypto) {
+    buff[9] = EncryptRequest;
+  } else {
+    buff[9] = NoEncryptRequest;
+  }
   uint64_t len = buff.size();
 
   strncpy(buff.data() + MSG_HEADER_SIZE + PROTO_HEADER_SIZE, fileName.c_str(),

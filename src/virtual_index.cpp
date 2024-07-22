@@ -321,7 +321,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
     // unpack text to str
     res.push_back(ChunkInfo(ytup->lsn, ytup->modcount,
                             text_to_cstring(&ytup->x_path),
-                            ytup->finish_offset - ytup->start_offset, ytup->start_offset));
+                            ytup->finish_offset - ytup->start_offset, ytup->start_offset, ytup->encrypted));
   }
 
   yezzey_endscan(desc);
