@@ -303,7 +303,7 @@ void yezzey_FileClose(SMGRFile file) {
         YezzeyUpdateMetadataRelations(
             YezzeyFindAuxIndex(yfd.reloid), yfd.reloid, yfd.coord.filenode,
             yfd.coord.blkno /* blkno*/, yfd.op_start_offset,
-            yfd.offset /* io operation finish offset */, 1 /* encrypted */,
+            yfd.offset /* io operation finish offset */, yfd.handler->adv_->use_gpg_crypto /* encrypted */,
             0 /* reused */, yfd.modcount,
             yfd.handler->writer_->getInsertionStorageLsn(),
             yfd.handler->writer_->getExternalStoragePath().c_str() /* path ? */,
