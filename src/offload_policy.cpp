@@ -62,10 +62,10 @@ void YezzeyCreateOffloadPolicyRelation() {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
-#if GP_VERSION_NUM < 70000
-  tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata, false);
-#else
+#if IsGreenplum7 || IsCloudBerry
   tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata);
+#else
+  tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata, false);
 #endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_offload_metadata_reloid,
@@ -78,7 +78,19 @@ void YezzeyCreateOffloadPolicyRelation() {
                      (AttrNumber)Anum_offload_metadata_rellast_archived,
                      "rellast_archived", TIMESTAMPOID, -1, 0);
 
-#if GP_VERSION_NUM < 70000
+
+#if IsGreenplum7 || IsCloudBerry
+  (void)heap_create_with_catalog(
+      offload_metadata_relname.c_str() /* relname */,
+      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
+      YEZZEY_OFFLOAD_POLICY_RELATION /* relid */,
+      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
+      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/,
+      tupdesc /* rel tuple */, NIL, RELKIND_RELATION /*relkind*/,
+      RELPERSISTENCE_PERMANENT, false /*shared*/, false /*mapped*/,
+      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
+      true, true, InvalidOid /*relrewrite*/, NULL, false /* valid_opts */);
+#else
   (void)heap_create_with_catalog(
       offload_metadata_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -90,17 +102,6 @@ void YezzeyCreateOffloadPolicyRelation() {
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
       false /* is part parent */);
-#else
-  (void)heap_create_with_catalog(
-      offload_metadata_relname.c_str() /* relname */,
-      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
-      YEZZEY_OFFLOAD_POLICY_RELATION /* relid */,
-      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
-      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/,
-      tupdesc /* rel tuple */, NIL, RELKIND_RELATION /*relkind*/,
-      RELPERSISTENCE_PERMANENT, false /*shared*/, false /*mapped*/,
-      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
-      true, true, InvalidOid /*relrewrite*/, NULL, false /* valid_opts */);
 #endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
@@ -118,19 +119,20 @@ void YezzeyCreateOffloadPolicyRelation() {
   int16 coloptions[1];
 
   indexInfo->ii_NumIndexAttrs = 1;
-#if GP_VERSION_NUM < 70000
-  indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
-#else
+#if IsGreenplum7 || IsCloudBerry
   indexInfo->ii_IndexAttrNumbers[0] = Anum_offload_metadata_reloid;
   indexInfo->ii_NumIndexKeyAttrs = indexInfo->ii_NumIndexAttrs;
+#else
+  indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
 #endif
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
-#if GP_VERSION_NUM < 70000
-  indexInfo->ii_PredicateState = NIL;
-#else
+
+#if IsGreenplum7 || IsCloudBerry
   indexInfo->ii_PredicateState = NULL;
+#else
+  indexInfo->ii_PredicateState = NIL;
 #endif
   indexInfo->ii_Unique = true;
   indexInfo->ii_Concurrent = false;
@@ -139,14 +141,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   classObjectId[0] = OID_BTREE_OPS_OID;
   coloptions[0] = 0;
 
-#if GP_VERSION_NUM < 70000
-  (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
-                     YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
-                     InvalidOid, InvalidOid, indexInfo, indexColNames,
-                     BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
-                     classObjectId, coloptions, (Datum)0, true, false, false,
-                     false, true, false, false, true, NULL);
-#else
+#if IsGreenplum7 || IsCloudBerry
   bits16 flags, constr_flags;
   flags = constr_flags = 0;
   (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
@@ -155,6 +150,13 @@ void YezzeyCreateOffloadPolicyRelation() {
                      BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
                      classObjectId, coloptions, (Datum)0, flags, constr_flags,
                      true, true, NULL);
+#else
+  (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
+                     YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
+                     InvalidOid, InvalidOid, indexInfo, indexColNames,
+                     BTREE_AM_OID, 0 /* tablespace */, collationObjectId,
+                     classObjectId, coloptions, (Datum)0, true, false, false,
+                     false, true, false, false, true, NULL);
 #endif
 
   /* Unlock target table -- no one can see it */

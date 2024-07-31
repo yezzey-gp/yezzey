@@ -252,7 +252,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   /* send tuple messages to master */ 
 
 #if GP_VERSION_NUM >= 70000
-
+  /* yezzey 3 support */
   auto mt_bind = create_memtuple_binding(
       RelationGetDescr(yandxrel), RelationGetNumberOfAttributes(yandxrel));
 

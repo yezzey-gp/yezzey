@@ -18,6 +18,8 @@
 
 #include "gucs.h"
 #include "ystat.h"
+#include "yezzey_conf.h"
+
 
 void yezzey_prepare(void);
 void yezzey_finish(void);
@@ -45,14 +47,14 @@ void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
 #endif
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
 
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #else
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
                    char relstorage);
 #endif
 
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
 void yezzey_unlink_ao(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #endif
 
@@ -70,7 +72,8 @@ void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                  char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                   char *buffer, bool skipFsync);
-#if GP_VERSION_NUM >= 70000
+
+#if IsGreenplum7 || IsCloudBerry
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks);
 #endif
@@ -82,7 +85,7 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
 void addToMoveTable(char *tableName);
 void processTables(void);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum7 || IsCloudBerry
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
 #else
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which);

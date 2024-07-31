@@ -17,15 +17,10 @@
 #include <string>
 #include <vector>
 
-#include "gpreader.h"
-#include "gpwriter.h"
-
 #include "virtual_index.h"
 
 #include "io.h"
 #include "io_adv.h"
-#include "storage_lister.h"
-
 #include "url.h"
 
 #define DEFAULTTABLESPACE_OID 1663 /* FIXME */

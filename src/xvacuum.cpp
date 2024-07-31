@@ -1,5 +1,4 @@
 #include "xvacuum.h"
-#include "gpcleaner.h"
 #include "gucs.h"
 #include "pg.h"
 #include <string>

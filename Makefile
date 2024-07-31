@@ -4,23 +4,16 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 # -Werror=implicit-fallthrough=3
 
-COMMON_OBJS = \
-	gpreader.o gpwriter.o gpcleaner.o \
-	s3conf.o s3utils.o s3log.o s3url.o \
-	s3http_headers.o s3interface.o s3restful_service.o \
-	s3bucket_reader.o s3common_reader.o s3common_writer.o \
-	decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o \
-	xstorage.o
 
 COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lstdc++fs
 
 # COMMON_LINK_OPTIONS += -lgpgme
 
-COMMON_CPP_FLAGS = -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS 
+COMMON_CPP_FLAGS = -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS -DGP_VERSION_NUM
 
 # COMMON_CPP_FLAGS += -DHAVE_CRYPTO
 
-override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lxml2 -lpthread -lcrypto -lcurl  -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -Iinclude -Ilib -I../../src/interfaces/libpq -I../../src/interfaces/libpq/postgresql/server/utils -g -I. -I. -I../../src/include -D_GNU_SOURCE -I/usr/include/libxml2 -I./xstorage/include -I./xstorage/lib  -DGPBUILD
+override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lxml2 -lpthread -lcrypto -lcurl  -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -Iinclude -Ilib -I../../src/interfaces/libpq -I../../src/interfaces/libpq/postgresql/server/utils -g -I. -I. -I../../src/include -D_GNU_SOURCE -I/usr/include/libxml2 -DGPBUILD
 
 # CPPFLAGS += -lgpgme
 
@@ -33,14 +26,9 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	src/storage.o src/proxy.o src/encrypted_storage_reader.o \
-	src/storage_lister.o \
-	src/encrypted_storage_writer.o  src/io_adv.o src/io.o src/crypto.o  \
-	src/x_reader.o src/x_writer.o \
+	src/storage.o src/proxy.o \
+	src/io_adv.o src/io.o  \
 	src/virtual_index.o \
-	src/walg_reader.o \
-	src/walg_writer.o \
-	src/walg_st_reader.o \
 	src/util.o \
 	src/url.o \
 	src/worker.o \
@@ -54,8 +42,7 @@ OBJS = \
 	src/init.o \
 	src/meta.o \
 	src/json.o \
-	smgr.o worker.o yezzey.o \
-	./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
+	smgr.o worker.o yezzey.o
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql

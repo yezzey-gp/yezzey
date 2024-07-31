@@ -10,6 +10,8 @@
 #include "util.h"
 #include "yezzey_heap_api.h"
 
+#include "yezzey_conf.h"
+
 void YezzeyRecordRelationExpireLsn(Relation rel) {
   if (Gp_role != GP_ROLE_EXECUTE) {
     return;
@@ -89,11 +91,12 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(yexprel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+
+#if IsGreenplum7 || IsCloudBerry
+    CatalogTupleUpdate(yexprel, &tuple->t_self, yandxtuple);
+#else
     simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(yexprel, yandxtuple);
-#else
-    CatalogTupleUpdate(yexprel, &tuple->t_self, yandxtuple);
 #endif
 
     heap_freetuple(yandxtuple);
@@ -119,10 +122,10 @@ void YezzeyCreateRelationExpireIndex(void) {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
-#if GP_VERSION_NUM < 70000
-  tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index, false);
-#else
+#if IsGreenplum7 || IsCloudBerry
   tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index);
+#else
+  tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index, false);
 #endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_reloid,
@@ -140,7 +143,19 @@ void YezzeyCreateRelationExpireIndex(void) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_lsn,
                      "expire_lsn", LSNOID, -1, 0);
 
-#if GP_VERSION_NUM < 70000
+
+#if IsGreenplum7 || IsCloudBerry
+  (void)heap_create_with_catalog(
+      yezzey_expire_index_relname.c_str() /* relname */,
+      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
+      YEZZEY_EXPIRE_INDEX_RELATION /* relid */,
+      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
+      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/,
+      tupdesc /* rel tuple */, NIL, RELKIND_RELATION /*relkind*/,
+      RELPERSISTENCE_PERMANENT, false /*shared*/, false /*mapped*/,
+      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
+      true, true, InvalidOid /*relrewrite*/, NULL, false /* valid_opts */);
+#else
   (void)heap_create_with_catalog(
       yezzey_expire_index_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -152,18 +167,6 @@ void YezzeyCreateRelationExpireIndex(void) {
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
       false /* is part parent */);
-
-#else
-  (void)heap_create_with_catalog(
-      yezzey_expire_index_relname.c_str() /* relname */,
-      YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
-      YEZZEY_EXPIRE_INDEX_RELATION /* relid */,
-      GetNewObjectId() /* reltype oid */, InvalidOid /* reloftypeid */,
-      GetUserId() /* owner */, HEAP_TABLE_AM_OID /* access method*/,
-      tupdesc /* rel tuple */, NIL, RELKIND_RELATION /*relkind*/,
-      RELPERSISTENCE_PERMANENT, false /*shared*/, false /*mapped*/,
-      ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0, false /* use_user_acl */,
-      true, true, InvalidOid /*relrewrite*/, NULL, false /* valid_opts */);
 #endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
@@ -182,22 +185,23 @@ void YezzeyCreateRelationExpireIndex(void) {
   int16 coloptions[2];
 
   indexInfo->ii_NumIndexAttrs = 2;
-#if GP_VERSION_NUM < 70000
-  indexInfo->ii_KeyAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
-  indexInfo->ii_KeyAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
-#else
+#if IsGreenplum7 || IsCloudBerry
   indexInfo->ii_IndexAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
   indexInfo->ii_IndexAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
+#else
   indexInfo->ii_NumIndexKeyAttrs = indexInfo->ii_NumIndexAttrs;
+  indexInfo->ii_KeyAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
+  indexInfo->ii_KeyAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
 #endif
 
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
-#if GP_VERSION_NUM < 70000
-  indexInfo->ii_PredicateState = NIL;
-#else
+
+#if IsGreenplum7 || IsCloudBerry
   indexInfo->ii_PredicateState = NULL;
+#else
+  indexInfo->ii_PredicateState = NIL;
 #endif
   indexInfo->ii_ExclusionOps = NULL;
   indexInfo->ii_ExclusionProcs = NULL;
@@ -215,14 +219,8 @@ void YezzeyCreateRelationExpireIndex(void) {
   classObjectId[1] = OID_BTREE_OPS_OID;
   coloptions[1] = 0;
 
-#if GP_VERSION_NUM < 70000
-  (void)index_create(yezzey_rel, yezzey_expire_index_indx_relname.c_str(),
-                     YEZZEY_EXPIRE_INDEX_RELATION_INDX, InvalidOid, InvalidOid,
-                     InvalidOid, indexInfo, indexColNames, BTREE_AM_OID,
-                     0 /* tablespace */, collationObjectId, classObjectId,
-                     coloptions, (Datum)0, true, false, false, false, true,
-                     false, false, true, NULL);
-#else
+
+#if IsGreenplum7 || IsCloudBerry
 
   bits16 flags, constr_flags;
   flags = constr_flags = 0;
@@ -232,6 +230,13 @@ void YezzeyCreateRelationExpireIndex(void) {
                      0 /* tablespace */, collationObjectId, classObjectId,
                      coloptions, (Datum)0, flags, constr_flags, true, true,
                      NULL);
+#else
+  (void)index_create(yezzey_rel, yezzey_expire_index_indx_relname.c_str(),
+                     YEZZEY_EXPIRE_INDEX_RELATION_INDX, InvalidOid, InvalidOid,
+                     InvalidOid, indexInfo, indexColNames, BTREE_AM_OID,
+                     0 /* tablespace */, collationObjectId, classObjectId,
+                     coloptions, (Datum)0, true, false, false, false, true,
+                     false, false, true, NULL);
 #endif
 
   /* Unlock target table -- no one can see it */
@@ -309,11 +314,12 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+
+#if IsGreenplum7 || IsCloudBerry
+    CatalogTupleUpdate(rel, &tuple->t_self, yandxtuple);
+#else
     simple_heap_update(rel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
-#else
-    CatalogTupleUpdate(rel, &tuple->t_self, yandxtuple);
 #endif
 
     heap_freetuple(yandxtuple);
@@ -321,11 +327,11 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     // insert
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum7 || IsCloudBerry
+    CatalogTupleInsert(rel, yandxtuple);
+#else
     simple_heap_insert(rel, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
-#else
-    CatalogTupleInsert(rel, yandxtuple);
 #endif
 
     heap_freetuple(yandxtuple);

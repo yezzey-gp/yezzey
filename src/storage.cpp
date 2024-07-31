@@ -16,10 +16,6 @@
 
 #include "virtual_index.h"
 
-#include "gpreader.h"
-#include "s3memory_mgmt.h"
-
-#include "storage_lister.h"
 #include "yproxy.h"
 #include "url.h"
 
@@ -342,11 +338,6 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
         0) {
       return rc;
     }
-  } catch (S3Exception &e) {
-    const char *full_message =
-        (e.getType() + " exception: " + e.getFullMessage()).c_str();
-    elog(ERROR, "reader_cleanup caught msg: %s", full_message);
-    return -1;
   } catch (...) {
     elog(ERROR, "Caught an unexpected exception.");
     return -1;
