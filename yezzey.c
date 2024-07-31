@@ -203,7 +203,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   /* Get information about all the file segments we need to scan */
   if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -228,12 +228,12 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
     }
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-#if GP_VERSION_NUM < 70000
-    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
-                                             &total_segfiles);
-#else 
+#if IsGreenplum7 || IsCloudBerry
     segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles, &segrelid);
+#else 
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 #endif
 
     for (inat = 0; inat < nvp; ++inat) {
@@ -496,7 +496,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
 
     if (RelationIsAoRows(aorel)) {
       /* ao rows relation */
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -504,12 +504,14 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 #endif
     } else if (RelationIsAoCols(aorel)) {
-#if GP_VERSION_NUM < 70000
-      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
-                                             &total_segfiles);
-#else 
+
+#if IsGreenplum7 || IsCloudBerry
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles, &segrelid);
+
+#else 
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 #endif
     } else {
       elog(ERROR, "wrong relation storage type, not AO/AOCS relation");
@@ -759,7 +761,8 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
 
     if (RelationIsAoRows(aorel)) {
       /* ao rows relation */
-#if GP_VERSION_NUM >= 70000
+
+#if IsGreenplum7 || IsCloudBerry
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -818,12 +821,12 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
 
     } else if (RelationIsAoCols(aorel)) {
 
-#if GP_VERSION_NUM < 70000
-      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
-                                             &total_segfiles);
-#else 
+#if IsGreenplum7 || IsCloudBerry
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles, &segrelid);
+#else
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 #endif
 
       for (inat = 0; inat < nvp; ++inat) {
@@ -1024,7 +1027,8 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
 
-#if GP_VERSION_NUM >= 70000
+
+#if IsGreenplum7 || IsCloudBerry
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -1057,12 +1061,12 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
     }
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-#if GP_VERSION_NUM < 70000
-      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
-                                             &total_segfiles);
-#else 
+#if IsGreenplum7 || IsCloudBerry
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles, &segrelid);
+#else
+      segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 #endif
 
     for (inat = 0; inat < nvp; ++inat) {

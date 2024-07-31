@@ -1,4 +1,5 @@
 #include "virtual_tablespace.h"
+#include "yezzey_conf.h"
 
 /*
  * Execute ALTER TABLE SET TABLESPACE for cases where there is no tuple

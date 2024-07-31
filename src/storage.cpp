@@ -112,11 +112,11 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
       curr_read_chunk = logicalEof - progress;
     }
     /* code */
-#if GP_VERSION_NUM < 70000
-    rc = FileRead(vfd, buffer.data(), curr_read_chunk);
-#else
+#if IsGreenplum7 || IsCloudBerry
     rc = FileRead(vfd, buffer.data(), curr_read_chunk, progress,
                   WAIT_EVENT_DATA_FILE_READ);
+#else
+    rc = FileRead(vfd, buffer.data(), curr_read_chunk);
 #endif
     if (rc < 0) {
       FileClose(vfd);

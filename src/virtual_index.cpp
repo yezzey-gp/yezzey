@@ -4,16 +4,18 @@
 #include "yezzey_heap_api.h"
 #include <algorithm>
 
+#include "yezzey_conf.h"
+
 Oid YezzeyFindAuxIndex_internal(Oid reloid);
 
 static inline Oid
 yezzey_create_index_internal(Oid relid, const std::string &relname,
                              Oid relowner, char relpersistence,
                              bool shared_relation, bool mapped_relation) {
-#if GP_VERSION_NUM < 70000
-  auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
-#else
+#if IsGreenplum7 || IsCloudBerry
   auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index);
+#else
+  auto tupdesc = CreateTemplateTupleDesc(Natts_yezzey_virtual_index, false);
 #endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_index_reloid,
@@ -43,17 +45,7 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_virtual_x_path, "x_path",
                      TEXTOID, -1, 0);
 
-#if GP_VERSION_NUM < 70000
-  auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
-      relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,
-      0 /* tablespace */, relid /* relid */, GetNewObjectId() /* reltype oid */,
-      InvalidOid /* reloftypeid */, relowner /* owner */,
-      tupdesc /* rel tuple */, NIL, InvalidOid /* relam */, RELKIND_YEZZEYINDEX,
-      relpersistence, RELSTORAGE_HEAP, shared_relation, mapped_relation, true,
-      0, ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0,
-      false /* use_user_acl */, true, true, false /* valid_opts */,
-      false /* is_part_child */, false /* is part parent */);
-#else
+#if IsGreenplum7 || IsCloudBerry
   auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
       relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,
       0 /* tablespace */, relid /* relid */, GetNewObjectId() /* reltype oid */,
@@ -63,6 +55,16 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
       false /*mapped*/, ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0,
       false /* use_user_acl */, true, true, InvalidOid /*relrewrite*/, NULL,
       false /* valid_opts */);
+#else
+  auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
+      relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,
+      0 /* tablespace */, relid /* relid */, GetNewObjectId() /* reltype oid */,
+      InvalidOid /* reloftypeid */, relowner /* owner */,
+      tupdesc /* rel tuple */, NIL, InvalidOid /* relam */, RELKIND_YEZZEYINDEX,
+      relpersistence, RELSTORAGE_HEAP, shared_relation, mapped_relation, true,
+      0, ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0,
+      false /* use_user_acl */, true, true, false /* valid_opts */,
+      false /* is_part_child */, false /* is part parent */);
 #endif
 
   /* Make this table visible, else yezzey virtual index creation will fail */
@@ -122,11 +124,11 @@ Oid YezzeyFindAuxIndex_internal(Oid reloid) {
       systable_beginscan(pg_class, ClassNameNspIndexId, true, NULL, 2, skey);
 
   if (HeapTupleIsValid(tup = systable_getnext(scan))) {
-#if GP_VERSION_NUM < 70000
-    yezzey_virtual_index_oid = HeapTupleGetOid(tup);
-#else
+#if IsGreenplum7 || IsCloudBerry
     auto ytup = ((FormData_pg_class *)GETSTRUCT(tup));
     yezzey_virtual_index_oid = ytup->oid;
+#else
+    yezzey_virtual_index_oid = HeapTupleGetOid(tup);
 #endif
   } else {
     // use separate index for relations, offloaded without yezzey api
@@ -251,7 +253,7 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   /* send tuple messages to master */ 
 
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7
   /* yezzey 3 support */
   auto mt_bind = create_memtuple_binding(
       RelationGetDescr(yandxrel), RelationGetNumberOfAttributes(yandxrel));
@@ -271,13 +273,14 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
   pq_sendbytes(&buf, (const char*) memtup, itemLen);
   pq_endmessage(&buf);
 
-
-  // CatalogTupleInsert(yandxrel, yandxtuple);
-#else
+#else 
+#  if IsCloudBerry
+  CatalogTupleInsert(yandxrel, yandxtuple);
+#  else
   /* if gp6 insert tuples locally */
   simple_heap_insert(yandxrel, yandxtuple);
   CatalogUpdateIndexes(yandxrel, yandxtuple);
-
+#  endif
 #endif
 
   heap_freetuple(yandxtuple);

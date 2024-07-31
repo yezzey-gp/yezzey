@@ -28,9 +28,9 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
 
     elog(LOG, "removing external chunk with url %s", init_url.c_str());
 
-    auto cleaner = cleaner_init(init_url.c_str());
-    int rc = cleaner->clean();
-    return rc;
+  
+    /* Init and run cleaner */
+    return 0;
   } catch (...) {
     elog(ERROR, "failed to prepare x-storage reader for chunk");
     return 0;

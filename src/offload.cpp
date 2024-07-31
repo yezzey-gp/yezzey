@@ -9,6 +9,8 @@
 
 #include "storage.h"
 
+#include "yezzey_conf.h"
+
 /*
  * yezzey_offload_relation_internal_rel: do the offloading job
  * aorel should be locked in AccessExclusiveLock
@@ -41,7 +43,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
 
   if (RelationIsAoRows(aorel)) {
     /* Get information about all the file segments we need to scan */
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
     segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                       &total_segfiles, &segrelid);
 #else
@@ -75,12 +77,12 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
     }
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-#if GP_VERSION_NUM < 70000
-    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
-                                             &total_segfiles);
-#else
+#if IsGreenplum7 || IsCloudBerry
     segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles, &segrelid);
+#else
+    segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
+                                             &total_segfiles);
 #endif
     for (int inat = 0; inat < nvp; ++inat) {
       for (int i = 0; i < total_segfiles; i++) {
