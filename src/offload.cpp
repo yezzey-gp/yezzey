@@ -31,7 +31,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
    * Relation segments named base/DBOID/aorel->rd_node.*
    */
 
-  elog(yezzey_log_level, "offloading relation %s, relnode %d",
+  elog(yezzey_log_level, "offloading relation %s, relnode %ld",
        aorel->rd_rel->relname.data, aorel->rd_node.relNode);
 
   /* for now, we locked relation */

@@ -188,8 +188,8 @@ void YezzeyCreateRelationExpireIndex(void) {
 #if IsGreenplum7 || IsCloudBerry
   indexInfo->ii_IndexAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
   indexInfo->ii_IndexAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
-#else
   indexInfo->ii_NumIndexKeyAttrs = indexInfo->ii_NumIndexAttrs;
+#else
   indexInfo->ii_KeyAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
   indexInfo->ii_KeyAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
 #endif

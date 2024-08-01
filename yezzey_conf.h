@@ -3,6 +3,7 @@
 
 
 #define IsGreenplum7 GP_VERSION_NUM >= 70000
+#define IsGreenplum6 GP_VERSION_NUM >= 60000 && GP_VERSION_NUM < 70000
 #define IsCloudBerry GP_VERSION_NUM == 10000
 
 

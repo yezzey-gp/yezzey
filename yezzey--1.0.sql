@@ -181,10 +181,10 @@ BEGIN
 	RETURN;
     END IF;
 
-    SELECT parrelid 
-         FROM pg_partition
-    INTO v_par_reloid 
-    WHERE parrelid = v_reloid;
+    -- SELECT parrelid 
+    --      FROM pg_partition
+    -- INTO v_par_reloid 
+    -- WHERE parrelid = v_reloid;
 
     IF NOT FOUND THEN
         -- non-partitioned relation

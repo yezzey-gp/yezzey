@@ -14,6 +14,8 @@
 
 #include "worker.h"
 
+#include "yezzey_conf.h"
+
 #if PG_VERSION_NUM >= 130000
 #include "postmaster/interrupt.h"
 #endif
@@ -46,7 +48,7 @@
 
 #include "utils/elog.h"
 
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 #include "cdb/cdbvars.h"
 #endif
 
@@ -332,7 +334,7 @@ yezzey_main(Datum main_arg) {
   yezzey_state->bgworker_pid = MyProcPid;
   LWLockRelease(&yezzey_state->lock);
 
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
   if (IS_QUERY_DISPATCHER()) {
     return;
   }
@@ -533,7 +535,7 @@ void _PG_init(void) {
   elog(yezzey_log_level, "[YEZZEY_SMGR] set hook");
 
   smgr_hook = smgr_yezzey;
-#if GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
   smgrao_hook = smgrao_yezzey;
 #endif
   smgr_init_hook = smgr_init_yezzey;

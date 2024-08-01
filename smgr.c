@@ -22,7 +22,7 @@
 
 #include "utils/elog.h"
 
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 #include "cdb/cdbvars.h"
 #endif
 
@@ -85,7 +85,7 @@ void yezzey_init(void) {
   mdinit();
 }
 
-#ifndef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 void yezzey_open(SMgrRelation reln) {
   if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
     /*do nothing */
@@ -114,7 +114,7 @@ void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo) {
   mdcreate(reln, forkNum, isRedo);
 }
 
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
                       bool isRedo) {
   if (rnode.node.spcNode == YEZZEYTABLESPACE_OID) {
@@ -261,7 +261,7 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
 static const struct f_smgr yezzey_smgr = {
     .smgr_init = yezzey_init,
     .smgr_shutdown = NULL,
-#ifndef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
     .smgr_open = yezzey_open,
 #endif
     .smgr_close = yezzey_close,
@@ -275,7 +275,7 @@ static const struct f_smgr yezzey_smgr = {
     .smgr_prefetch = yezzey_prefetch,
     .smgr_read = yezzey_read,
     .smgr_write = yezzey_write,
-#ifndef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
     .smgr_writeback = yezzey_writeback,
 #endif
     .smgr_nblocks = yezzey_nblocks,
@@ -291,10 +291,7 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
-
-  #if !(IsGreenplum7 || IsCloudBerry)
     .smgr_create_ao = yezzey_create_ao,
-  #endif
 		.smgr_exists = yezzey_exists,
 		.smgr_unlink = yezzey_unlink,
 		.smgr_extend = yezzey_extend,
@@ -318,10 +315,7 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
-
-  #if !(IsGreenplum7 || IsCloudBerry)
     .smgr_create_ao = yezzey_create_ao,
-  #endif
 		.smgr_exists = yezzey_exists,
 		.smgr_unlink = yezzey_unlink_ao,
 		.smgr_extend = yezzey_extend,
@@ -388,7 +382,7 @@ const f_smgr_ao *smgrao_yezzey() { return &yezzey_smgr_ao; }
 
 void smgr_init_yezzey(void) {
 #if IsCloudBerry
-  smgrinit();
+  smgr_init_standard();
 #else
   smgr_init_standard();
 #endif

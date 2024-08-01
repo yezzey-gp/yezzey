@@ -36,12 +36,12 @@ void yezzey_init(void);
 /*
  * SMGR - related functions
  */
-#ifndef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 void yezzey_open(SMgrRelation reln);
 #endif
 void yezzey_close(SMgrRelation reln, ForkNumber forkNum);
 void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo);
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
                       bool isRedo);
 #endif
@@ -97,7 +97,7 @@ const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
 #endif
 
 
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 const f_smgr_ao *smgrao_yezzey();
 #endif
 void smgr_init_yezzey(void);

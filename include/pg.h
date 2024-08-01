@@ -87,8 +87,10 @@ extern "C" {
 
 #include "utils/elog.h"
 
+#include "yezzey_conf.h"
+
 // For GpIdentity
-#ifdef GPBUILD
+#if IsGreenplum7 || IsCloudBerry || IsGreenplum6
 #include "catalog/pg_tablespace.h"
 #include "cdb/cdbappendonlyxlog.h"
 #include "cdb/cdbvars.h"
