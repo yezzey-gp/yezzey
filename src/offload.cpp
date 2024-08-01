@@ -23,7 +23,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
 
   auto nvp = aorel->rd_att->natts;
 
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
   Oid segrelid;
 #endif
 

@@ -214,7 +214,7 @@ EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
       }
 
       yfd.fileFlags = fileFlags;
-#if IsGreenplum7 || IsCloudBerry
+#if !(IsGreenplum7 || IsCloudBerry)
       yfd.fileMode = fileMode;
 #endif
       yfd.modcount = modcount;
@@ -474,5 +474,5 @@ EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset)
 }
 
 #if IsGreenplum7 || IsCloudBerry
-EXTERNC int yezzey_FileDiskSize(SMGRFile file) { return FileDiskSize(file); }
+EXTERNC int64 yezzey_FileDiskSize(SMGRFile file) { return FileDiskSize(file); }
 #endif

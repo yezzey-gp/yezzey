@@ -54,7 +54,7 @@ EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset);
 #endif
 
 #if IsGreenplum7 || IsCloudBerry
-EXTERNC int yezzey_FileDiskSize(SMGRFile file);
+EXTERNC int64 yezzey_FileDiskSize(SMGRFile file);
 #endif
 
 #endif /* YEZZEY_PROXY_H */

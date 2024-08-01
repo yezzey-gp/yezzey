@@ -21,6 +21,8 @@
 
 #include "yezzey_meta.h"
 
+#include "yezzey_conf.h"
+
 #define USE_YPX_LISTER = 1
 
 int yezzey_log_level = INFO;
@@ -55,10 +57,10 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   int64 virtual_size;
 
   std::vector<char> buffer(chunkSize);
-#if GP_VERSION_NUM < 70000
-  vfd = PathNameOpenFile((FileName)localPath.c_str(), O_RDONLY, 0600);
-#else
+#if IsGreenplum7 || IsCloudBerry
   vfd = PathNameOpenFile(localPath.c_str(), O_RDONLY);
+#else
+  vfd = PathNameOpenFile((FileName)localPath.c_str(), O_RDONLY, 0600);
 #endif
   if (vfd <= 0) {
     elog(ERROR,
@@ -91,18 +93,29 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
   auto progress = virtual_size;
   auto offset_start = progress;
-#if PG_VERSION_NUM < 120000
-  FileSeek(vfd, progress, SEEK_SET);
-#endif
+
   rc = 0;
+
+#if PG_VERSION_NUM < 120000
   auto fLen = FileSeek(vfd, 0L, SEEK_END);
 
   if (fLen < logicalEof) {
     elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %d < %d", localPath.c_str(), fLen, logicalEof);
   }
 
+#else
+  auto fLen = FileSize(vfd);
+
+  if (fLen < logicalEof) {
+    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %d < %d", localPath.c_str(), fLen, logicalEof);
+  }
+
+#endif
+
+#if PG_VERSION_NUM < 120000
   /* reset seek to beginning */
-  FileSeek(vfd, 0L, SEEK_SET);
+  FileSeek(vfd, progress, SEEK_SET);
+#endif
 
   while (progress < logicalEof) {
     CHECK_FOR_INTERRUPTS();

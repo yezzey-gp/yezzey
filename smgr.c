@@ -34,7 +34,9 @@
 #include "c.h"
 #include "cdb/cdbvars.h"
 
-#if GP_VERSION_NUM >= 70000
+#include "yezzey_conf.h"
+
+#if IsGreenplum7 || IsCloudBerry
 #include "access/aomd.h"
 #endif
 
@@ -317,7 +319,7 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
 
-  #if GP_VERSION_NUM < 70000
+  #if !(IsGreenplum7 || IsCloudBerry)
     .smgr_create_ao = yezzey_create_ao,
   #endif
 		.smgr_exists = yezzey_exists,
@@ -364,19 +366,31 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
 #endif
 };
 
-#if !(IsGreenplum7 || IsCloudBerry)
-const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode) {
-  return &yezzey_smgr;
-}
-#else
+#if IsGreenplum7
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which) {
   return &yezzey_smgrsw[which];
 }
+#else
+#    if IsCloudBerry
+const f_smgr *smgr_yezzey(SMgrRelation reln, BackendId backend, SMgrImpl which, Relation rel) {
+  return &yezzey_smgrsw[which];
+}
+#    else
+const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode) {
+  return &yezzey_smgr;
+}
+#    endif 
 #endif
+
+
 
 const f_smgr_ao *smgrao_yezzey() { return &yezzey_smgr_ao; }
 
 void smgr_init_yezzey(void) {
+#if IsCloudBerry
+  smgrinit();
+#else
   smgr_init_standard();
+#endif
   yezzey_init();
 }

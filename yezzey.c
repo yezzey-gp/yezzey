@@ -168,7 +168,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   /* yezzey aux index oid */
   Oid yandexoid;
 
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
   Oid segrelid;
 #endif
 
@@ -463,7 +463,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   MemoryContext oldcontext;
   AttInMetadata *attinmeta;
   int32 call_cntr;
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
   Oid segrelid;
 #endif
 
@@ -523,12 +523,12 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
      * view yezzey_offload_relation_status_internal
      */
 
-#if GP_VERSION_NUM < 70000
-    funcctx->tuple_desc =
-        CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
-#else
+#if IsGreenplum7 || IsCloudBerry
     funcctx->tuple_desc =
         CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS);
+#else
+    funcctx->tuple_desc =
+        CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
 #endif
 
     TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "reloid", OIDOID,
@@ -719,7 +719,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   AttInMetadata *attinmeta;
   int32 call_cntr;
   yezzeyChunkMetaInfo *chunkInfo;
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
   Oid segrelid;
 #endif
 
@@ -882,12 +882,12 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
       elog(ERROR, "yezzey: wrong relation storage type: not AO/AOCS relation");
     }
 
-#if GP_VERSION_NUM < 70000
-    funcctx->tuple_desc = CreateTemplateTupleDesc(
-        NUM_USED_OFFLOAD_PER_SEGMENT_STATUS_STRUCT, false);
-#else
+#if IsGreenplum7 || IsCloudBerry
     funcctx->tuple_desc = CreateTemplateTupleDesc(
         NUM_USED_OFFLOAD_PER_SEGMENT_STATUS_STRUCT);
+#else
+    funcctx->tuple_desc = CreateTemplateTupleDesc(
+        NUM_USED_OFFLOAD_PER_SEGMENT_STATUS_STRUCT, false);
 #endif
 
     TupleDescInitEntry(funcctx->tuple_desc, (AttrNumber)1, "reloid", OIDOID,
@@ -993,7 +993,7 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   int nvp;
   int pseudosegno;
   int total_segfiles;
-#if GP_VERSION_NUM >= 70000
+#if IsGreenplum7 || IsCloudBerry
   Oid segrelid;
 #endif
   int64 modcount;
@@ -1110,10 +1110,10 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
    * The number and type of attributes have to match the definition of the
    * view yezzey_offload_relation_status_internal
    */
-#if GP_VERSION_NUM < 70000
-  tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS, false);
-#else
+#if IsGreenplum7 || IsCloudBerry
   tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS);
+#else
+  tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS, false);
 #endif
 
   TupleDescInitEntry(tupdesc, (AttrNumber)1, "reloid", OIDOID, -1 /* typmod */,
