@@ -95,10 +95,9 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   elog(NOTICE, "yezzey: relation virtual size calculated: %ld", virtual_size);
   auto progress = virtual_size;
   auto offset_start = progress;
+
+
 #if PG_VERSION_NUM < 120000
-  FileSeek(vfd, progress, SEEK_SET);
-#endif
-  rc = 0;
   auto fLen = FileSeek(vfd, 0L, SEEK_END);
 
   if (fLen < logicalEof) {
@@ -106,7 +105,17 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   }
 
   /* reset seek to beginning */
-  FileSeek(vfd, 0L, SEEK_SET);
+  FileSeek(vfd, progress, SEEK_SET);
+
+#else
+  auto fLen = FileSize(vfd);
+
+  if (fLen < logicalEof) {
+    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %d < %d", localPath.c_str(), fLen, logicalEof);
+  }
+
+#endif
+
 
   while (progress < logicalEof) {
     CHECK_FOR_INTERRUPTS();
