@@ -170,7 +170,9 @@ EXTERNC int yezzey_FileSync(SMGRFile file)
 EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname,
                                          const char *relname,
                                          const char *fileName, int fileFlags,
-                                         int64 modcount)
+                                         int64 modcount,
+                                         yezzeyScanTuple *ytups,
+                                         int numYtups)
 #else
 EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
                                          char *relname, const char *fileName,
@@ -232,7 +234,7 @@ EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
               std::string(storage_bucket /*bucket*/),
               std::string(storage_prefix /*prefix*/), yfd.filepath /* coords */,
               reloid /* reloid */, std::string(walg_bin_path),
-              std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+              std::string(walg_config_path), use_gpg_crypto, yproxy_socket, ytups, numYtups);
 
           yfd.coord = ioadv->coords_;
 

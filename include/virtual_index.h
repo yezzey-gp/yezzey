@@ -69,6 +69,9 @@ std::vector<ChunkInfo>
 YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid,
                       Oid relfilenode, int blkno);
 
+std::vector<ChunkInfo>
+YezzeyResolveVirtualGetOrder(yezzeyScanTuple *ytups, int numYtups, Oid relfilenode, int blkno);
+
 void YezzeyCreateVirtualIndex();
 #else
 #endif

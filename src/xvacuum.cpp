@@ -20,7 +20,7 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
         std::string(storage_bucket /*bucket*/),
         std::string(storage_prefix /*prefix*/), "" /* coords */,
         InvalidOid /* reloid */, std::string(walg_bin_path),
-        std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+        std::string(walg_config_path), use_gpg_crypto, yproxy_socket, nullptr, 0);
 
     auto x_path = std::string(external_chunk_path);
     auto init_url = getYezzeyExtrenalStorageBucket(ioadv->host.c_str(),

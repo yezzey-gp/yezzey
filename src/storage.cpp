@@ -75,7 +75,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, localPath /* filename */,
       aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
-      use_gpg_crypto, yproxy_socket);
+      use_gpg_crypto, yproxy_socket, nullptr, 0);
 
   auto iohandler =
       YIO(ioadv, GpIdentity.segindex, modcount, external_storage_path);
@@ -101,7 +101,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   auto fLen = FileSeek(vfd, 0L, SEEK_END);
 
   if (fLen < logicalEof) {
-    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %d < %d", localPath.c_str(), fLen, logicalEof);
+    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %ld < %ld", localPath.c_str(), fLen, logicalEof);
   }
 
   /* reset seek to beginning */
@@ -111,7 +111,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   auto fLen = FileSize(vfd);
 
   if (fLen < logicalEof) {
-    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %d < %d", localPath.c_str(), fLen, logicalEof);
+    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %ld < %ld", localPath.c_str(), fLen, logicalEof);
   }
 
 #endif
@@ -195,7 +195,7 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, coords /* filename */, rel->rd_id /* reloid */,
-      walg_bin_path, walg_config_path, use_gpg_crypto, yproxy_socket);
+      walg_bin_path, walg_config_path, use_gpg_crypto, yproxy_socket, nullptr, 0);
 
   /*
    * Create external storage reader handle to read segment files
@@ -210,7 +210,7 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
   rnode.relNode = rel->rd_node.relNode;
 
   /*WAL-create new segfile */
-  xlog_ao_insert(rnode, segno, 0, NULL, 0);
+  xlog_ao_insert(rnode, segno, 0, nullptr, 0);
 
   while (!iohandler.reader_empty()) {
     size_t amount = chunkSize;
@@ -369,7 +369,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords /* coordinates */,
       aorel->rd_id /* reloid */, std::string(walg_bin_path),
-      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+      std::string(walg_config_path), use_gpg_crypto, yproxy_socket, nullptr, 0);
   /* we dont need to interact with s3 while in recovery*/
 
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
@@ -419,7 +419,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords /* coords */,
       aorel->rd_id /* reloid */, std::string(walg_bin_path),
-      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+      std::string(walg_config_path), use_gpg_crypto, yproxy_socket, nullptr, 0);
   /* we dont need to interact with s3 while in recovery*/
   /* stat external storage usage */
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
@@ -479,7 +479,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/), coords /* coords */,
       aorel->rd_id /* reloid */, std::string(walg_bin_path),
-      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+      std::string(walg_config_path), use_gpg_crypto, yproxy_socket, nullptr, 0);
   /* we dont need to interact with s3 while in recovery*/
 
   #ifdef USE_YPX_LISTER

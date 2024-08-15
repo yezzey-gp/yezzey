@@ -119,6 +119,8 @@ extern "C" {
 
 #include "libpq/pqformat.h"
 
+#include "yezzey/yezzey_base.h"
+
 #ifdef __cplusplus
 }
 #endif
