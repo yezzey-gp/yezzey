@@ -28,14 +28,16 @@ typedef struct {
   Oid reloid;            /* relation oid */
   Oid relfileoid;        /* relation filenode oid */
   int blkno;             /* AO relation block file no */
-  int64_t start_offset;  /* start_offset of block file chunk */
-  int64_t finish_offset; /* finish_offset of block file chunk */
+  uint64_t start_offset;  /* start_offset of block file chunk */
+  uint64_t finish_offset; /* finish_offset of block file chunk */
   int32_t encrypted;     /* Is chunk in external storage encrypted */
   int32_t reused;        /* Is chunk writted by yezzey or reused from backup */
-  int64_t modcount;      /* modcount of block file chunk */
+  uint64_t modcount;      /* modcount of block file chunk */
   XLogRecPtr lsn;        /* Chunk lsn */
-  text x_path;           /* external path */
+  char *x_path;           /* external path */
 } FormData_yezzey_virtual_index;
+
+
 
 #define Natts_yezzey_virtual_index 10
 #define Anum_yezzey_virtual_index_reloid 1
@@ -70,7 +72,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/, Oid reloid,
                       Oid relfilenode, int blkno);
 
 std::vector<ChunkInfo>
-YezzeyResolveVirtualGetOrder(yezzeyScanTuple *ytups, int numYtups, Oid relfilenode, int blkno);
+YezzeyResolveVirtualGetOrder(yezzeyScanTuple **ytups, int numYtups, Oid relfilenode, int blkno);
 
 void YezzeyCreateVirtualIndex();
 #else

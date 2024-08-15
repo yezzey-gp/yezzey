@@ -27,7 +27,7 @@ EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, const char *nspname,
                                          const char *relname,
                                          const char *fileName, int fileFlags,
                                          int64 modcount,
-                                         yezzeyScanTuple *ytups,
+                                         yezzeyScanTuple **ytups,
                                          int numYtups);
 #else
 EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,

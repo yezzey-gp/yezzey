@@ -43,7 +43,7 @@ struct IOadv {
   // yproxy
   const std::string yproxy_socket;
 
-  yezzeyScanTuple *ytups;
+  yezzeyScanTuple **ytups;
   int numYtups;
 
   IOadv(const std::string &engine_path, const std::string &gpg_key_id,
@@ -53,7 +53,7 @@ struct IOadv {
         /*unparse coords*/ const std::string &fileName, const Oid reloid,
         const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto, const std::string &yproxy_socket,
-        yezzeyScanTuple *ytups,
+        yezzeyScanTuple **ytups,
         int numYtups);
 
   IOadv(const std::string &engine_path, const std::string &gpg_key_id,
@@ -63,7 +63,7 @@ struct IOadv {
         const relnodeCoord &coords, const Oid reloid,
         const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto, const std::string &yproxy_socket,
-        yezzeyScanTuple *ytups,
+        yezzeyScanTuple **ytups,
         int numYtups);
 };
 

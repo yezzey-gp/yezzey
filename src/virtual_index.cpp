@@ -289,18 +289,19 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
 
 std::vector<ChunkInfo>
-YezzeyResolveVirtualGetOrder(yezzeyScanTuple *ytups, int numYtups, Oid relfilenode, int blkno) {
+YezzeyResolveVirtualGetOrder(yezzeyScanTuple **ytups, int numYtups, Oid relfilenode, int blkno) {
   std::vector<ChunkInfo> res;
 
   for (int i = 0; i < numYtups; ++ i) {
-      auto ytup = ((FormData_yezzey_virtual_index *)ytups[i].payload);
+      auto ytup = ytups[i];
+
       if (ytup->blkno == blkno && ytup->relfileoid == relfilenode) {
         // unpack text to str
         res.push_back(ChunkInfo(ytup->lsn, ytup->modcount,
-                              text_to_cstring(&ytup->x_path),
+                              ytup->x_path,
                               ytup->finish_offset - ytup->start_offset, ytup->start_offset, ytup->encrypted));
       }
-  
+
   }
 
   /* sort by modcount - they are unic */
@@ -374,7 +375,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
     auto ytup = ((FormData_yezzey_virtual_index *)GETSTRUCT(tuple));
     // unpack text to str
     res.push_back(ChunkInfo(ytup->lsn, ytup->modcount,
-                            text_to_cstring(&ytup->x_path),
+                            ytup->x_path,
                             ytup->finish_offset - ytup->start_offset, ytup->start_offset, ytup->encrypted));
   }
 
