@@ -181,10 +181,10 @@ BEGIN
 	RETURN;
     END IF;
 
-    SELECT parrelid 
-         FROM pg_partition
-    INTO v_par_reloid 
-    WHERE parrelid = v_reloid;
+    -- SELECT parrelid 
+    --      FROM pg_partition
+    -- INTO v_par_reloid 
+    -- WHERE parrelid = v_reloid;
 
     IF NOT FOUND THEN
         -- non-partitioned relation
@@ -196,19 +196,19 @@ BEGIN
         );
     ELSE 
 
-         FOR v_tmprow IN 
-             SELECT (i_offload_nspname||'.'||partitiontablename)::regclass::oid FROM pg_partitions WHERE schemaname = i_offload_nspname AND tablename = i_offload_relname
-         LOOP
+        --  FOR v_tmprow IN 
+        --      SELECT (i_offload_nspname||'.'||partitiontablename)::regclass::oid FROM pg_partitions WHERE schemaname = i_offload_nspname AND tablename = i_offload_relname
+        --  LOOP
 
-             RAISE NOTICE 'offloading partition oid %', v_tmprow;
-             -- offload each part
-             PERFORM yezzey_define_relation_offload_policy_internal_seg(
-                 v_tmprow
-             );
-             PERFORM yezzey_define_relation_offload_policy_internal(
-                 v_tmprow
-             );
-         END LOOP;
+        --      RAISE NOTICE 'offloading partition oid %', v_tmprow;
+        --      -- offload each part
+        --      PERFORM yezzey_define_relation_offload_policy_internal_seg(
+        --          v_tmprow
+        --      );
+        --      PERFORM yezzey_define_relation_offload_policy_internal(
+        --          v_tmprow
+        --      );
+        --  END LOOP;
 
     END IF;
 END;
@@ -278,6 +278,18 @@ BEGIN
 END;
 $$
 LANGUAGE PLPGSQL;
+
+
+CREATE OR REPLACE FUNCTION
+yezzey_define_offload_policy_s(i_offload_relname TEXT, i_policy offload_policy DEFAULT 'remote_always')
+RETURNS VOID
+AS $$
+BEGIN
+    PERFORM yezzey_define_offload_policy_s('public', i_offload_relname, i_policy);
+END;
+$$
+LANGUAGE PLPGSQL;
+
 
 CREATE OR REPLACE FUNCTION
 yezzey_offload_relation(offload_nspname TEXT, offload_relname TEXT, remove_locally BOOLEAN DEFAULT TRUE)
