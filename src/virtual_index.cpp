@@ -52,7 +52,8 @@ yezzey_create_index_internal(Oid relid, const std::string &relname,
       relpersistence, RELSTORAGE_HEAP, shared_relation, mapped_relation, true,
       0, ONCOMMIT_NOOP, NULL /* GP Policy */, (Datum)0,
       false /* use_user_acl */, true, true, false /* valid_opts */,
-      false /* is_part_child */, false /* is part parent */);
+      false /* is_part_child */, false /* is part parent */, 
+      NULL);
 #else
   auto yezzey_ao_auxiliary_relid = heap_create_with_catalog(
       relname.c_str() /* relname */, YEZZEY_AUX_NAMESPACE /* namespace */,

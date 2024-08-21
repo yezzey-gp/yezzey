@@ -89,7 +89,8 @@ void YezzeyCreateOffloadPolicyRelation() {
       RELSTORAGE_HEAP, false, false, true, 0, ONCOMMIT_NOOP,
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
-      false /* is part parent */);
+      false /* is part parent */, 
+      NULL);
 #else
   (void)heap_create_with_catalog(
       offload_metadata_relname.c_str() /* relname */,
