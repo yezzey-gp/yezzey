@@ -11,8 +11,8 @@
 #define USE_YPX_READER 1
 #define USE_YPX_WRITER 1
 
-#define USE_WLG_WRITER 1
-#define USE_WLG_READER 1
+#define USE_WLG_WRITER 0
+#define USE_WLG_READER 0
 
 #if USE_YPX_READER
 #include "yproxy.h"
@@ -21,7 +21,6 @@
 #if USE_WLG_WRITER
 #include "walg_reader.h"
 #include "walg_writer.h"
-
 #endif
 
 #if HAVE_CRYPTO

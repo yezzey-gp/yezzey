@@ -1,3 +1,4 @@
+#if USE_WLG_READER
 #include "walg_reader.h"
 #include "meta.h"
 #include "util.h"
@@ -64,3 +65,4 @@ bool WALGReader::empty() {
   else
     return wal_g_->eof();
 };
+#endif

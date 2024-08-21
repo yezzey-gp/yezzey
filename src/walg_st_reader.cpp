@@ -1,3 +1,4 @@
+#if USE_WLG_READER
 #include "gucs.h"
 #include "meta.h"
 #include "url.h"
@@ -96,3 +97,4 @@ bool WALGSTReader::empty() {
   else
     return order_ptr_ == order_.size() && feof(wal_g_);
 };
+#endif

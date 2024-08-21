@@ -1,3 +1,4 @@
+#if USE_WLG_WRITER
 #include "walg_writer.h"
 #include "meta.h"
 #include "url.h"
@@ -77,3 +78,4 @@ bool WALGWriter::write(const char *buffer, size_t *amount) {
   *amount = rv;
   return true;
 }
+#endif
