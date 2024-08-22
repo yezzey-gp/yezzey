@@ -354,7 +354,7 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
       if (res[i + 1].start_off != res[i].start_off) {
         ereport(ERROR,
 						(errcode(ERRCODE_DATA_CORRUPTED),
-						 errmsg_internal("found duplicated modcount data chunk with diffferent offsets: %llu vs %llu",
+						 errmsg_internal("found duplicated modcount data chunk with diffferent offsets: %lu vs %lu",
 										 res[i].start_off, res[i + 1].start_off)));
       } else {
           ereport(NOTICE,
@@ -366,5 +366,5 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
     modcnt_uniqres.push_back(res[i]);
   }
 
-  return std::move(modcnt_uniqres);
+  return modcnt_uniqres;
 }
