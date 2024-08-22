@@ -34,9 +34,9 @@ private:
   std::shared_ptr<IOadv> adv_{nullptr};
   ssize_t segindx_{0};
   int64_t order_ptr_{0};
+  const std::vector<ChunkInfo> order_;
   int64_t current_chunk_remaining_bytes_{0};
   int64_t current_chunk_offset_{0};
-  const std::vector<ChunkInfo> order_;
 
   int client_fd_{-1};
 

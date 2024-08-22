@@ -85,6 +85,8 @@ void yezzey_offload_databases(void);
 void yezzey_ProcessConfigFile(void);
 void yezzey_process_database(Datum main_arg);
 
+static void yezzey_define_gucs();
+
 /* Pointer to shared-memory state. */
 static YezzeySharedState *yezzey_state = NULL;
 
@@ -446,7 +448,7 @@ static void yezzey_start_launcher_worker(void) {
 /* GUC variables. */
 static bool yezzey_autooffload = true; /* start yezzey worker? */
 
-void yezzey_define_gucs() {
+static void yezzey_define_gucs() {
 
   DefineCustomStringVariable("yezzey.storage_prefix", "segment name prefix",
                              NULL, &storage_prefix, "", PGC_SUSET, 0, NULL,

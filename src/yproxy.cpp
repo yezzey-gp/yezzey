@@ -147,7 +147,7 @@ bool YProxyReader::read(char *buffer, size_t *amount) {
 
     auto rc = ::read(client_fd_, buffer, *amount);
     if (rc <= 0) {
-      elog(WARNING, "reacquiring connection on offset %d", current_chunk_offset_);
+      elog(WARNING, "reacquiring connection on offset %lu", current_chunk_offset_);
 
       if (++this->current_retry < this->retry_limit) {
         auto rrc = this->prepareYproxyConnection(order_[order_ptr_], current_chunk_offset_);
@@ -377,8 +377,10 @@ int YProxyWriter::readRFQResponce() {
 
   char data[msgLen];
   rc = ::read(client_fd_, data, msgLen);
-
-  if (rc != msgLen) {
+  if (rc < 0) {
+    return -1;
+  }
+  if (uint64_t(rc) != msgLen) {
     // handle
     return -1;
   }
@@ -472,7 +474,7 @@ std::vector<std::string> YProxyLister::list_chunk_names() {
   auto chunk_meta = list_relation_chunks();
   std::vector<std::string> res(chunk_meta.size());
 
-  for (int i = 0; i < chunk_meta.size(); i++) {
+  for (size_t i = 0; i < chunk_meta.size(); i++) {
     res[i] = chunk_meta[i].chunkName;
   }
   return res;
@@ -498,7 +500,7 @@ std::vector<char> YProxyLister::ConstructListRequest(std::string fileName) {
 
 YProxyLister::message YProxyLister::readMessage() {
   YProxyLister::message res;
-  int len = MSG_HEADER_SIZE;
+  size_t len = MSG_HEADER_SIZE;
   char buffer[len];
   // try to read small number of bytes in one op
   // if failed, give up
@@ -521,6 +523,12 @@ YProxyLister::message YProxyLister::readMessage() {
   char data[msgLen];
   rc = ::read(client_fd_, data, msgLen);
 
+  if (rc < 0) {
+    // handle
+    res.retCode = -1;
+    return res;
+  }
+
   if (rc != msgLen) {
     // handle
     res.retCode = -1;
@@ -534,7 +542,7 @@ YProxyLister::message YProxyLister::readMessage() {
 
 std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char> *body) {
   std::vector<storageChunkMeta> res;
-  int i = PROTO_HEADER_SIZE;
+  size_t i = PROTO_HEADER_SIZE;
   while (i < body->size())
   {
     std::vector<char> buff;
@@ -549,7 +557,7 @@ std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char>
       return res;
     }
     int64_t size = 0;
-    for (int j = i; j < i + 8; j++) {
+    for (size_t j = i; j < i + 8; j++) {
       size <<= 8;
       size += uint8_t(body->at(j));
     }

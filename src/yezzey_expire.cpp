@@ -78,6 +78,8 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     // update
     auto meta = (Form_yezzey_expire_index)GETSTRUCT(tuple);
 
+    Assert(meta->yrelfileoid == relfileoid);
+
     values[Anum_yezzey_expire_index_relfileoid - 1] =
         ObjectIdGetDatum(meta->yrelfileoid);
 
