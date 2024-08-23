@@ -95,19 +95,6 @@ relnodeCoord getRelnodeCoordinate(Oid spcNode, const std::string &fileName) {
   return relnodeCoord(spcNode, dbOid, relfilenodeOid, blkno);
 }
 
-void getYezzeyExternalStoragePath(const char *nspname, const char *relname,
-                                  const char *host, const char *bucket,
-                                  const char *storage_prefix,
-                                  const char *filename, int32_t segid,
-                                  char **dest) {
-  auto prefix =
-      getYezzeyRelationUrl(nspname, relname, storage_prefix, filename, segid);
-  auto path = getYezzeyExtrenalStorageBucket(host, bucket) + prefix;
-
-  *dest = (char *)malloc(sizeof(char) * path.size());
-  strcpy(*dest, path.c_str());
-  return;
-}
 
 void getYezzeyExternalStoragePathByCoords(
     const char *nspname, const char *relname, const char *host,

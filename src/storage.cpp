@@ -73,7 +73,7 @@ int offloadRelationSegmentPath(Relation aorel, const std::string &nspname,
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, localPath /* filename */,
+      storage_prefix /*prefix*/, coords,
       aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
       use_gpg_crypto, yproxy_socket);
 

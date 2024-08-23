@@ -48,13 +48,6 @@ std::vector<int64_t> parseModcounts(const std::string &prefix,
                                     std::string name);
 #endif
 
-EXTERNC void getYezzeyExternalStoragePath(const char *nspname,
-                                          const char *relationName,
-                                          const char *host, const char *bukcet,
-                                          const char *prefix,
-                                          const char *filename, int32_t segid,
-                                          char **dest);
-
 EXTERNC void getYezzeyExternalStoragePathByCoords(
     const char *nspname, const char *relname, const char *host,
     const char *bucket, const char *storage_prefix, Oid spcNode, Oid dbNode, Oid relNode,

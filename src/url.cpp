@@ -81,19 +81,3 @@ getYezzeyRelationUrl_internal(const std::string &nspname,
   return external_storage_prefix +
          yezzey_block_file_path(nspname, relname, coords, segid);
 }
-/// @brief
-/// @param nspname
-/// @param relname
-/// @param external_storage_prefix
-/// @param fileName
-/// @param segid greenplum executor segment id
-/// @return
-std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
-                                 const char *external_storage_prefix,
-                                 const char *fileName, int32_t segid) {
-  std::string filename_str = std::string(fileName);
-  auto coords = getRelnodeCoordinate(filename_str);
-
-  return getYezzeyRelationUrl_internal(nspname, relname,
-                                       external_storage_prefix, coords, segid);
-}

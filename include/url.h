@@ -36,7 +36,3 @@ getYezzeyRelationUrl_internal(const std::string &nspname,
                               const std::string &relname,
                               const std::string &external_storage_prefix,
                               relnodeCoord coords, int32_t segid);
-
-std::string getYezzeyRelationUrl(const char *nspname, const char *relname,
-                                 const char *external_storage_prefix,
-                                 const char *fileName, int32_t segid);
