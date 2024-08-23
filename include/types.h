@@ -12,4 +12,4 @@ struct relnodeCoord {
       : spcNode(spcNode), dboid(dboid), filenode(filenode), blkno(blkno) {}
 };
 
-relnodeCoord getRelnodeCoordinate(const std::string &fileName);
+relnodeCoord getRelnodeCoordinate(Oid spcNode, const std::string &fileName);

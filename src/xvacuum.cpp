@@ -9,7 +9,7 @@
 /*
  * yezzey_delete_chunk_internal:
  * Given external chunk path, remove it from external storage
- * TBD: check, that chukn status is obsolete and other sanity checks
+ * TBD: check, that chunk status is obsolete and other sanity checks
  * to avoid deleting chunk, which can we needed to read relation data
  */
 int yezzey_delete_chunk_internal(const char *external_chunk_path) {
@@ -18,7 +18,7 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
         std::string(gpg_engine_path), std::string(gpg_key_id),
         std::string(storage_config), "", "", std::string(storage_host /*host*/),
         std::string(storage_bucket /*bucket*/),
-        std::string(storage_prefix /*prefix*/), "" /* coords */,
+        std::string(storage_prefix /*prefix*/),DEFAULTTABLESPACE_OID, "" /* coords */,
         InvalidOid /* reloid */, std::string(walg_bin_path),
         std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
 
