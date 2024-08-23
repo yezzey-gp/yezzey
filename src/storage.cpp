@@ -243,7 +243,7 @@ int loadRelationSegment(Relation aorel, Oid orig_relnode, int segno,
                         const char *dest_path) {
   auto rnode = aorel->rd_node;
 
-  auto coords = relnodeCoord{rnode.dbNode, orig_relnode, segno};
+  auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, orig_relnode, segno);
 
   std::string path;
   if (dest_path) {
@@ -325,7 +325,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   int rc;
   HeapTuple tp;
 
-  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
+  auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
 
   /* xlog goes first */
   // xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
@@ -409,7 +409,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   auto nspname = std::string(NameStr(nsptup->nspname));
   ReleaseSysCache(tp);
 
-  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
+  auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
 
   auto ioadv = std::make_shared<IOadv>(
       std::string(gpg_engine_path), std::string(gpg_key_id),
@@ -457,7 +457,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
 
   rnode = aorel->rd_node;
 
-  auto coords = relnodeCoord{rnode.dbNode, rnode.relNode, segno};
+  auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
 
   tp = SearchSysCache1(NAMESPACEOID,
                        ObjectIdGetDatum(aorel->rd_rel->relnamespace));

@@ -60,7 +60,7 @@ std::string storage_url_add_options(const std::string &s3path,
   return ret;
 }
 
-relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
+relnodeCoord getRelnodeCoordinate(Oid spcNode, const std::string &fileName) {
   Oid dbOid = 0, relfilenodeOid = 0;
   int64_t blkno = 0;
 
@@ -92,7 +92,7 @@ relnodeCoord getRelnodeCoordinate(const std::string &fileName) {
     }
   }
 
-  return relnodeCoord(dbOid, relfilenodeOid, blkno);
+  return relnodeCoord(spcNode, dbOid, relfilenodeOid, blkno);
 }
 
 void getYezzeyExternalStoragePath(const char *nspname, const char *relname,
@@ -111,9 +111,11 @@ void getYezzeyExternalStoragePath(const char *nspname, const char *relname,
 
 void getYezzeyExternalStoragePathByCoords(
     const char *nspname, const char *relname, const char *host,
-    const char *bucket, const char *storage_prefix, Oid dbNode, Oid relNode,
+    const char *bucket, const char *storage_prefix, Oid spcNode, Oid dbNode, Oid relNode,
     int32_t segblockno /* segment no*/, int32_t segid, char **dest) {
-  auto coords = relnodeCoord({dbNode, relNode, segblockno});
+
+  /* FIXME: Support for non-default table space? */
+  auto coords = relnodeCoord(spcNode, dbNode, relNode, segblockno);
   auto prefix = getYezzeyRelationUrl_internal(nspname, relname, storage_prefix,
                                               coords, segid);
   auto path = getYezzeyExtrenalStorageBucket(host, bucket) + prefix;
