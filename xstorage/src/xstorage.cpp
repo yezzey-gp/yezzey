@@ -166,27 +166,3 @@ static void destroyGpcloudResHandle(gpcloudResHandle *resHandle) {
     thread_cleanup();
     pfree(resHandle);
 }
-
-/*
- * Close any open handles on abort.
- */
-static void gpcloudAbortCallback(ResourceReleasePhase phase, bool isCommit, bool isTopLevel,
-                                 void *arg) {
-    gpcloudResHandle *curr;
-    gpcloudResHandle *next;
-
-    if (phase != RESOURCE_RELEASE_AFTER_LOCKS) return;
-
-    next = openedResHandles;
-    while (next) {
-        curr = next;
-        next = curr->next;
-
-        if (curr->owner == CurrentResourceOwner) {
-            if (isCommit)
-                elog(WARNING, "gpcloud external table reference leak: %p still referenced", curr);
-
-            destroyGpcloudResHandle(curr);
-        }
-    }
-}

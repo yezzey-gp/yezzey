@@ -27,7 +27,6 @@
 #include "encrypted_storage_reader.h"
 #include "encrypted_storage_writer.h"
 #else
-#define USE_WLG_READER 1
 #endif
 
 YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,

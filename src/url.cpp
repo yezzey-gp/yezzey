@@ -27,7 +27,7 @@ std::string yezzey_block_file_path(const std::string &nspname,
   std::string url =
       "/segments_005/seg" + std::to_string(segid) + baseYezzeyPath;
 
-  url += std::to_string(DEFAULTTABLESPACE_OID) + "_" +
+  url += std::to_string(coords.spcNode) + "_" +
          std::to_string(coords.dboid) + "_";
 
   auto md = yezzey_fqrelname_md5(nspname, relname);

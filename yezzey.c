@@ -429,7 +429,7 @@ Datum yezzey_show_relation_external_path(PG_FUNCTION_ARGS) {
 
   (void)getYezzeyExternalStoragePathByCoords(
       nspname, aorel->rd_rel->relname.data, storage_host /*host*/,
-      storage_bucket /*bucket*/, storage_prefix /*prefix*/, rnode.dbNode,
+      storage_bucket /*bucket*/, storage_prefix /*prefix*/, rnode.spcNode, rnode.dbNode,
       rnode.relNode, segno, GpIdentity.segindex, &ptr);
 
   pgptr = pstrdup(ptr);
