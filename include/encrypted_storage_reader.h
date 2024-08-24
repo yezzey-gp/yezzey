@@ -29,8 +29,10 @@ protected:
 
 private:
   std::shared_ptr<IOadv> adv_;
+
 protected:
   std::vector<ChunkInfo> order_;
+
 private:
   ssize_t segindx_;
   std::shared_ptr<BlockingBuffer> buf_;

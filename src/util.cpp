@@ -95,11 +95,13 @@ relnodeCoord getRelnodeCoordinate(Oid spcNode, const std::string &fileName) {
   return relnodeCoord(spcNode, dbOid, relfilenodeOid, blkno);
 }
 
-
-void getYezzeyExternalStoragePathByCoords(
-    const char *nspname, const char *relname, const char *host,
-    const char *bucket, const char *storage_prefix, Oid spcNode, Oid dbNode, Oid relNode,
-    int32_t segblockno /* segment no*/, int32_t segid, char **dest) {
+void getYezzeyExternalStoragePathByCoords(const char *nspname,
+                                          const char *relname, const char *host,
+                                          const char *bucket,
+                                          const char *storage_prefix,
+                                          Oid spcNode, Oid dbNode, Oid relNode,
+                                          int32_t segblockno /* segment no*/,
+                                          int32_t segid, char **dest) {
 
   /* FIXME: Support for non-default table space? */
   auto coords = relnodeCoord(spcNode, dbNode, relNode, segblockno);

@@ -1,13 +1,13 @@
 
 #pragma once
 
+#include "chunkinfo.h"
 #include "io_adv.h"
+#include "ylister.h"
 #include "yreader.h"
 #include "ywriter.h"
-#include "ylister.h"
 #include <memory>
 #include <string>
-#include "chunkinfo.h"
 #include <vector>
 
 /* reader using yproxy */
@@ -99,8 +99,7 @@ protected:
   std::vector<char> ConstructListRequest(std::string fileName);
   int prepareYproxyConnection();
 
-  struct message
-  {
+  struct message {
     char type;
     std::vector<char> content;
     int retCode;

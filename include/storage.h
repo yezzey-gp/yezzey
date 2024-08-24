@@ -23,17 +23,16 @@ typedef struct yezzeyChunkMeta {
 #ifdef __cplusplus
 #include "string"
 
+#include "io_adv.h"
 #include "types.h"
 #include <memory>
-#include "io_adv.h"
 
 std::string getlocalpath(Oid dbnode, Oid relNode, int segno);
 bool ensureFilepathLocal(const std::string &filepath);
 std::string getlocalpath(const relnodeCoord &coords);
 
 int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
-                               int64 modcount,
-                               int64 logicalEof,
+                               int64 modcount, int64 logicalEof,
                                const std::string &external_storage_path);
 #endif
 

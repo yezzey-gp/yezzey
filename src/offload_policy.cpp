@@ -5,8 +5,7 @@
 #include "offload_policy.h"
 #include "offload.h"
 #include "yezzey_heap_api.h"
-#include<unistd.h> 
-
+#include <unistd.h>
 
 /*
 
@@ -89,8 +88,7 @@ void YezzeyCreateOffloadPolicyRelation() {
       RELSTORAGE_HEAP, false, false, true, 0, ONCOMMIT_NOOP,
       NULL /* GP Policy */, (Datum)0, false /* use_user_acl */, true, true,
       false /* valid_opts */, false /* is_part_child */,
-      false /* is part parent */, 
-      NULL);
+      false /* is part parent */, NULL);
 #else
   (void)heap_create_with_catalog(
       offload_metadata_relname.c_str() /* relname */,
@@ -229,8 +227,7 @@ bool YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
       return false;
     }
 
-    values[Anum_offload_metadata_relpolicy - 1] =
-        Int32GetDatum(i_relpolicy);
+    values[Anum_offload_metadata_relpolicy - 1] = Int32GetDatum(i_relpolicy);
     values[Anum_offload_metadata_relext_time - 1] =
         TimestampGetDatum(meta->relext_time);
 
@@ -289,14 +286,14 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
   extensionAddr.objectSubId = 0;
 
   /*
-  * 1.1: check if data has been already offloaded (maybe in the same transaction)
-  */
-
+   * 1.1: check if data has been already offloaded (maybe in the same
+   * transaction)
+   */
 
   /* record entry in offload metadata */
   /* Bump rellast acrhive, or insert proper metadata tuple */
   if (!YezzeySetRelationExpiritySeg(reloid, 1 /* always external */,
-                                     GetCurrentTimestamp())) {
+                                    GetCurrentTimestamp())) {
     /* nothing to do */
     return;
   }
