@@ -10,11 +10,11 @@
 
 const int kDefaultRetryLimit = 100;
 
-
 YProxyReader::YProxyReader(std::shared_ptr<IOadv> adv, ssize_t segindx,
                            const std::vector<ChunkInfo> order)
     : adv_(adv), segindx_(segindx), order_ptr_(0), order_(order),
-      current_chunk_remaining_bytes_(0), client_fd_(-1), current_retry(0), retry_limit(kDefaultRetryLimit) {}
+      current_chunk_remaining_bytes_(0), client_fd_(-1), current_retry(0),
+      retry_limit(kDefaultRetryLimit) {}
 
 YProxyReader::~YProxyReader() { close(); }
 
@@ -43,9 +43,12 @@ const size_t MSG_HEADER_SIZE = 8;
 const size_t PROTO_HEADER_SIZE = 4;
 const size_t OFFSET_SZ = 8;
 
-std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci, size_t start_off) {
-  std::vector<char> buff(
-      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + (start_off == 0 ? 0 : OFFSET_SZ), 0);
+std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
+                                                    size_t start_off) {
+  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
+                             ci.x_path.size() + 1 +
+                             (start_off == 0 ? 0 : OFFSET_SZ),
+                         0);
   buff[8] = MessageTypeCat;
   if (ci.enc) {
     buff[9] = DecryptRequest;
@@ -70,7 +73,8 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci, size_t 
   if (start_off != 0) {
     cp = start_off;
     for (ssize_t i = 7; i >= 0; --i) {
-      buff[MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + i] = cp & ((1 << 8) - 1);
+      buff[MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + i] =
+          cp & ((1 << 8) - 1);
       cp >>= 8;
     }
   }
@@ -78,7 +82,8 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci, size_t 
   return buff;
 }
 
-int YProxyReader::prepareYproxyConnection(const ChunkInfo &ci, size_t start_off) {
+int YProxyReader::prepareYproxyConnection(const ChunkInfo &ci,
+                                          size_t start_off) {
   // open unix data socket
 
   client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -101,7 +106,9 @@ int YProxyReader::prepareYproxyConnection(const ChunkInfo &ci, size_t start_off)
       ::connect(client_fd_, (const struct sockaddr *)&addr, sizeof(addr));
   if (ret == -1) {
     // THROW here?
-    elog(WARNING, "failed to acquire connection to unix socket on %s, errno: %d", adv_->yproxy_socket.c_str(), errno);
+    elog(WARNING,
+         "failed to acquire connection to unix socket on %s, errno: %d",
+         adv_->yproxy_socket.c_str(), errno);
     return -1;
   }
 
@@ -147,10 +154,12 @@ bool YProxyReader::read(char *buffer, size_t *amount) {
 
     auto rc = ::read(client_fd_, buffer, *amount);
     if (rc <= 0) {
-      elog(WARNING, "reacquiring connection on offset %lu", current_chunk_offset_);
+      elog(WARNING, "reacquiring connection on offset %lu",
+           current_chunk_offset_);
 
       if (++this->current_retry < this->retry_limit) {
-        auto rrc = this->prepareYproxyConnection(order_[order_ptr_], current_chunk_offset_);
+        auto rrc = this->prepareYproxyConnection(order_[order_ptr_],
+                                                 current_chunk_offset_);
         if (rrc < 0) {
           sleep(1);
           continue;
@@ -277,7 +286,9 @@ int YProxyWriter::prepareYproxyConnection() {
       ::connect(client_fd_, (const struct sockaddr *)&addr, sizeof(addr));
 
   if (ret == -1) {
-    elog(WARNING, "failed to acquire connection to unix socket on %s, errno: %d", adv_->yproxy_socket.c_str(), errno);
+    elog(WARNING,
+         "failed to acquire connection to unix socket on %s, errno: %d",
+         adv_->yproxy_socket.c_str(), errno);
     return -1;
   }
 
@@ -392,8 +403,7 @@ int YProxyWriter::readRFQResponce() {
 }
 
 YProxyLister::YProxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
-    : adv_(adv), segindx_(segindx) { }
-
+    : adv_(adv), segindx_(segindx) {}
 
 YProxyLister::~YProxyLister() { close(); }
 
@@ -428,7 +438,9 @@ int YProxyLister::prepareYproxyConnection() {
       ::connect(client_fd_, (const struct sockaddr *)&addr, sizeof(addr));
 
   if (ret == -1) {
-    elog(WARNING, "failed to acquire connection to unix socket on %s, errno: %d", adv_->yproxy_socket.c_str(), errno);
+    elog(WARNING,
+         "failed to acquire connection to unix socket on %s, errno: %d",
+         adv_->yproxy_socket.c_str(), errno);
     return -1;
   }
 
@@ -442,9 +454,9 @@ std::vector<storageChunkMeta> YProxyLister::list_relation_chunks() {
     // throw?
     return res;
   }
-  
-  auto msg = ConstructListRequest(yezzey_block_file_path(adv_->nspname, adv_->relname,
-                                         adv_->coords_, segindx_));
+
+  auto msg = ConstructListRequest(yezzey_block_file_path(
+      adv_->nspname, adv_->relname, adv_->coords_, segindx_));
   size_t rc = ::write(client_fd_, msg.data(), msg.size());
   if (rc <= 0) {
     // throw?
@@ -452,22 +464,21 @@ std::vector<storageChunkMeta> YProxyLister::list_relation_chunks() {
   }
 
   std::vector<storageChunkMeta> meta;
-  while(true) {
+  while (true) {
     auto message = readMessage();
-    switch (message.type)
-    {
+    switch (message.type) {
     case MessageTypeObjectMeta:
       meta = readObjectMetaBody(&message.content);
       res.insert(res.end(), meta.begin(), meta.end());
       break;
     case MessageTypeReadyForQuery:
       return res;
-    
+
     default:
-      //throw?
+      // throw?
       return res;
     }
-  }  
+  }
 }
 
 std::vector<std::string> YProxyLister::list_chunk_names() {
@@ -540,11 +551,11 @@ YProxyLister::message YProxyLister::readMessage() {
   return res;
 }
 
-std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char> *body) {
+std::vector<storageChunkMeta>
+YProxyLister::readObjectMetaBody(std::vector<char> *body) {
   std::vector<storageChunkMeta> res;
   size_t i = PROTO_HEADER_SIZE;
-  while (i < body->size())
-  {
+  while (i < body->size()) {
     std::vector<char> buff;
     while (body->at(i) != 0 && i < body->size()) {
       buff.push_back(body->at(i));
@@ -553,7 +564,7 @@ std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char>
     i++;
     std::string path(buff.begin(), buff.end());
     if (body->size() - i < 8) {
-      //throw?
+      // throw?
       return res;
     }
     int64_t size = 0;
@@ -568,6 +579,6 @@ std::vector<storageChunkMeta> YProxyLister::readObjectMetaBody(std::vector<char>
     meta.chunkSize = size;
     res.push_back(meta);
   }
-  
+
   return res;
 }

@@ -20,8 +20,8 @@
 #include "s3memory_mgmt.h"
 
 #include "storage_lister.h"
-#include "yproxy.h"
 #include "url.h"
+#include "yproxy.h"
 
 #include "yezzey_meta.h"
 
@@ -39,8 +39,7 @@ bool ensureFilepathLocal(const std::string &filepath) {
 }
 
 int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
-                               int64 modcount,
-                               int64 logicalEof,
+                               int64 modcount, int64 logicalEof,
                                const std::string &external_storage_path) {
   const std::string localPath = getlocalpath(ioadv->coords_);
 
@@ -69,7 +68,6 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
          localPath.c_str());
   }
 
-
   auto iohandler =
       YIO(ioadv, GpIdentity.segindex, modcount, external_storage_path);
 
@@ -89,12 +87,14 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
   auto progress = virtual_size;
   auto offset_start = progress;
 
-
 #if PG_VERSION_NUM < 120000
   auto fLen = FileSeek(vfd, 0L, SEEK_END);
 
   if (fLen < logicalEof) {
-    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %lu < %lu", localPath.c_str(), fLen, logicalEof);
+    elog(ERROR,
+         "yezzey: failed to offload corrupt relation, partial data file %s: "
+         "%lu < %lu",
+         localPath.c_str(), fLen, logicalEof);
   }
 
   /* reset seek to beginning */
@@ -104,11 +104,13 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
   auto fLen = FileSize(vfd);
 
   if (fLen < logicalEof) {
-    elog(ERROR, "yezzey: failed to offload corrupt relation, partial data file %s: %lu < %lu", localPath.c_str(), fLen, logicalEof);
+    elog(ERROR,
+         "yezzey: failed to offload corrupt relation, partial data file %s: "
+         "%lu < %lu",
+         localPath.c_str(), fLen, logicalEof);
   }
 
 #endif
-
 
   while (progress < logicalEof) {
     CHECK_FOR_INTERRUPTS();
@@ -190,8 +192,9 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, storage_class /* storage_class */, tableSpace, coords /* filename */, rel->rd_id /* reloid */,
-      walg_bin_path, walg_config_path, use_gpg_crypto, yproxy_socket);
+      storage_prefix /*prefix*/, storage_class /* storage_class */, tableSpace,
+      coords /* filename */, rel->rd_id /* reloid */, walg_bin_path,
+      walg_config_path, use_gpg_crypto, yproxy_socket);
 
   /*
    * Create external storage reader handle to read segment files
@@ -343,29 +346,27 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       !external_storage_path ? "" : std::string(external_storage_path);
   ReleaseSysCache(tp);
 
-    /* Search syscache for pg_tablespace */
+  /* Search syscache for pg_tablespace */
   tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(coords.spcNode));
   if (!HeapTupleIsValid(tuple))
     elog(ERROR, "cache lookup failed for tablespace %u", coords.spcNode);
 
-  pg_tablespace_tuple = (Form_pg_tablespace) GETSTRUCT(tuple);
+  pg_tablespace_tuple = (Form_pg_tablespace)GETSTRUCT(tuple);
 
   auto tableSpace = std::string(NameStr(pg_tablespace_tuple->spcname));
-
 
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, storage_class /* storage_class */, tableSpace, coords,
-      aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
+      storage_prefix /*prefix*/, storage_class /* storage_class */, tableSpace,
+      coords, aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
       use_gpg_crypto, yproxy_socket);
 
-  
-	ReleaseSysCache(tuple);
+  ReleaseSysCache(tuple);
 
   try {
-    if ((rc = offloadRelationSegmentPath(aorel, ioadv, modcount, logicalEof, storage_path)) <
-        0) {
+    if ((rc = offloadRelationSegmentPath(aorel, ioadv, modcount, logicalEof,
+                                         storage_path)) < 0) {
       return rc;
     }
   } catch (S3Exception &e) {
@@ -419,14 +420,12 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
   auto nspname = std::string(NameStr(nsptup->nspname));
 
-
-
-    /* Search syscache for pg_tablespace */
+  /* Search syscache for pg_tablespace */
   tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(rnode.spcNode));
   if (!HeapTupleIsValid(tuple))
     elog(ERROR, "cache lookup failed for tablespace %u", rnode.spcNode);
 
-  pg_tablespace_tuple = (Form_pg_tablespace) GETSTRUCT(tuple);
+  pg_tablespace_tuple = (Form_pg_tablespace)GETSTRUCT(tuple);
 
   auto tableSpace = std::string(NameStr(pg_tablespace_tuple->spcname));
 
@@ -442,9 +441,10 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
-      std::string(storage_class /*storage_class*/), tableSpace, coords /* coords */,
-      aorel->rd_id /* reloid */, std::string(walg_bin_path),
-      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+      std::string(storage_class /*storage_class*/), tableSpace,
+      coords /* coords */, aorel->rd_id /* reloid */,
+      std::string(walg_bin_path), std::string(walg_config_path), use_gpg_crypto,
+      yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/
   /* stat external storage usage */
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
@@ -497,13 +497,12 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   auto nsptup = (Form_pg_namespace)GETSTRUCT(tp);
   auto nspname = std::string(NameStr(nsptup->nspname));
 
-
-    /* Search syscache for pg_tablespace */
+  /* Search syscache for pg_tablespace */
   tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(coords.spcNode));
   if (!HeapTupleIsValid(tuple))
     elog(ERROR, "cache lookup failed for tablespace %u", coords.spcNode);
 
-  pg_tablespace_tuple = (Form_pg_tablespace) GETSTRUCT(tuple);
+  pg_tablespace_tuple = (Form_pg_tablespace)GETSTRUCT(tuple);
 
   auto tableSpace = std::string(NameStr(pg_tablespace_tuple->spcname));
 
@@ -517,18 +516,18 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
-      std::string(storage_class /*storage_class*/),
-      tableSpace /* FIXME*/, coords /* coords */,
-      aorel->rd_id /* reloid */, std::string(walg_bin_path),
-      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+      std::string(storage_class /*storage_class*/), tableSpace /* FIXME*/,
+      coords /* coords */, aorel->rd_id /* reloid */,
+      std::string(walg_bin_path), std::string(walg_config_path), use_gpg_crypto,
+      yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/
 
-  #ifdef USE_YPX_LISTER
+#ifdef USE_YPX_LISTER
   auto lister = YProxyLister(ioadv, GpIdentity.segindex);
-  #else
+#else
   /* ro - handler */
   auto lister = StorageLister(ioadv, GpIdentity.segindex);
-  #endif
+#endif
 
   /* stat external storage usage */
 

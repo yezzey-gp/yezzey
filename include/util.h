@@ -50,8 +50,9 @@ std::vector<int64_t> parseModcounts(const std::string &prefix,
 
 EXTERNC void getYezzeyExternalStoragePathByCoords(
     const char *nspname, const char *relname, const char *host,
-    const char *bucket, const char *storage_prefix, Oid spcNode, Oid dbNode, Oid relNode,
-    int32_t segblockno /* segment no*/, int32_t segid, char **dest);
+    const char *bucket, const char *storage_prefix, Oid spcNode, Oid dbNode,
+    Oid relNode, int32_t segblockno /* segment no*/, int32_t segid,
+    char **dest);
 
 EXTERNC XLogRecPtr yezzeyGetXStorageInsertLsn(void);
 

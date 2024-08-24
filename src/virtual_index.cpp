@@ -212,7 +212,6 @@ void emptyYezzeyIndexBlkno(Oid yezzey_index_oid, Oid reloid /* not used */,
   CommandCounterIncrement();
 } /* end emptyYezzeyIndexBlkno */
 
-
 void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
                               Oid reloid, Oid relfilenodeOid, int64_t blkno,
                               int64_t offset_start, int64_t offset_finish,
@@ -249,13 +248,12 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
   auto yandxtuple = heap_form_tuple(RelationGetDescr(yandxrel), values, nulls);
 
-  /* send tuple messages to master */ 
+  /* send tuple messages to master */
 
 #if GP_VERSION_NUM >= 70000
 
   auto mt_bind = create_memtuple_binding(
       RelationGetDescr(yandxrel), RelationGetNumberOfAttributes(yandxrel));
-
 
   auto memtup = memtuple_form(mt_bind, values, nulls);
 
@@ -264,13 +262,12 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
    */
   auto itemLen = memtuple_get_size(memtup);
 
-	StringInfoData buf;
+  StringInfoData buf;
 
   pq_beginmessage(&buf, 'z');
   pq_sendint(&buf, itemLen, sizeof(itemLen));
-  pq_sendbytes(&buf, (const char*) memtup, itemLen);
+  pq_sendbytes(&buf, (const char *)memtup, itemLen);
   pq_endmessage(&buf);
-
 
   // CatalogTupleInsert(yandxrel, yandxtuple);
 #else
@@ -321,7 +318,8 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
     // unpack text to str
     res.push_back(ChunkInfo(ytup->lsn, ytup->modcount,
                             text_to_cstring(&ytup->x_path),
-                            ytup->finish_offset - ytup->start_offset, ytup->start_offset, ytup->encrypted));
+                            ytup->finish_offset - ytup->start_offset,
+                            ytup->start_offset, ytup->encrypted));
   }
 
   yezzey_endscan(desc);
@@ -335,30 +333,31 @@ YezzeyVirtualGetOrder(Oid yandexoid /*yezzey auxiliary index oid*/,
   /* sort by modcount - they are unic */
   std::sort(res.begin(), res.end(),
             [](const ChunkInfo &lhs, const ChunkInfo &rhs) {
-              return lhs.modcount == rhs.modcount ? lhs.lsn < rhs.lsn : lhs.modcount < rhs.modcount;
+              return lhs.modcount == rhs.modcount ? lhs.lsn < rhs.lsn
+                                                  : lhs.modcount < rhs.modcount;
             });
 
-  
   std::vector<ChunkInfo> modcnt_uniqres;
 
-  /* remove duplicated data chunks while read. 
-  * report correuption in case of offset mismatch.
-  */
+  /* remove duplicated data chunks while read.
+   * report correuption in case of offset mismatch.
+   */
 
-  for (uint i = 0; i < res.size(); ++ i) {
+  for (uint i = 0; i < res.size(); ++i) {
     if (res[i].size == 0) {
       continue;
     }
     if (i + 1 < res.size() && res[i + 1].modcount == res[i].modcount) {
       if (res[i + 1].start_off != res[i].start_off) {
         ereport(ERROR,
-						(errcode(ERRCODE_DATA_CORRUPTED),
-						 errmsg_internal("found duplicated modcount data chunk with diffferent offsets: %lu vs %lu",
-										 res[i].start_off, res[i + 1].start_off)));
+                (errcode(ERRCODE_DATA_CORRUPTED),
+                 errmsg_internal("found duplicated modcount data chunk with "
+                                 "diffferent offsets: %lu vs %lu",
+                                 res[i].start_off, res[i + 1].start_off)));
       } else {
-          ereport(NOTICE,
-						(errcode(ERRCODE_DATA_CORRUPTED),
-						 errmsg_internal("found duplicated modcount data chunk, skip")));
+        ereport(NOTICE, (errcode(ERRCODE_DATA_CORRUPTED),
+                         errmsg_internal(
+                             "found duplicated modcount data chunk, skip")));
       }
       continue;
     }
