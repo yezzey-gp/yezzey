@@ -58,7 +58,7 @@ OBJS = \
 	./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
 
 EXTENSION = yezzey
-DATA = yezzey--1.0.sql
+DATA = yezzey--1.0.sql yezzey--1.0--1.8.sql
 PGFILEDESC = "yezzey - external storage tables offloading extension"
 
 ifdef USE_PGXS

@@ -1,5 +1,5 @@
 # yezzey extension
 comment = 'Extension for offloading Greenplum AO/AOCS relations to external storage'
-default_version = '1.0'
+default_version = '1.8'
 module_pathname = '$libdir/yezzey'
 trusted = true
