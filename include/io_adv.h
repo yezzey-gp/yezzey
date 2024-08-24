@@ -14,7 +14,7 @@ struct IOadv {
   const std::string engine_path;
   const std::string gpg_key_id;
 
-  //  storage + WAL-G related
+  //  storage + YPROXY related
 
   const std::string config_path;
   // schema name for relation
@@ -27,6 +27,14 @@ struct IOadv {
   const std::string bucket;
   // wal-g specific prefix
   const std::string external_storage_prefix;
+
+
+  // s3 storage class
+  const std::string storage_class;
+
+
+  // Origin tablespace of offloaded relation
+  const std::string tableSpace;
 
   // base/5/12345.1
 
@@ -47,6 +55,8 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
+      const std::string &storage_class,
+      const std::string &tableSpace,
         /*unparse coords*/ Oid spcNode, const std::string &fileName, const Oid reloid,
         const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto, const std::string &yproxy_socket);
@@ -55,6 +65,9 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
+
+             const std::string &storage_class,
+             const std::string &tableSpace,
         const relnodeCoord &coords, const Oid reloid,
         const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto, const std::string &yproxy_socket);

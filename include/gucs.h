@@ -16,6 +16,7 @@ extern char *storage_bucket;
 extern char *backup_bucket;
 extern char *storage_config;
 extern char *storage_host;
+extern char *storage_class;
 
 /* WAL-G */
 
