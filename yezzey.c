@@ -76,6 +76,7 @@ char *storage_bucket = NULL;
 char *backup_bucket = NULL;
 char *storage_config = NULL;
 char *storage_host = NULL;
+char *storage_class = NULL;
 
 /* GPG */
 char *gpg_engine_path = NULL;
