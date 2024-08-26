@@ -247,7 +247,7 @@ int loadRelationSegment(Relation aorel, Oid orig_relnode, int segno,
   if (dest_path) {
     path = std::string(dest_path);
   } else {
-    path = getlocalpath(rnode.dbNode, rnode.relNode, segno);
+    path = getlocalpath(coords);
   }
 
   elog(yezzey_ao_log_level, "contructed path %s", path.c_str());
@@ -300,20 +300,23 @@ int removeLocalFile(const char *localPath) {
   return res;
 }
 
-std::string getlocalpath(Oid dbnode, Oid relNode, int segno) {
-  std::string local_path;
-  if (segno == 0) {
-    local_path =
-        "base/" + std::to_string(dbnode) + "/" + std::to_string(relNode);
-  } else {
-    local_path = "base/" + std::to_string(dbnode) + "/" +
-                 std::to_string(relNode) + "." + std::to_string(segno);
+std::string getlocalpath(std::string local_path, int segno) {
+  if (segno != 0) {
+    local_path = local_path + "." + std::to_string(segno);
   }
   return local_path;
 }
 
 std::string getlocalpath(const relnodeCoord &coords) {
-  return getlocalpath(coords.dboid, coords.filenode, coords.blkno);
+   std::string local_path(
+     GetRelationPath(
+       coords.dboid, 
+       coords.spcNode, 
+       coords.filenode,
+       InvalidBackendId,
+       MAIN_FORKNUM));
+
+  return getlocalpath(local_path, coords.blkno);
 }
 
 int offloadRelationSegment(Relation aorel, int segno, int64 modcount,

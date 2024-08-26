@@ -1,23 +1,41 @@
 
 CREATE TABLE yezzey.offload_tablespace_map(
     reloid                 OID PRIMARY KEY,
-    origin_tablespace_name TEXT
+    origin_tablespace_name NAME
 ) DISTRIBUTED REPLICATED;
 
-INSERT INTO 
-    yezzey.offload_tablespace_map
-SELECT 
-    reloid, 'pg_default'
-FROM 
-    yezzey.offload_metadata
-WHERE 
-    relpolicy = 1
-;
+SET allow_segment_DML to on;
+
+CREATE OR REPLACE FUNCTION
+yezzey_upgrade_function() RETURNS VOID
+AS $$ 
+BEGIN
+
+    -- SET gp_session_role to 'utility';
+    INSERT INTO 
+        yezzey.offload_tablespace_map
+    SELECT 
+        reloid, 'pg_default'
+    FROM 
+        yezzey.offload_metadata
+    WHERE 
+        relpolicy = 1
+    ;
+
+    -- RESET gp_session_role;
+END;
+$$ 
+EXECUTE ON ALL SEGMENTS
+LANGUAGE PLPGSQL;
+
+SELECT yezzey_upgrade_function();
+
+RESET allow_segment_DML;
 
 CREATE OR REPLACE FUNCTION yezzey_define_relation_offload_policy_internal_prepare(reloid OID) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
-EXECUTE ON MASTER
+EXECUTE ON ALL SEGMENTS
 LANGUAGE C STRICT;
 
 
@@ -50,14 +68,14 @@ BEGIN
     WHERE 
         reloid = v_reloid AND relpolicy = 1;
 
-    PERFORM yezzey_define_relation_offload_policy_internal_prepare(
-        v_reloid
-    );
-
     IF FOUND THEN
         RAISE NOTICE 'relation % already offloaded', i_offload_relname;
 	RETURN;
     END IF;
+
+    PERFORM yezzey_define_relation_offload_policy_internal_prepare(
+        v_reloid
+    );
 
     SELECT parrelid 
          FROM pg_partition
@@ -92,3 +110,5 @@ BEGIN
 END;
 $$
 LANGUAGE PLPGSQL;
+
+DROP FUNCTION yezzey_upgrade_function();

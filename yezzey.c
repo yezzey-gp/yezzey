@@ -104,6 +104,7 @@ PG_FUNCTION_INFO_V1(
     yezzey_relation_describe_external_storage_structure_internal);
 PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal);
 PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal_seg);
+PG_FUNCTION_INFO_V1(yezzey_define_relation_offload_policy_internal_prepare);
 PG_FUNCTION_INFO_V1(yezzey_offload_relation_to_external_path);
 PG_FUNCTION_INFO_V1(yezzey_show_relation_external_path);
 PG_FUNCTION_INFO_V1(yezzey_init_metadata_seg);
