@@ -22,7 +22,7 @@ static Oid YezzeyResolveTablespaceMapOid() {
       yezzey_relation_open(RelationRelationId, RowExclusiveLock);
 
   ScanKeyInit(&skey[0], Anum_pg_class_relname, BTEqualStrategyNumber,
-              F_TEXTEQ, CStringGetDatum(offload_metadata_relname.c_str()));
+              F_TEXTEQ, PointerGetDatum(cstring_to_text(offload_metadata_relname.c_str())));
 
 
   ScanKeyInit(&skey[1], Anum_pg_class_relnamespace, BTEqualStrategyNumber,
@@ -50,14 +50,14 @@ static Oid YezzeyResolveTablespaceMapOid() {
 }
 
 std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
-    
-  auto snap = RegisterSnapshot(GetTransactionSnapshot());
   auto yezzey_tablespace_map_oid = YezzeyResolveTablespaceMapOid();
 
   /* No map relation created. Assume pg_default by default */
   if (yezzey_tablespace_map_oid == InvalidOid) {
       return "pg_default";
   }
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
   /* SELECT FROM yezzey.offload_tablespace_map WHERE reloid = i_reloid; */
   auto offload_tablespace_map_rel =
@@ -94,9 +94,14 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
 void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
 
-  HeapTuple spctuple;
-  auto snap = RegisterSnapshot(GetTransactionSnapshot());
   auto yezzey_tablespace_map_oid = YezzeyResolveTablespaceMapOid();
+
+  if (yezzey_tablespace_map_oid == InvalidOid) {
+      /* no map relation created, NOOP */
+      return;
+  }
+
+  auto snap = RegisterSnapshot(GetTransactionSnapshot());
 
   bool nulls[Natts_offload_tablespace_map];
   Datum values[Natts_offload_tablespace_map];
@@ -126,7 +131,7 @@ void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
 
 
   /* Search syscache for pg_tablespace */
-  spctuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(i_reltablespace));
+  auto spctuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(i_reltablespace));
   if (!HeapTupleIsValid(spctuple))
     ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),

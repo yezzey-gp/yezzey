@@ -1,3 +1,4 @@
+#ifdef USE_GP_READER
 /*
  *  Encrypted external storage reader routine
  * file: encrypted_storage_reader.cpp
@@ -55,3 +56,5 @@ bool EncryptedStorageReader::close() {
 }
 
 bool EncryptedStorageReader::empty() { return reader_->empty(); }
+
+#endif /* USE_GP_READER */
