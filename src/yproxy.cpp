@@ -344,9 +344,11 @@ std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
 
   uint64_t settings_offset = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1;
 
+
+  cp = settingsCnt;
   for (ssize_t i = 7; i >= 0; --i) {
-    buff[settings_offset + i] = settingsCnt & ((1 << 8) - 1);
-    settingsCnt >>= 8;
+    buff[settings_offset + i] = cp & ((1 << 8) - 1);
+    cp >>= 8;
   }
 
   settings_offset += MSG_HEADER_SIZE;
