@@ -8,6 +8,8 @@
 #include "yezzey_heap_api.h"
 #include <unistd.h>
 
+#include "offload_tablespace_map.h"
+
 const std::string offload_metadata_relname = "offload_tablespace_map";
 
 std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
@@ -30,13 +32,13 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
   auto oldtuple = heap_getnext(scan, ForwardScanDirection);
 
-  /* No map relation created. Assume 'BASE' by default */
+  /* No map relation created. Assume pg_default by default */
   if (!HeapTupleIsValid(oldtuple)) {
       heap_close(classrel, RowExclusiveLock);
 
       yezzey_endscan(scan);
       UnregisterSnapshot(snap);
-      return "BASE";
+      return "pg_default";
   }
 
   Oid yezzey_tablespace_map_oid = HeapTupleGetOid(oldtuple);
@@ -56,7 +58,7 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
   auto scanoff = yezzey_beginscan(offload_tablespace_map_rel, snap, 1, offskey);
   auto offtuple = heap_getnext(scanoff, ForwardScanDirection);
-  /* No map tuple created. Assume 'BASE' by default */
+  /* No map tuple created. Assume 'pg_default' by default */
   if (!HeapTupleIsValid(offtuple)) {
       heap_close(offload_tablespace_map_rel, RowExclusiveLock);
 
