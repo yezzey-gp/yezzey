@@ -7,6 +7,8 @@
 #include "yezzey_heap_api.h"
 #include <unistd.h>
 
+#include "offload_tablespace_map.h"
+
 /*
 
 CREATE TABLE yezzey.offload_metadata(
@@ -304,6 +306,10 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
    */
   auto aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
+
+  if (Gp_role == GP_ROLE_DISPATCH) {
+    YezzeyRegisterRelationOriginTablespace(reloid, aorel->rd_node.spcNode);
+  }
 
   /*
    * @brief do main offload job on segments
