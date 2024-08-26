@@ -44,6 +44,7 @@ OBJS = \
 	src/util.o \
 	src/url.o \
 	src/worker.o \
+	src/offload_tablespace_map.o \
 	src/offload_policy.o \
 	src/offload.o \
 	src/virtual_tablespace.o \

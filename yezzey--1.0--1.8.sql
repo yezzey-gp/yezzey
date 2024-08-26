@@ -7,7 +7,7 @@ CREATE TABLE yezzey.offload_tablespace_map(
 INSERT INTO 
     yezzey.offload_tablespace_map
 SELECT 
-    reloid, 'BASE'
+    reloid, 'pg_default'
 FROM 
     yezzey.offload_metadata
 WHERE 
