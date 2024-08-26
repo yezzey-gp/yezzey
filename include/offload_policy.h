@@ -59,6 +59,8 @@ YezzeySetRelationExpiritySeg(Oid i_reloid /* offload relation oid */,
 
 EXTERNC void YezzeyDefineOffloadPolicy(Oid reloid);
 
+EXTERNC void YezzeyDefineOffloadPolicyPrepare(Oid reloid);
+
 /*
  * YezzeyLoadRealtion:
  * do all offload-metadata related work for relation loading:
