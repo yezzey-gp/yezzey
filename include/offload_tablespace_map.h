@@ -26,7 +26,7 @@ CREATE TABLE yezzey.offload_tablespace_map(
 
 typedef struct {
   Oid reloid;                 /* OID of offloaded relation */
-  text origin_tablespace_name; /* offloading original tablespace of relation */
+  NameData origin_tablespace_name; /* offloading original tablespace of relation */
 } FormData_offload_tablespace_map;
 
 typedef FormData_offload_tablespace_map *Form_offload_tablespace_map;
