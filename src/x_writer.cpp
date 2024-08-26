@@ -1,6 +1,7 @@
+#ifdef USE_GP_WRITER
 
 /**
- * @file smgr_s3.cpp
+ * @file x_writer.cpp
  *
  * @author your name (you@domain.com)
  * @brief
@@ -77,3 +78,5 @@ bool ExternalWriter::close() {
 }
 
 ExternalWriter::~ExternalWriter() { close(); }
+
+#endif /* USE_GP_WRITER */

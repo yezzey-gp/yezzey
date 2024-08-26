@@ -1,3 +1,4 @@
+#ifdef USE_GP_READER
 
 /**
  *
@@ -111,3 +112,5 @@ bool ExternalReader::close() {
 }
 
 ExternalReader::~ExternalReader() { close(); }
+
+#endif /* USE_GP_READER */
