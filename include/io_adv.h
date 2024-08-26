@@ -31,14 +31,14 @@ struct IOadv {
   // s3 storage class
   const std::string storage_class;
 
-  // Origin tablespace of offloaded relation
-  const std::string tableSpace;
-
   // base/5/12345.1
 
   const relnodeCoord coords_;
 
   const Oid reloid;
+
+  // Origin tablespace of offloaded relation
+  const std::string tableSpace;
 
   // /usr/bin/wal-g-gp
   const std::string walg_bin_path;
@@ -53,7 +53,7 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
-        const std::string &storage_class, const std::string &tableSpace,
+        const std::string &storage_class,
         /*unparse coords*/ Oid spcNode, const std::string &fileName,
         const Oid reloid, const std::string &walg_bin_path,
         const std::string &walg_config_path, bool use_gpg_crypto,
@@ -63,8 +63,7 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
-
-        const std::string &storage_class, const std::string &tableSpace,
+        const std::string &storage_class,
         const relnodeCoord &coords, const Oid reloid,
         const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto, const std::string &yproxy_socket);

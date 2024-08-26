@@ -187,12 +187,11 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
   std::ofstream ostrm(dest_path, std::ios::binary);
 
   /* FIXME */
-  std::string tableSpace = "BASE";
 
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, storage_class /* storage_class */, tableSpace,
+      storage_prefix /*prefix*/, storage_class /* storage_class */,
       coords /* filename */, rel->rd_id /* reloid */, walg_bin_path,
       walg_config_path, use_gpg_crypto, yproxy_socket);
 
@@ -320,18 +319,15 @@ std::string getlocalpath(const relnodeCoord &coords) {
 int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
                            int64 logicalEof,
                            const char *external_storage_path) {
-  RelFileNode rnode = aorel->rd_node;
+  auto rnode = aorel->rd_node;
   int rc;
-  HeapTuple tp;
-  Form_pg_tablespace pg_tablespace_tuple;
-  HeapTuple tuple;
 
   auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
 
   /* xlog goes first */
   // xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
 
-  tp = SearchSysCache1(NAMESPACEOID,
+  auto tp = SearchSysCache1(NAMESPACEOID,
                        ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
   if (!HeapTupleIsValid(tp)) {
@@ -346,23 +342,13 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       !external_storage_path ? "" : std::string(external_storage_path);
   ReleaseSysCache(tp);
 
-  /* Search syscache for pg_tablespace */
-  tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(coords.spcNode));
-  if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "cache lookup failed for tablespace %u", coords.spcNode);
-
-  pg_tablespace_tuple = (Form_pg_tablespace)GETSTRUCT(tuple);
-
-  auto tableSpace = std::string(NameStr(pg_tablespace_tuple->spcname));
-
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, storage_class /* storage_class */, tableSpace,
+      storage_prefix /*prefix*/, storage_class /* storage_class */,
       coords, aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
       use_gpg_crypto, yproxy_socket);
 
-  ReleaseSysCache(tuple);
 
   try {
     if ((rc = offloadRelationSegmentPath(aorel, ioadv, modcount, logicalEof,
@@ -404,8 +390,6 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
                            int64 logicalEof, size_t *local_bytes,
                            size_t *local_commited_bytes,
                            size_t *external_bytes) {
-  HeapTuple tuple;
-  Form_pg_tablespace pg_tablespace_tuple;
 
   auto rnode = aorel->rd_node;
 
@@ -420,17 +404,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   Form_pg_namespace nsptup = (Form_pg_namespace)GETSTRUCT(tp);
   auto nspname = std::string(NameStr(nsptup->nspname));
 
-  /* Search syscache for pg_tablespace */
-  tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(rnode.spcNode));
-  if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "cache lookup failed for tablespace %u", rnode.spcNode);
-
-  pg_tablespace_tuple = (Form_pg_tablespace)GETSTRUCT(tuple);
-
-  auto tableSpace = std::string(NameStr(pg_tablespace_tuple->spcname));
-
   ReleaseSysCache(tp);
-  ReleaseSysCache(tuple);
 
   auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
 
@@ -441,7 +415,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
-      std::string(storage_class /*storage_class*/), tableSpace,
+      std::string(storage_class /*storage_class*/),
       coords /* coords */, aorel->rd_id /* reloid */,
       std::string(walg_bin_path), std::string(walg_config_path), use_gpg_crypto,
       yproxy_socket);
@@ -477,16 +451,11 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
                                            size_t *local_commited_bytes,
                                            yezzeyChunkMeta **list,
                                            size_t *cnt_chunks) {
-  RelFileNode rnode;
-  HeapTuple tp;
-  HeapTuple tuple;
-  Form_pg_tablespace pg_tablespace_tuple;
-
-  rnode = aorel->rd_node;
+  auto rnode = aorel->rd_node;
 
   auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
 
-  tp = SearchSysCache1(NAMESPACEOID,
+  auto tp = SearchSysCache1(NAMESPACEOID,
                        ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
   if (!HeapTupleIsValid(tp)) {
@@ -497,17 +466,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   auto nsptup = (Form_pg_namespace)GETSTRUCT(tp);
   auto nspname = std::string(NameStr(nsptup->nspname));
 
-  /* Search syscache for pg_tablespace */
-  tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(coords.spcNode));
-  if (!HeapTupleIsValid(tuple))
-    elog(ERROR, "cache lookup failed for tablespace %u", coords.spcNode);
-
-  pg_tablespace_tuple = (Form_pg_tablespace)GETSTRUCT(tuple);
-
-  auto tableSpace = std::string(NameStr(pg_tablespace_tuple->spcname));
-
   ReleaseSysCache(tp);
-  ReleaseSysCache(tuple);
 
   auto ioadv = std::make_shared<IOadv>(
       std::string(gpg_engine_path), std::string(gpg_key_id),
@@ -516,7 +475,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
-      std::string(storage_class /*storage_class*/), tableSpace /* FIXME*/,
+      std::string(storage_class /*storage_class*/),
       coords /* coords */, aorel->rd_id /* reloid */,
       std::string(walg_bin_path), std::string(walg_config_path), use_gpg_crypto,
       yproxy_socket);
