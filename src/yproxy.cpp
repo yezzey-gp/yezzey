@@ -32,6 +32,7 @@ const char ExtendedMessage = 1;
 const char EncryptRequest = 1;
 const char NoEncryptRequest = 0;
 const char MessageTypeCat = 42;
+const char MessageTypeCatV2 = 54;
 const char MessageTypePut = 43;
 const char MessageTypePutV2 = 53;
 const char MessageTypeCommandComplete = 44;
@@ -46,9 +47,24 @@ const size_t OFFSET_SZ = 8;
 
 std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
                                                     size_t start_off) {
+
+
+  uint64_t settingsCnt = 1;
+  uint64_t settingsMsgSpace = 0;
+  
+  std::vector<std::pair<std::string, std::string>> settings = {
+    {"TableSpace", adv_->tableSpace},
+  };
+
+
+  for (auto j = 0; j < settingsCnt; ++ j) {
+    settingsMsgSpace += settings[j].first.size() + 1;
+    settingsMsgSpace += settings[j].second.size() + 1;
+  }
+
   std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
                              ci.x_path.size() + 1 +
-                             (start_off == 0 ? 0 : OFFSET_SZ),
+                             OFFSET_SZ + settingsMsgSpace,
                          0);
   buff[8] = MessageTypeCat;
   if (ci.enc) {
@@ -71,14 +87,33 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
     cp >>= 8;
   }
 
-  if (start_off != 0) {
-    cp = start_off;
-    for (ssize_t i = 7; i >= 0; --i) {
-      buff[MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + i] =
-          cp & ((1 << 8) - 1);
-      cp >>= 8;
-    }
+  cp = start_off;
+  for (ssize_t i = 7; i >= 0; --i) {
+    buff[MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + i] =
+        cp & ((1 << 8) - 1);
+    cp >>= 8;
   }
+
+  uint64_t settings_offset = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + OFFSET_SZ;
+
+  cp = settingsCnt;
+  for (ssize_t i = 7; i >= 0; --i) {
+    buff[settings_offset + i] = cp & ((1 << 8) - 1);
+    cp >>= 8;
+  }
+
+  settings_offset += MSG_HEADER_SIZE;
+
+  for (auto j = 0; j < settingsCnt; ++ j) {
+    strncpy(buff.data() + settings_offset, settings[j].first.c_str(),
+          settings[j].first.size());
+    settings_offset += settings[j].first.size() + 1;
+
+    strncpy(buff.data() + settings_offset, settings[j].second.c_str(),
+          settings[j].second.size());
+    settings_offset += settings[j].second.size() + 1;
+  }
+
 
   return buff;
 }
