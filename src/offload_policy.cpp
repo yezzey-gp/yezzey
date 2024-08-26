@@ -256,6 +256,15 @@ bool YezzeySetRelationExpiritySeg(Oid i_reloid, int i_relpolicy,
   return true;
 }
 
+void YezzeyDefineOffloadPolicyPrepare(Oid reloid) {
+  auto aorel = relation_open(reloid, AccessExclusiveLock);
+
+  YezzeyRegisterRelationOriginTablespace(reloid, aorel->rd_node.spcNode);
+  
+  relation_close(aorel, NoLock);
+}
+
+
 /*
  * YezzeyDefineOffloadPolicy:
  * do all the work for relation offloading:
@@ -306,11 +315,6 @@ void YezzeyDefineOffloadPolicy(Oid reloid) {
    */
   auto aorel = relation_open(reloid, AccessExclusiveLock);
   RelationOpenSmgr(aorel);
-
-  if (Gp_role == GP_ROLE_DISPATCH) {
-    YezzeyRegisterRelationOriginTablespace(reloid, aorel->rd_node.spcNode);
-  }
-
   /*
    * @brief do main offload job on segments
    *

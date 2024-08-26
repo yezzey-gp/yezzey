@@ -140,6 +140,13 @@ Datum yezzey_define_relation_offload_policy_internal(PG_FUNCTION_ARGS) {
   PG_RETURN_VOID();
 }
 
+
+Datum yezzey_define_relation_offload_policy_internal_prepare(PG_FUNCTION_ARGS) {
+  (void)YezzeyDefineOffloadPolicyPrepare(PG_GETARG_OID(0));
+  PG_RETURN_VOID();
+}
+
+
 /*
  * yezzey_define_relation_offload_policy_internal_seg:
  * Follow the query dispatcher logic
