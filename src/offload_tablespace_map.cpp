@@ -85,7 +85,7 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
   auto tablespaceName = rv.data;
 
-  elog(NOTICE, "resolved name %s", tablespaceName);
+  elog(DEBUG3, "YezzeyGetRelationOriginTablespace: resolved name %s", tablespaceName);
 
   auto tablespace_val = std::string(tablespaceName);
 
