@@ -64,9 +64,9 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
 
   std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
                              ci.x_path.size() + 1 +
-                             OFFSET_SZ + settingsMsgSpace,
+                             OFFSET_SZ + MSG_HEADER_SIZE + settingsMsgSpace,
                          0);
-  buff[8] = MessageTypeCat;
+  buff[8] = MessageTypeCatV2;
   if (ci.enc) {
     buff[9] = DecryptRequest;
   } else {
