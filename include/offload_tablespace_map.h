@@ -22,7 +22,7 @@ CREATE TABLE yezzey.offload_tablespace_map(
 #define Natts_offload_tablespace_map 2
 
 #define Anum_offload_tablespace_map_reloid 1
-#define Anumoffload_tablespace_map_origin_tablespace_name 2
+#define Anum_offload_tablespace_map_origin_tablespace_name 2
 
 typedef struct {
   Oid reloid;                 /* OID of offloaded relation */
@@ -33,4 +33,6 @@ typedef FormData_offload_tablespace_map *Form_offload_tablespace_map;
 
 #ifdef __cplusplus
 std::string YezzeyGetRelationOriginTablespace(Oid i_reloid);
+
+void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace);
 #endif
