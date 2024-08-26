@@ -33,6 +33,7 @@ const char EncryptRequest = 1;
 const char NoEncryptRequest = 0;
 const char MessageTypeCat = 42;
 const char MessageTypePut = 43;
+const char MessageTypePutV2 = 53;
 const char MessageTypeCommandComplete = 44;
 const char MessageTypeReadyForQuery = 45;
 const char MessageTypeCopyData = 46;
@@ -302,24 +303,64 @@ int YProxyWriter::prepareYproxyConnection() {
 }
 
 std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
-  std::vector<char> buff(
-      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1, 0);
-  buff[8] = MessageTypePut;
-  if (adv_->use_gpg_crypto) {
-    buff[9] = EncryptRequest;
-  } else {
-    buff[9] = NoEncryptRequest;
-  }
-  uint64_t len = buff.size();
+  uint64_t settingsCnt = 2;
+  uint64_t settingsMsgSpace = 0;
+  
+  std::vector<std::pair<std::string, std::string>> settings = {
+    {"StorageClass", adv_->storage_class},
+    {"TableSpace", adv_->tableSpace},
+  };
 
-  strncpy(buff.data() + MSG_HEADER_SIZE + PROTO_HEADER_SIZE, fileName.c_str(),
-          fileName.size());
+
+  for (auto j = 0; j < settingsCnt; ++ j) {
+    settingsMsgSpace += settings[j].first.size() + 1;
+    settingsMsgSpace += settings[j].second.size() + 1;
+  }
+
+  std::vector<char> buff(
+      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1
+      + MSG_HEADER_SIZE + settingsMsgSpace, 0);
+
+
+  uint64_t len = buff.size();
 
   uint64_t cp = len;
   for (ssize_t i = 7; i >= 0; --i) {
     buff[i] = cp & ((1 << 8) - 1);
     cp >>= 8;
   }
+
+  buff[8] = MessageTypePutV2;
+
+  if (adv_->use_gpg_crypto) {
+    buff[9] = EncryptRequest;
+  } else {
+    buff[9] = NoEncryptRequest;
+  }
+
+  strncpy(buff.data() + MSG_HEADER_SIZE + PROTO_HEADER_SIZE, fileName.c_str(),
+          fileName.size());
+  /* no need to set null byte */
+
+  uint64_t settings_offset = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1;
+
+  for (ssize_t i = 7; i >= 0; --i) {
+    buff[settings_offset + i] = settingsCnt & ((1 << 8) - 1);
+    settingsCnt >>= 8;
+  }
+
+  settings_offset += MSG_HEADER_SIZE;
+
+  for (auto j = 0; j < settingsCnt; ++ j) {
+    strncpy(buff.data() + settings_offset, settings[j].first.c_str(),
+          settings[j].first.size());
+    settings_offset += settings[j].first.size() + 1;
+
+    strncpy(buff.data() + settings_offset, settings[j].second.c_str(),
+          settings[j].second.size());
+    settings_offset += settings[j].second.size() + 1;
+  }
+
 
   return buff;
 }
