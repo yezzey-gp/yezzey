@@ -25,6 +25,8 @@
 
 #include "yezzey_meta.h"
 
+#include "offload_tablespace_map.h"
+
 #define USE_YPX_LISTER = 1
 
 int yezzey_log_level = INFO;
@@ -308,13 +310,9 @@ std::string getlocalpath(std::string local_path, int segno) {
 }
 
 std::string getlocalpath(const relnodeCoord &coords) {
-   std::string local_path(
-     GetRelationPath(
-       coords.dboid, 
-       coords.spcNode, 
-       coords.filenode,
-       InvalidBackendId,
-       MAIN_FORKNUM));
+  std::string local_path(GetRelationPath(coords.dboid, coords.spcNode,
+                                         coords.filenode, InvalidBackendId,
+                                         MAIN_FORKNUM));
 
   return getlocalpath(local_path, coords.blkno);
 }
@@ -331,7 +329,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   // xlog_smgr_local_truncate(rnode, MAIN_FORKNUM, 'a');
 
   auto tp = SearchSysCache1(NAMESPACEOID,
-                       ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+                            ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
   if (!HeapTupleIsValid(tp)) {
     elog(ERROR, "yezzey: failed to get namescape name of relation %s",
@@ -348,10 +346,9 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   auto ioadv = std::make_shared<IOadv>(
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
-      storage_prefix /*prefix*/, storage_class /* storage_class */,
-      coords, aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
+      storage_prefix /*prefix*/, storage_class /* storage_class */, coords,
+      aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
       use_gpg_crypto, yproxy_socket);
-
 
   try {
     if ((rc = offloadRelationSegmentPath(aorel, ioadv, modcount, logicalEof,
@@ -389,6 +386,39 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
   return 0;
 }
 
+static Oid resolveTablespaceOidByName(std::string tablespacename) {
+
+  Relation rel;
+  HeapScanDesc scan;
+  HeapTuple tuple;
+  ScanKeyData entry[1];
+  Oid resOid;
+  /*
+   * Find the target tuple
+   */
+  rel = heap_open(TableSpaceRelationId, RowExclusiveLock);
+
+  ScanKeyInit(&entry[0], Anum_pg_tablespace_spcname, BTEqualStrategyNumber,
+              F_NAMEEQ, CStringGetDatum(tablespacename.c_str()));
+  scan = heap_beginscan_catalog(rel, 1, entry);
+  tuple = heap_getnext(scan, ForwardScanDirection);
+
+  if (!HeapTupleIsValid(tuple)) {
+    ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+                    errmsg("tablespace \"%s\" does not exist",
+                           tablespacename.c_str())));
+    /* never reached */
+    return InvalidOid;
+  }
+
+  resOid = HeapTupleGetOid(tuple);
+
+  heap_endscan(scan);
+  heap_close(rel, RowExclusiveLock);
+
+  return resOid;
+}
+
 int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
                            int64 logicalEof, size_t *local_bytes,
                            size_t *local_commited_bytes,
@@ -409,7 +439,13 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
 
   ReleaseSysCache(tp);
 
-  auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
+  /* rnode.spcNode == YEZZEYTABLESPACEOID here. we need
+  to lookup in metadata table to resolve origin tablespace */
+
+  auto spcNode = resolveTablespaceOidByName(
+      YezzeyGetRelationOriginTablespace(RelationGetRelid(aorel)));
+
+  auto coords = relnodeCoord(spcNode, rnode.dbNode, rnode.relNode, segno);
 
   auto ioadv = std::make_shared<IOadv>(
       std::string(gpg_engine_path), std::string(gpg_key_id),
@@ -418,10 +454,9 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
-      std::string(storage_class /*storage_class*/),
-      coords /* coords */, aorel->rd_id /* reloid */,
-      std::string(walg_bin_path), std::string(walg_config_path), use_gpg_crypto,
-      yproxy_socket);
+      std::string(storage_class /*storage_class*/), coords /* coords */,
+      aorel->rd_id /* reloid */, std::string(walg_bin_path),
+      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/
   /* stat external storage usage */
   auto virtual_sz = yezzey_virtual_relation_size(ioadv, GpIdentity.segindex);
@@ -456,10 +491,16 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
                                            size_t *cnt_chunks) {
   auto rnode = aorel->rd_node;
 
-  auto coords = relnodeCoord(rnode.spcNode, rnode.dbNode, rnode.relNode, segno);
+  /* rnode.spcNode == YEZZEYTABLESPACEOID here. we need
+  to lookup in metadata table to resolve origin tablespace */
+
+  auto spcNode = resolveTablespaceOidByName(
+      YezzeyGetRelationOriginTablespace(RelationGetRelid(aorel)));
+
+  auto coords = relnodeCoord(spcNode, rnode.dbNode, rnode.relNode, segno);
 
   auto tp = SearchSysCache1(NAMESPACEOID,
-                       ObjectIdGetDatum(aorel->rd_rel->relnamespace));
+                            ObjectIdGetDatum(aorel->rd_rel->relnamespace));
 
   if (!HeapTupleIsValid(tp)) {
     elog(ERROR, "yezzey: failed to get namescape name of relation %s",
@@ -478,10 +519,9 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_host /*host*/),
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
-      std::string(storage_class /*storage_class*/),
-      coords /* coords */, aorel->rd_id /* reloid */,
-      std::string(walg_bin_path), std::string(walg_config_path), use_gpg_crypto,
-      yproxy_socket);
+      std::string(storage_class /*storage_class*/), coords /* coords */,
+      aorel->rd_id /* reloid */, std::string(walg_bin_path),
+      std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/
 
 #ifdef USE_YPX_LISTER

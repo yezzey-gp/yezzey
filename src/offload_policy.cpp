@@ -260,10 +260,9 @@ void YezzeyDefineOffloadPolicyPrepare(Oid reloid) {
   auto aorel = relation_open(reloid, AccessExclusiveLock);
 
   YezzeyRegisterRelationOriginTablespace(reloid, aorel->rd_node.spcNode);
-  
+
   relation_close(aorel, NoLock);
 }
-
 
 /*
  * YezzeyDefineOffloadPolicy:

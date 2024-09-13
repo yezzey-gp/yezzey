@@ -48,23 +48,21 @@ const size_t OFFSET_SZ = 8;
 std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
                                                     size_t start_off) {
 
-
   uint64_t settingsCnt = 1;
   uint64_t settingsMsgSpace = 0;
-  
+
   std::vector<std::pair<std::string, std::string>> settings = {
-    {"TableSpace", adv_->tableSpace},
+      {"TableSpace", adv_->tableSpace},
   };
 
-
-  for (auto j = 0; j < settingsCnt; ++ j) {
+  for (auto j = 0; j < settingsCnt; ++j) {
     settingsMsgSpace += settings[j].first.size() + 1;
     settingsMsgSpace += settings[j].second.size() + 1;
   }
 
   std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
-                             ci.x_path.size() + 1 +
-                             OFFSET_SZ + MSG_HEADER_SIZE + settingsMsgSpace,
+                             ci.x_path.size() + 1 + OFFSET_SZ +
+                             MSG_HEADER_SIZE + settingsMsgSpace,
                          0);
   buff[8] = MessageTypeCatV2;
   if (ci.enc) {
@@ -94,7 +92,8 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
     cp >>= 8;
   }
 
-  uint64_t settings_offset = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + OFFSET_SZ;
+  uint64_t settings_offset =
+      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + ci.x_path.size() + 1 + OFFSET_SZ;
 
   cp = settingsCnt;
   for (ssize_t i = 7; i >= 0; --i) {
@@ -104,16 +103,15 @@ std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
 
   settings_offset += MSG_HEADER_SIZE;
 
-  for (auto j = 0; j < settingsCnt; ++ j) {
+  for (auto j = 0; j < settingsCnt; ++j) {
     strncpy(buff.data() + settings_offset, settings[j].first.c_str(),
-          settings[j].first.size());
+            settings[j].first.size());
     settings_offset += settings[j].first.size() + 1;
 
     strncpy(buff.data() + settings_offset, settings[j].second.c_str(),
-          settings[j].second.size());
+            settings[j].second.size());
     settings_offset += settings[j].second.size() + 1;
   }
-
 
   return buff;
 }
@@ -340,22 +338,20 @@ int YProxyWriter::prepareYproxyConnection() {
 std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
   uint64_t settingsCnt = 2;
   uint64_t settingsMsgSpace = 0;
-  
+
   std::vector<std::pair<std::string, std::string>> settings = {
-    {"StorageClass", adv_->storage_class},
-    {"TableSpace", adv_->tableSpace},
+      {"StorageClass", adv_->storage_class},
+      {"TableSpace", adv_->tableSpace},
   };
 
-
-  for (auto j = 0; j < settingsCnt; ++ j) {
+  for (auto j = 0; j < settingsCnt; ++j) {
     settingsMsgSpace += settings[j].first.size() + 1;
     settingsMsgSpace += settings[j].second.size() + 1;
   }
 
-  std::vector<char> buff(
-      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1
-      + MSG_HEADER_SIZE + settingsMsgSpace, 0);
-
+  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() +
+                             1 + MSG_HEADER_SIZE + settingsMsgSpace,
+                         0);
 
   uint64_t len = buff.size();
 
@@ -377,8 +373,8 @@ std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
           fileName.size());
   /* no need to set null byte */
 
-  uint64_t settings_offset = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1;
-
+  uint64_t settings_offset =
+      MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1;
 
   cp = settingsCnt;
   for (ssize_t i = 7; i >= 0; --i) {
@@ -388,16 +384,15 @@ std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
 
   settings_offset += MSG_HEADER_SIZE;
 
-  for (auto j = 0; j < settingsCnt; ++ j) {
+  for (auto j = 0; j < settingsCnt; ++j) {
     strncpy(buff.data() + settings_offset, settings[j].first.c_str(),
-          settings[j].first.size());
+            settings[j].first.size());
     settings_offset += settings[j].first.size() + 1;
 
     strncpy(buff.data() + settings_offset, settings[j].second.c_str(),
-          settings[j].second.size());
+            settings[j].second.size());
     settings_offset += settings[j].second.size() + 1;
   }
-
 
   return buff;
 }
