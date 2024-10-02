@@ -2,7 +2,6 @@
 
 #include "io_adv.h"
 /* should go after ioadv */
-#include "gpreader.h"
 #include "ylister.h"
 #include <memory>
 #include <vector>
@@ -21,10 +20,8 @@ public:
   virtual std::vector<std::string> list_chunk_names();
 
 public:
-  std::shared_ptr<GPReader> reader_{nullptr};
 
 protected:
-  GPReader *createReaderHandle();
   bool read_initialized_{false};
 
 private:

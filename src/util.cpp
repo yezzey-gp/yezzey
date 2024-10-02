@@ -1,13 +1,6 @@
 
 /**
- * @file smgr_s3.cpp
- *
- * @author your name (you@domain.com)
- * @brief
- * @version 0.1
- * @date 2023-02-20
- *
- * @copyright Copyright (c) 2023
+ * @file util.cpp
  *
  */
 
@@ -17,14 +10,10 @@
 #include <string>
 #include <vector>
 
-#include "gpreader.h"
-#include "gpwriter.h"
-
 #include "virtual_index.h"
 
 #include "io.h"
 #include "io_adv.h"
-#include "storage_lister.h"
 
 #include "url.h"
 

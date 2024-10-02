@@ -4,14 +4,6 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 # -Werror=implicit-fallthrough=3
 
-COMMON_OBJS = \
-	gpreader.o gpwriter.o gpcleaner.o \
-	s3conf.o s3utils.o s3log.o s3url.o \
-	s3http_headers.o s3interface.o s3restful_service.o \
-	s3bucket_reader.o s3common_reader.o s3common_writer.o \
-	decompress_reader.o compress_writer.o s3key_reader.o s3key_writer.o \
-	xstorage.o
-
 COMMON_LINK_OPTIONS = -lstdc++ -lxml2 -lpthread -lcrypto -lcurl -lz -lstdc++fs
 
 # COMMON_LINK_OPTIONS += -lgpgme
@@ -33,9 +25,7 @@ MODULE_big = yezzey
 
 OBJS = \
 	$(WIN32RES) \
-	src/storage.o src/proxy.o src/encrypted_storage_reader.o \
-	src/storage_lister.o \
-	src/encrypted_storage_writer.o  src/io_adv.o src/io.o src/crypto.o  \
+	src/storage.o src/proxy.o \
 	src/virtual_index.o \
 	src/util.o \
 	src/url.o \
@@ -50,8 +40,7 @@ OBJS = \
 	src/yproxy.o \
 	src/init.o \
 	src/meta.o \
-	smgr.o worker.o yezzey.o \
-	./xstorage/lib/http_parser.o ./xstorage/lib/ini.o $(addprefix ./xstorage/src/,$(COMMON_OBJS))
+	smgr.o worker.o yezzey.o
 
 EXTENSION = yezzey
 DATA = yezzey--1.0.sql yezzey--1.0--1.8.sql
