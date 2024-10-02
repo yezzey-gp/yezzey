@@ -6,16 +6,9 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 COMMON_LINK_OPTIONS = -lstdc++ -lz -lstdc++fs
 
-# COMMON_LINK_OPTIONS += -lgpgme
-
 COMMON_CPP_FLAGS = -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS 
 
-# COMMON_CPP_FLAGS += -DHAVE_CRYPTO
-
 override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/local/opt/openssl/include -Iinclude -Ilib  -g -I. -I. -I../../src/include -D_GNU_SOURCE -DGPBUILD
-
-# CPPFLAGS += -lgpgme
-
 
 SHLIB_LINK += $(COMMON_LINK_OPTIONS)
 PG_CPPFLAGS += $(COMMON_CPP_FLAGS) -I./include -Iinclude -Ilib -I$(libpq_srcdir) -I$(libpq_srcdir)/postgresql/server/utils
