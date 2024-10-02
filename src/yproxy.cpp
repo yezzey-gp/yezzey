@@ -483,8 +483,13 @@ std::vector<char> YProxyWriter::ConstructCopyDataRequest(const char *buffer,
 * Yproxy Deleter
 */
 
-YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx)
-    : adv_(adv), segindx_(segindx) {}
+YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx, bool confirm)
+    : adv_(adv), segindx_(segindx), garbage_cleanup_(false), confirm_(confirm) {}
+
+
+YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv)
+    : adv_(adv), segindx_(-1), garbage_cleanup_(true), confirm_(true) {}
+
 
 YProxyDeleter::~YProxyDeleter() { close(); }
 
@@ -568,9 +573,9 @@ std::vector<char> YProxyDeleter::ConstructDeleteRequest(std::string fileName) {
   }
 
   /* confirm */
-  buff.back() = char(1);
+  buff.back() = confirm_;
   /* garbage */
-  (--buff.back()) = char(1);
+  (--buff.back()) = garbage_cleanup_;
 
   return buff;
 }

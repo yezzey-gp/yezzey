@@ -85,7 +85,14 @@ public:
 /* Delete specified file from external storage, bypassing all sanity checks */
 class YProxyDeleter : public YDeleter {
 public:
-  explicit YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx);
+  /*
+  * Direct delete dispatch, appliable from MASTER
+  */
+  explicit YProxyDeleter(std::shared_ptr<IOadv> adv);
+  /*
+   * For segments execution, claanup garbage workhorse 
+  */
+  explicit YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx, bool confirm_);
 
   virtual ~YProxyDeleter();
 
@@ -100,7 +107,10 @@ protected:
 
 private:
   std::shared_ptr<IOadv> adv_;
-  ssize_t segindx_;
+  ssize_t segindx_ {-1};
+
+  bool garbage_cleanup_{false};
+  bool confirm_{false};
 
   int client_fd_{-1};
 };
