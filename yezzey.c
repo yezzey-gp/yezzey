@@ -419,7 +419,7 @@ Datum yezzey_vacuum_garbage(PG_FUNCTION_ARGS) {
   int rc;
 
   prefix_path = GET_STR(PG_GETARG_TEXT_P(0));
-  confirm = GET_STR(PG_GETARG_BOOL(0));
+  confirm = PG_GETARG_BOOL(1);
 
   if (GpIdentity.segindex == -1) {
     elog(ERROR, "yezzey_vacuum_garbage_internal should be executed on SEGMENT");

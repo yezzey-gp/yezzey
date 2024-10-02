@@ -17,7 +17,7 @@ IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
       bucket(bucket), external_storage_prefix(external_storage_prefix),
       storage_class(storage_class),
       coords_(getRelnodeCoordinate(spcNode, fileName)), reloid(reloid),
-      tableSpace(YezzeyGetRelationOriginTablespace(reloid)),
+      tableSpace(reloid ? YezzeyGetRelationOriginTablespace(reloid) : "none"),
       walg_bin_path(walg_bin_path), walg_config_path(walg_config_path),
       use_gpg_crypto(use_gpg_crypto), yproxy_socket(yproxy_socket) {}
 
@@ -34,6 +34,6 @@ IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
       config_path(config_path), nspname(nspname), relname(relname), host(host),
       bucket(bucket), external_storage_prefix(external_storage_prefix),
       storage_class(storage_class), coords_(coords), reloid(reloid),
-      tableSpace(YezzeyGetRelationOriginTablespace(reloid)),
+      tableSpace(reloid ? YezzeyGetRelationOriginTablespace(reloid) : "none"),
       walg_bin_path(walg_bin_path), walg_config_path(walg_config_path),
       use_gpg_crypto(use_gpg_crypto), yproxy_socket(yproxy_socket) {}
