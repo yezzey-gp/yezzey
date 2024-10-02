@@ -119,6 +119,12 @@ extern "C" {
 
 #include "libpq/pqformat.h"
 
+#include "miscadmin.h"
+
+#include "libpq/libpq-be.h"
+
+#include "postmaster/postmaster.h"
+
 #ifdef __cplusplus
 }
 #endif

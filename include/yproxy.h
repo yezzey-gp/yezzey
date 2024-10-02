@@ -6,6 +6,7 @@
 #include "ylister.h"
 #include "yreader.h"
 #include "ywriter.h"
+#include "ydeleter.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -44,8 +45,7 @@ private:
   int retry_limit{1};
 };
 
-// write to external storage, using gpwriter.
-// encrypt all data with gpg
+// Write into external storage using yproxy
 class YProxyWriter : public YWriter {
 public:
   explicit YProxyWriter(std::shared_ptr<IOadv> adv, ssize_t segindx,
@@ -62,12 +62,9 @@ protected:
   int prepareYproxyConnection();
   std::vector<char> ConstructPutRequest(std::string fileName);
   std::vector<char> ConstructCopyDataRequest(const char *buffer, size_t amount);
-  std::vector<char> CostructCommandCompleteRequest();
-  int readRFQResponce();
 
 private:
   std::string createXPath();
-  int write_full(const std::vector<char> &msg);
 
   std::shared_ptr<IOadv> adv_;
   ssize_t segindx_;
@@ -82,6 +79,32 @@ public:
 
   XLogRecPtr getInsertionStorageLsn() { return insertion_rec_ptr_; }
 };
+
+
+
+/* Delete specified file from external storage, bypassing all sanity checks */
+class YProxyDeleter : public YDeleter {
+public:
+  explicit YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx);
+
+  virtual ~YProxyDeleter();
+
+  virtual bool close();
+
+  virtual bool deleteChunk(const std::string &chunkName);
+
+protected:
+  /* prepare connection for chunk reading */
+  int prepareYproxyConnection();
+  std::vector<char> ConstructDeleteRequest(std::string fileName);
+
+private:
+  std::shared_ptr<IOadv> adv_;
+  ssize_t segindx_;
+
+  int client_fd_{-1};
+};
+
 
 // list external storage using yproxy
 class YProxyLister : public YLister {
