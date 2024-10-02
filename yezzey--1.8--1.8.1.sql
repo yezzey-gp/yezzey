@@ -1,0 +1,9 @@
+
+CREATE OR REPLACE FUNCTION yezzey_vacuum_garbage(
+    external_storage_prefix TEXT,
+    confirm BOOLEAN DEFAULT TRUE
+) RETURNS void
+AS 'MODULE_PATHNAME'
+VOLATILE
+EXECUTE ON ALL SEGMENTS
+LANGUAGE C STRICT;

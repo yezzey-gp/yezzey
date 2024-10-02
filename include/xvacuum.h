@@ -11,6 +11,7 @@
 #define EXTERNC
 #endif
 
-EXTERNC int yezzey_delete_chunk_internal(const char *external_chunk_path, int segindx);
+EXTERNC int yezzey_delete_chunk_internal(const char *external_chunk_path);
+EXTERNC int yezzey_vacuum_garbage_internal(const char *external_chunk_path, int segindx, bool confirm);
 
 #endif /* YEZZEY_XVACUUM_H */
