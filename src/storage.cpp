@@ -16,9 +16,6 @@
 
 #include "virtual_index.h"
 
-#include "gpreader.h"
-#include "s3memory_mgmt.h"
-
 #include "storage_lister.h"
 #include "url.h"
 #include "yproxy.h"
@@ -26,6 +23,10 @@
 #include "yezzey_meta.h"
 
 #include "offload_tablespace_map.h"
+
+#include "cdb/cdbvars.h"
+
+#include "cdb/cdbappendonlyxlog.h"
 
 #define USE_YPX_LISTER = 1
 
@@ -355,11 +356,6 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
                                          storage_path)) < 0) {
       return rc;
     }
-  } catch (S3Exception &e) {
-    const char *full_message =
-        (e.getType() + " exception: " + e.getFullMessage()).c_str();
-    elog(ERROR, "reader_cleanup caught msg: %s", full_message);
-    return -1;
   } catch (...) {
     elog(ERROR, "Caught an unexpected exception.");
     return -1;
@@ -527,8 +523,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
 #ifdef USE_YPX_LISTER
   auto lister = YProxyLister(ioadv, GpIdentity.segindex);
 #else
-  /* ro - handler */
-  auto lister = StorageLister(ioadv, GpIdentity.segindex);
+#error "listing feature not supported"
 #endif
 
   /* stat external storage usage */
