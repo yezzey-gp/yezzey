@@ -41,9 +41,85 @@ const char MessageTypeCopyData = 46;
 const char MessageTypeList = 48;
 const char MessageTypeObjectMeta = 49;
 
+const char MessageTypeDelete = 47;
+
 const size_t MSG_HEADER_SIZE = 8;
 const size_t PROTO_HEADER_SIZE = 4;
 const size_t OFFSET_SZ = 8;
+const size_t FLAG_SZ = 1;
+
+static std::vector<char> CommonCostructCommandCompleteRequest() {
+  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE, 0);
+  buff[8] = MessageTypeCommandComplete;
+  uint64_t len = MSG_HEADER_SIZE + PROTO_HEADER_SIZE;
+
+  uint64_t cp = len;
+  for (ssize_t i = 7; i >= 0; --i) {
+    buff[i] = cp & ((1 << 8) - 1);
+    cp >>= 8;
+  }
+
+  return buff;
+}
+
+static int commonWriteFull(int client_fd_, const std::vector<char> &msg) {
+  int len = msg.size();
+  int sync_offset = 0;
+  while (len > 0) {
+    auto rc = ::write(client_fd_, msg.data() + sync_offset, len);
+
+    if (rc <= 0) {
+      // handle
+      return -1;
+    }
+    len -= rc;
+    sync_offset += rc;
+  }
+  return 0;
+}
+
+
+static int commonReadRFQResponce(int client_fd_) {
+  int len = MSG_HEADER_SIZE;
+  char buffer[len];
+  // try to read small number of bytes in one op
+  // if failed, give up
+  int rc = ::read(client_fd_, buffer, len);
+  if (rc != len) {
+    // handle
+    return -1;
+  }
+
+  uint64_t msgLen = 0;
+  for (int i = 0; i < 8; i++) {
+    msgLen <<= 8;
+    msgLen += uint8_t(buffer[i]);
+  }
+
+  if (msgLen != MSG_HEADER_SIZE + PROTO_HEADER_SIZE) {
+    // protocol violation
+    return 1;
+  }
+
+  // substract header
+  msgLen -= len;
+
+  char data[msgLen];
+  rc = ::read(client_fd_, data, msgLen);
+  if (rc < 0) {
+    return -1;
+  }
+  if (uint64_t(rc) != msgLen) {
+    // handle
+    return -1;
+  }
+
+  if (data[0] != MessageTypeReadyForQuery) {
+    return 2;
+  }
+  return 0;
+}
+
 
 std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
                                                     size_t start_off) {
@@ -236,37 +312,20 @@ YProxyWriter::~YProxyWriter() { close(); }
 
 // complete external storage interaction.
 // TBD: smgr_FileSync() here ?
-
-int YProxyWriter::write_full(const std::vector<char> &msg) {
-  int len = msg.size();
-  int sync_offset = 0;
-  while (len > 0) {
-    auto rc = ::write(client_fd_, msg.data() + sync_offset, len);
-
-    if (rc <= 0) {
-      // handle
-      return -1;
-    }
-    len -= rc;
-    sync_offset += rc;
-  }
-  return 0;
-}
-
 bool YProxyWriter::close() {
   if (client_fd_ == -1) {
     return true;
   }
-  auto msg = CostructCommandCompleteRequest();
+  auto msg = CommonCostructCommandCompleteRequest();
 
   // signal that current chunk is full
-  if (write_full(msg) == -1) {
+  if (commonWriteFull(client_fd_, msg) == -1) {
     ::close(client_fd_);
     client_fd_ = -1;
     return false;
   }
   // wait for responce
-  if (readRFQResponce() != 0) {
+  if (commonReadRFQResponce(client_fd_) != 0) {
     ::close(client_fd_);
     client_fd_ = -1;
     // some error, handle
@@ -288,7 +347,7 @@ bool YProxyWriter::write(const char *buffer, size_t *amount) {
   // TODO: split to chunks
   auto msg = ConstructCopyDataRequest(buffer, *amount);
 
-  if (write_full(msg) == -1) {
+  if (commonWriteFull(client_fd_, msg) == -1) {
     *amount = 0;
     return false;
   }
@@ -328,7 +387,7 @@ int YProxyWriter::prepareYproxyConnection() {
 
   auto msg = ConstructPutRequest(storage_path_);
 
-  if (write_full(msg) == -1) {
+  if (commonWriteFull(client_fd_, msg) == -1) {
     return -1;
   }
 
@@ -419,11 +478,68 @@ std::vector<char> YProxyWriter::ConstructCopyDataRequest(const char *buffer,
 
   return buff;
 }
+/*
+*
+* Yproxy Deleter
+*/
 
-std::vector<char> YProxyWriter::CostructCommandCompleteRequest() {
-  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE, 0);
-  buff[8] = MessageTypeCommandComplete;
-  uint64_t len = MSG_HEADER_SIZE + PROTO_HEADER_SIZE;
+YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx)
+    : adv_(adv), segindx_(segindx) {}
+
+YProxyDeleter::~YProxyDeleter() { close(); }
+
+
+bool YProxyDeleter::deleteChunk(const std::string &chunkName) {
+  if (client_fd_ == -1) {
+    if (prepareYproxyConnection() == -1) {
+      // Throw here?
+      close();
+      return false;
+    }
+  }
+
+  // TODO: split to chunks
+  auto msg = ConstructDeleteRequest(chunkName);
+
+  if (commonWriteFull(client_fd_, msg) == -1) {
+    close();
+    return false;
+  }
+  // *amount does not need to change in case of successfull write
+
+
+  msg = CommonCostructCommandCompleteRequest();
+  // signal that current chunk is full
+  if (commonWriteFull(client_fd_, msg) == -1) {
+    close();
+    return false;
+  }
+  // wait for responce
+  if (commonReadRFQResponce(client_fd_) != 0) {
+    close();
+    return false;
+  }
+
+  return true;
+}
+
+
+/*
+	Name    string
+	Port    uint64
+	Segnum  uint64
+	Confirm bool
+	Garbage bool
+*/
+
+std::vector<char> YProxyDeleter::ConstructDeleteRequest(std::string fileName) {
+  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
+                             fileName.size() + 1 + OFFSET_SZ + OFFSET_SZ +
+                             + FLAG_SZ + FLAG_SZ,
+                         0);
+  buff[8] = MessageTypeDelete;
+
+  uint64_t len = buff.size();
 
   uint64_t cp = len;
   for (ssize_t i = 7; i >= 0; --i) {
@@ -431,49 +547,79 @@ std::vector<char> YProxyWriter::CostructCommandCompleteRequest() {
     cp >>= 8;
   }
 
+  strncpy(buff.data() + MSG_HEADER_SIZE + PROTO_HEADER_SIZE, fileName.c_str(),
+          fileName.size());
+
+  uint64_t port = PostPortNumber;
+
+  int off = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size();
+
+  for (ssize_t i = off + 7; i >= off; --i) {
+    buff[i] = port & ((1 << 8) - 1);
+    port >>= 8;
+  }
+
+  off += OFFSET_SZ;
+
+  uint64_t segId = segindx_;
+  for (ssize_t i = off + 7; i >= off; --i) {
+    buff[i] = port & ((1 << 8) - 1);
+    port >>= 8;
+  }
+
+  /* confirm */
+  buff.back() = char(1);
+  /* garbage */
+  (--buff.back()) = char(1);
+
   return buff;
 }
 
-int YProxyWriter::readRFQResponce() {
-  int len = MSG_HEADER_SIZE;
-  char buffer[len];
-  // try to read small number of bytes in one op
-  // if failed, give up
-  int rc = ::read(client_fd_, buffer, len);
-  if (rc != len) {
-    // handle
+int YProxyDeleter::prepareYproxyConnection() {
+  // open unix data socket
+
+  client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (client_fd_ == -1) {
+    elog(WARNING, "failed to create unix socket, errno: %d", errno);
+    // throw here?
     return -1;
   }
 
-  uint64_t msgLen = 0;
-  for (int i = 0; i < 8; i++) {
-    msgLen <<= 8;
-    msgLen += uint8_t(buffer[i]);
-  }
+  struct sockaddr_un addr;
+  /* Bind socket to socket name. */
 
-  if (msgLen != MSG_HEADER_SIZE + PROTO_HEADER_SIZE) {
-    // protocol violation
-    return 1;
-  }
+  memset(&addr, 0, sizeof(addr));
 
-  // substract header
-  msgLen -= len;
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, adv_->yproxy_socket.c_str(),
+          sizeof(addr.sun_path) - 1);
 
-  char data[msgLen];
-  rc = ::read(client_fd_, data, msgLen);
-  if (rc < 0) {
+  auto ret =
+      ::connect(client_fd_, (const struct sockaddr *)&addr, sizeof(addr));
+
+  if (ret == -1) {
+    elog(WARNING,
+         "failed to acquire connection to unix socket on %s, errno: %d",
+         adv_->yproxy_socket.c_str(), errno);
     return -1;
-  }
-  if (uint64_t(rc) != msgLen) {
-    // handle
-    return -1;
-  }
-
-  if (data[0] != MessageTypeReadyForQuery) {
-    return 2;
   }
   return 0;
 }
+
+bool YProxyDeleter::close() {
+  if (client_fd_ == -1) {
+    return true;
+  }
+  ::close(client_fd_);
+  client_fd_ = -1;
+  return true;
+}
+
+
+/*
+*
+*  Yproxy Lister
+*/
 
 YProxyLister::YProxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
     : adv_(adv), segindx_(segindx) {}
