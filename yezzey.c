@@ -113,6 +113,7 @@ PG_FUNCTION_INFO_V1(yezzey_set_relation_expirity_seg);
 PG_FUNCTION_INFO_V1(yezzey_check_part_exr);
 
 PG_FUNCTION_INFO_V1(yezzey_delete_chunk);
+PG_FUNCTION_INFO_V1(yezzey_vacuum_garbage);
 
 
 /* Create yezzey metadata tables */
@@ -128,8 +129,8 @@ Datum yezzey_init_metadata_seg(PG_FUNCTION_ARGS) {
 int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
 
-
-int yezzey_delete_chunk_internal(const char *external_chunk_path, int segindx);
+int yezzey_delete_chunk_internal(const char *external_chunk_path);
+int yezzey_vacuum_garbage_internal(const char *external_chunk_path, int segindx, bool confirm);
 
 /*
  * yezzey_define_relation_offload_policy_internal:
@@ -405,7 +406,26 @@ Datum yezzey_delete_chunk(PG_FUNCTION_ARGS) {
     elog(ERROR, "yezzey_delete_chunk should be executed on MASTER");
   }
 
-  rc = yezzey_delete_chunk_internal(chunk_path, GpIdentity.segindex);
+  rc = yezzey_delete_chunk_internal(chunk_path);
+
+  PG_RETURN_VOID();
+}
+
+
+/* Given external yezzey chunk path, remove it from external storage */
+Datum yezzey_vacuum_garbage(PG_FUNCTION_ARGS) {
+  const char *prefix_path;
+  bool confirm;
+  int rc;
+
+  prefix_path = GET_STR(PG_GETARG_TEXT_P(0));
+  confirm = GET_STR(PG_GETARG_BOOL(0));
+
+  if (GpIdentity.segindex == -1) {
+    elog(ERROR, "yezzey_vacuum_garbage_internal should be executed on SEGMENT");
+  }
+
+  rc = yezzey_vacuum_garbage_internal(prefix_path, GpIdentity.segindex, confirm);
 
   PG_RETURN_VOID();
 }
