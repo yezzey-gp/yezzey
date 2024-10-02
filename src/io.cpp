@@ -38,24 +38,15 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx, ssize_t modcount,
   reader_ = std::make_shared<YProxyReader>(adv_, segindx_, order_);
 
 #else
-#if USE_WLG_READER
-  reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
-
-  // reader_ = std::make_shared<WALGReader>(adv_, segindx_);
-#else
-  reader_ = std::make_shared<EncryptedStorageReader>(adv_, order_, segindx_);
-#endif
+#error "Unsupported storage read configuration"
 #endif
 
 #if USE_YPX_WRITER
   writer_ =
       std::make_shared<YProxyWriter>(adv_, segindx_, modcount, storage_path);
 #elif USE_WLG_WRITER
-  writer_ =
-      std::make_shared<WALGWriter>(adv_, segindx_, modcount, storage_path);
-#else
-  writer_ = std::make_shared<EncryptedStorageWriter>(adv_, segindx_, modcount,
-                                                     storage_path);
+
+#error "Unsupported storage write configuration"
 #endif
 }
 
@@ -67,13 +58,7 @@ YIO::YIO(std::shared_ptr<IOadv> adv, ssize_t segindx)
   reader_ = std::make_shared<YProxyReader>(adv_, segindx_, order_);
 
 #else
-#if USE_WLG_READER
-  reader_ = std::make_shared<WALGSTReader>(adv_, segindx_, order_);
-
-  // reader_ = std::make_shared<WALGReader>(adv_, segindx_);
-#else
-  reader_ = std::make_shared<EncryptedStorageReader>(adv_, order_, segindx_);
-#endif
+#error "Unsupported storage read configuration"
 #endif
 }
 
