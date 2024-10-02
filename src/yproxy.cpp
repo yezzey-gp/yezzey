@@ -484,11 +484,11 @@ std::vector<char> YProxyWriter::ConstructCopyDataRequest(const char *buffer,
 */
 
 YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx, bool confirm)
-    : adv_(adv), segindx_(segindx), garbage_cleanup_(false), confirm_(confirm) {}
+    : adv_(adv), segindx_(segindx), garbage_cleanup_(true), confirm_(confirm) {}
 
 
 YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv)
-    : adv_(adv), segindx_(-1), garbage_cleanup_(true), confirm_(true) {}
+    : adv_(adv), segindx_(-1), garbage_cleanup_(false), confirm_(true) {}
 
 
 YProxyDeleter::~YProxyDeleter() { close(); }
@@ -539,10 +539,14 @@ bool YProxyDeleter::deleteChunk(const std::string &chunkName) {
 
 std::vector<char> YProxyDeleter::ConstructDeleteRequest(std::string fileName) {
   std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
-                             fileName.size() + 1 + OFFSET_SZ + OFFSET_SZ +
-                             + FLAG_SZ + FLAG_SZ,
+                             fileName.size() + 1 + OFFSET_SZ + OFFSET_SZ,
                          0);
   buff[8] = MessageTypeDelete;
+  /* confirm */
+  buff[9] = confirm_;
+  /* garbage */
+  buff[10] = garbage_cleanup_;
+
 
   uint64_t len = buff.size();
 
@@ -557,7 +561,7 @@ std::vector<char> YProxyDeleter::ConstructDeleteRequest(std::string fileName) {
 
   uint64_t port = PostPortNumber;
 
-  int off = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size();
+  int off = MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() + 1;
 
   for (ssize_t i = off + 7; i >= off; --i) {
     buff[i] = port & ((1 << 8) - 1);
@@ -568,15 +572,11 @@ std::vector<char> YProxyDeleter::ConstructDeleteRequest(std::string fileName) {
 
   uint64_t segId = segindx_;
   for (ssize_t i = off + 7; i >= off; --i) {
-    buff[i] = port & ((1 << 8) - 1);
-    port >>= 8;
+    buff[i] = segId & ((1 << 8) - 1);
+    segId >>= 8;
   }
 
-  /* confirm */
-  buff.back() = confirm_;
-  /* garbage */
-  (--buff.back()) = garbage_cleanup_;
-
+  off += OFFSET_SZ;
   return buff;
 }
 
