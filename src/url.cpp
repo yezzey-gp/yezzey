@@ -1,6 +1,14 @@
 
 #include "url.h"
 
+#include "libpq/md5.h"
+
+/*
+ * Create an md5 hash of a text string and return it as hex
+ *
+ * md5 produces a 16 byte (128 bit) hash; double it for hex
+ */
+
 std::string yezzey_fqrelname_md5(const std::string &nspname,
                                  const std::string &relname) {
   unsigned char md[MD5_DIGEST_LENGTH];

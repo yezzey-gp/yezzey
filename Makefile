@@ -4,7 +4,7 @@ override CFLAGS = -Wall -Wmissing-prototypes -Wpointer-arith -Wendif-labels -Wmi
 
 # -Werror=implicit-fallthrough=3
 
-COMMON_LINK_OPTIONS = -lstdc++ -lz -lstdc++fs
+COMMON_LINK_OPTIONS = -lstdc++ -lz -lstdc++fs -lcrypto
 
 COMMON_CPP_FLAGS = -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS 
 
@@ -22,6 +22,8 @@ OBJS = \
 	src/virtual_index.o \
 	src/util.o \
 	src/url.o \
+	src/io.o \
+	src/io_adv.o \
 	src/worker.o \
 	src/offload_tablespace_map.o \
 	src/offload_policy.o \
