@@ -129,8 +129,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
 
 
-int yezzey_delete_chunk_internal(const char *external_chunk_path);
-
+int yezzey_delete_chunk_internal(const char *external_chunk_path, int segindx);
 
 /*
  * yezzey_define_relation_offload_policy_internal:
@@ -402,7 +401,11 @@ Datum yezzey_delete_chunk(PG_FUNCTION_ARGS) {
 
   chunk_path = GET_STR(PG_GETARG_TEXT_P(0));
 
-  rc = yezzey_delete_chunk_internal(chunk_path);
+  if (GpIdentity.segindex != -1) {
+    elog(ERROR, "yezzey_delete_chunk should be executed on MASTER");
+  }
+
+  rc = yezzey_delete_chunk_internal(chunk_path, GpIdentity.segindex);
 
   PG_RETURN_VOID();
 }

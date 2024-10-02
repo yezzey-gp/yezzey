@@ -1,5 +1,5 @@
 #include "xvacuum.h"
-#include "gpcleaner.h"
+#include "yproxy.h"
 #include "gucs.h"
 #include "pg.h"
 #include <string>
@@ -12,7 +12,7 @@
  * TBD: check, that chunk status is obsolete and other sanity checks
  * to avoid deleting chunk, which can we needed to read relation data
  */
-int yezzey_delete_chunk_internal(const char *external_chunk_path) {
+int yezzey_delete_chunk_internal(const char *external_chunk_path, int segindx) {
   try {
     auto ioadv = std::make_shared<IOadv>(
         std::string(gpg_engine_path), std::string(gpg_key_id),
@@ -23,16 +23,16 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
         "" /* coords */, InvalidOid /* reloid */, std::string(walg_bin_path),
         std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
 
-    auto x_path = std::string(external_chunk_path);
-    auto init_url = getYezzeyExtrenalStorageBucket(ioadv->host.c_str(),
-                                                   ioadv->bucket.c_str()) +
-                    storage_url_add_options(x_path, ioadv->config_path.c_str());
+    std::string storage_path(external_chunk_path);
 
-    elog(LOG, "removing external chunk with url %s", init_url.c_str());
+    auto deleter =
+      std::make_shared<YProxyDeleter>(ioadv, ssize_t(segindx));
 
-    auto cleaner = cleaner_init(init_url.c_str());
-    int rc = cleaner->clean();
-    return rc;
+    if (deleter->deleteChunk(storage_path)) {
+      return 0;
+    }
+
+    return -1;
   } catch (...) {
     elog(ERROR, "failed to prepare x-storage reader for chunk");
     return 0;
