@@ -48,7 +48,7 @@ std::string craftStoragePrefixedPath(const std::shared_ptr<IOadv> &adv,
   return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
-/* prefix-independent wal-g compatable path */
+/* prefix-independent WAL-G compatable path */
 std::string craftStorageUnPrefixedPath(const std::shared_ptr<IOadv> &adv,
                                        ssize_t segindx, ssize_t modcount,
                                        XLogRecPtr current_recptr) {
@@ -58,19 +58,6 @@ std::string craftStorageUnPrefixedPath(const std::shared_ptr<IOadv> &adv,
   return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
-/* Create prefixed (x storage prefix) path to x storage with bucket and host */
-std::string craftUrl(const std::shared_ptr<IOadv> &adv, ssize_t segindx,
-                     ssize_t modcount, XLogRecPtr insertion_rec_ptr) {
-  auto path = craftStoragePrefixedPath(
-      adv, segindx, modcount, adv->external_storage_prefix, insertion_rec_ptr);
-
-  auto url =
-      getYezzeyExtrenalStorageBucket(adv->host.c_str(), adv->bucket.c_str()) +
-      path;
-
-  // add config path
-  return storage_url_add_options(url, adv->config_path.c_str());
-}
 
 /* creates yezzey xternal storage prefix path */
 std::string
