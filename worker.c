@@ -55,6 +55,12 @@
 
 #include "yezzey_expire.h"
 
+#include "tcop/utility.h"
+
+#include "xvacuum.h"
+
+#include "cdb/cdbvars.h"
+
 #if PG_VERSION_NUM >= 100000
 void yezzey_main(Datum main_arg);
 #else
@@ -445,6 +451,42 @@ static void yezzey_start_launcher_worker(void) {
   }
 }
 
+
+
+/*
+ * Hook ProcessUtility to do external storage vacuum
+ */
+static void
+yezzey_ProcessUtility_hook(Node *parsetree,
+                            const char *queryString,
+                            ProcessUtilityContext context,
+                            ParamListInfo params,
+                            DestReceiver *dest,
+                            char *completionTag) {
+
+	switch (nodeTag(parsetree))
+	{
+			/*
+			 * ******************** yezzey vacuum ********************
+			 */
+		case T_VacuumStmt:
+			{
+				VacuumStmt *stmt = (VacuumStmt *) parsetree;
+        if (stmt->options & VACOPT_YEZZEY) {
+          if (Gp_role == GP_ROLE_EXECUTE) {
+            Assert(GpIdentity.segindex != -1);
+            yezzey_vacuum_garbage_internal(GpIdentity.segindex, true, false);
+          }
+        }
+			}
+			break;
+    default:
+      break;
+    }
+    return standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);  
+
+}
+
 /* GUC variables. */
 static bool yezzey_autooffload = true; /* start yezzey worker? */
 
@@ -543,4 +585,6 @@ void _PG_init(void) {
 
   /* set drop hook  */
   TrackDropObject_hook = YezzeyRecordRelationExpireLsn;
+
+  ProcessUtility_hook = yezzey_ProcessUtility_hook;
 }
