@@ -36,4 +36,6 @@ typedef FormData_offload_tablespace_map *Form_offload_tablespace_map;
 std::string YezzeyGetRelationOriginTablespace(Oid i_reloid);
 
 void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace);
+
+void YezzeyRegisterRelationOriginTablespaceName(Oid i_reloid, Name i_spcname);
 #endif
