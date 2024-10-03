@@ -52,7 +52,7 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
  * TBD: check, that chunk status is obsolete and other sanity checks
  * to avoid deleting chunk, which can we needed to read relation data
  */
-int yezzey_vacuum_garbage_internal(const char *external_chunk_path, int segindx, bool confirm) {
+int yezzey_vacuum_garbage_internal(int segindx, bool confirm, bool crazyDrop) {
   try {
     auto ioadv = std::make_shared<IOadv>(
         std::string(gpg_engine_path), std::string(gpg_key_id),
@@ -63,7 +63,7 @@ int yezzey_vacuum_garbage_internal(const char *external_chunk_path, int segindx,
         "" /* coords */, InvalidOid /* reloid */, std::string(walg_bin_path),
         std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
 
-    std::string storage_path(external_chunk_path);
+    std::string storage_path(yezzey_block_namespace_path(segindx));
 
     auto deleter =
       std::make_shared<YProxyDeleter>(ioadv, ssize_t(segindx), confirm);

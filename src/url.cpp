@@ -28,12 +28,16 @@ std::string yezzey_fqrelname_md5(const std::string &nspname,
   return relmd5;
 }
 
+/* creates yezzey xternal storage namespace prefix path */
+std::string yezzey_block_namespace_path(int32_t segid) {
+  return "/segments_005/seg" + std::to_string(segid) + baseYezzeyPath;
+}
 /* creates yezzey xternal storage prefix path */
 std::string yezzey_block_file_path(const std::string &nspname,
                                    const std::string &relname,
                                    relnodeCoord coords, int32_t segid) {
-  std::string url =
-      "/segments_005/seg" + std::to_string(segid) + baseYezzeyPath;
+
+  std::string url = yezzey_block_namespace_path(segid);
 
   url +=
       std::to_string(coords.spcNode) + "_" + std::to_string(coords.dboid) + "_";
@@ -44,16 +48,6 @@ std::string yezzey_block_file_path(const std::string &nspname,
          std::to_string(coords.blkno) + "_";
 
   return url;
-}
-
-std::string craftStoragePrefixedPath(const std::shared_ptr<IOadv> &adv,
-                                     ssize_t segindx, ssize_t modcount,
-                                     const std::string &storage_prefix,
-                                     XLogRecPtr current_recptr) {
-  auto prefix = getYezzeyRelationUrl_internal(
-      adv->nspname, adv->relname, storage_prefix, adv->coords_, segindx);
-
-  return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
 /* prefix-independent WAL-G compatable path */
