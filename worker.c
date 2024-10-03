@@ -518,6 +518,12 @@ static void yezzey_define_gucs() {
                              NULL, &storage_class, "STANDARD", PGC_SUSET, 0, NULL, NULL,
                              NULL);
 
+  DefineCustomIntVariable("yezzey.multipart_chunksize", "external storage default multipart chunksize",
+                             NULL, &multipart_chunksize, 16*1024*1024, 0, INT_MAX, PGC_SUSET, 0, NULL, NULL, NULL);
+
+  DefineCustomIntVariable("yezzey.multipart_threshold", "external storage default multipart threshold",
+                             NULL, &multipart_threshold, 64*1024*1024, 0, INT_MAX, PGC_SUSET, 0, NULL, NULL, NULL);
+
   DefineCustomStringVariable("yezzey.gpg_key_id", "gpg key id", NULL,
                              &gpg_key_id, "", PGC_SUSET, 0, NULL, NULL, NULL);
 

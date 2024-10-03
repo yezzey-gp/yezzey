@@ -24,7 +24,8 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
         std::string(storage_config), "", "", std::string(storage_host /*host*/),
         std::string(storage_bucket /*bucket*/),
         std::string(storage_prefix /*prefix*/),
-        std::string(storage_class /*storage_class*/), DEFAULTTABLESPACE_OID,
+        std::string(storage_class /*storage_class*/), 
+        multipart_chunksize, multipart_threshold, DEFAULTTABLESPACE_OID,
         "" /* coords */, InvalidOid /* reloid */, std::string(walg_bin_path),
         std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
 

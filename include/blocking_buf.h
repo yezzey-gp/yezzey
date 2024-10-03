@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <algorithm>
 
 #include "cstring"
 #include <condition_variable>

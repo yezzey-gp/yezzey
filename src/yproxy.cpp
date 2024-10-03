@@ -395,11 +395,13 @@ int YProxyWriter::prepareYproxyConnection() {
 }
 
 std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
-  uint64_t settingsCnt = 2;
+  uint64_t settingsCnt = 4;
   uint64_t settingsMsgSpace = 0;
 
   std::vector<std::pair<std::string, std::string>> settings = {
       {"StorageClass", adv_->storage_class},
+      {"MultipartChunksize", std::to_string(adv_->multipart_chunksize)},
+      {"MultipartThreshold", std::to_string(adv_->multipart_threshold)},
       {"TableSpace", adv_->tableSpace},
   };
 
