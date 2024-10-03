@@ -130,7 +130,7 @@ int yezzey_offload_relation_internal(Oid reloid, bool remove_locally,
                                      const char *external_storage_path);
 
 int yezzey_delete_chunk_internal(const char *external_chunk_path);
-int yezzey_vacuum_garbage_internal(const char *external_chunk_path, int segindx, bool confirm);
+int yezzey_vacuum_garbage_internal(int segindx, bool confirm, bool crazyDrop);
 
 /*
  * yezzey_define_relation_offload_policy_internal:
@@ -414,18 +414,23 @@ Datum yezzey_delete_chunk(PG_FUNCTION_ARGS) {
 
 /* Given external yezzey chunk path, remove it from external storage */
 Datum yezzey_vacuum_garbage(PG_FUNCTION_ARGS) {
-  const char *prefix_path;
   bool confirm;
+  bool crazyDrop;
   int rc;
 
-  prefix_path = GET_STR(PG_GETARG_TEXT_P(0));
-  confirm = PG_GETARG_BOOL(1);
+  confirm = PG_GETARG_BOOL(0);
+
+  crazyDrop = PG_GETARG_BOOL(1);
 
   if (GpIdentity.segindex == -1) {
     elog(ERROR, "yezzey_vacuum_garbage_internal should be executed on SEGMENT");
   }
 
-  rc = yezzey_vacuum_garbage_internal(prefix_path, GpIdentity.segindex, confirm);
+  if (crazyDrop && !superuser()) {
+    elog(ERROR, "crazyDrop forbidden for non-superuser");
+  }
+
+  rc = yezzey_vacuum_garbage_internal(GpIdentity.segindex, confirm, crazyDrop);
 
   PG_RETURN_VOID();
 }

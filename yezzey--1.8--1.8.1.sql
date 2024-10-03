@@ -1,7 +1,7 @@
 
 CREATE OR REPLACE FUNCTION yezzey_vacuum_garbage(
-    external_storage_prefix TEXT,
-    confirm BOOLEAN DEFAULT FALSE
+    confirm BOOLEAN DEFAULT FALSE,
+    crazyDrop BOOLEAN DEFAULT FALSE
 ) RETURNS void
 AS 'MODULE_PATHNAME'
 VOLATILE
