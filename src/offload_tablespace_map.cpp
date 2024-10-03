@@ -8,6 +8,8 @@
 #include "yezzey_heap_api.h"
 #include <unistd.h>
 
+#include "cdb/cdbvars.h"
+
 #include "offload_tablespace_map.h"
 
 const std::string offload_tablespace_map_relname = "offload_tablespace_map";
@@ -65,7 +67,7 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
   ScanKeyData offskey[1];
 
-  ScanKeyInit(&offskey[0], Anum_pg_class_relname, BTEqualStrategyNumber,
+  ScanKeyInit(&offskey[0], Anum_offload_tablespace_map_reloid, BTEqualStrategyNumber,
               F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
   auto scanoff = yezzey_beginscan(offload_tablespace_map_rel, snap, 1, offskey);
@@ -76,6 +78,12 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
     yezzey_endscan(scanoff);
     UnregisterSnapshot(snap);
+
+    /* should be OK */
+    if (Gp_role == GP_ROLE_UTILITY || Gp_role == GP_ROLE_DISPATCH) {
+      return "pg_default";
+    }
+    
     elog(ERROR, "failed to map relation %d to its origin tablespace", i_reloid);
   }
 
@@ -97,7 +105,7 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
   return tablespace_val;
 }
 
-void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
+void YezzeyRegisterRelationOriginTablespaceName(Oid i_reloid, Name i_spcname) {
 
   auto yezzey_tablespace_map_oid = YezzeyResolveTablespaceMapOid();
 
@@ -138,6 +146,24 @@ void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
   }
   yezzey_endscan(scanoff);
 
+
+  values[Anum_offload_tablespace_map_reloid - 1] = ObjectIdGetDatum(i_reloid);
+  values[Anum_offload_tablespace_map_origin_tablespace_name - 1] =
+      NameGetDatum(i_spcname);
+
+  auto nofftuple = heap_form_tuple(RelationGetDescr(offload_tablespace_map_rel),
+                                   values, nulls);
+
+  simple_heap_insert(offload_tablespace_map_rel, nofftuple);
+  heap_close(offload_tablespace_map_rel, RowExclusiveLock);
+
+  heap_freetuple(nofftuple);
+
+
+  UnregisterSnapshot(snap);
+}
+
+void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
   /* Search syscache for pg_tablespace */
   auto spctuple =
       SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(i_reltablespace));
@@ -148,19 +174,7 @@ void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
 
   auto spcname = &((Form_pg_tablespace)GETSTRUCT(spctuple))->spcname;
 
-  values[Anum_offload_tablespace_map_reloid - 1] = ObjectIdGetDatum(i_reloid);
-  values[Anum_offload_tablespace_map_origin_tablespace_name - 1] =
-      NameGetDatum(spcname);
-
-  auto nofftuple = heap_form_tuple(RelationGetDescr(offload_tablespace_map_rel),
-                                   values, nulls);
-
-  simple_heap_insert(offload_tablespace_map_rel, nofftuple);
-  heap_close(offload_tablespace_map_rel, RowExclusiveLock);
-
-  heap_freetuple(nofftuple);
+  YezzeyRegisterRelationOriginTablespaceName(i_reloid, spcname);
 
   ReleaseSysCache(spctuple);
-
-  UnregisterSnapshot(snap);
 }
