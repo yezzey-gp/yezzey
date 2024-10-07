@@ -22,7 +22,7 @@ IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
       tableSpace(reloid ? YezzeyGetRelationOriginTablespace(reloid) : "none"),
       walg_bin_path(walg_bin_path), walg_config_path(walg_config_path),
       use_gpg_crypto(use_gpg_crypto), yproxy_socket(yproxy_socket) {
-        do_multipart = true;
+        multipart_upload = true;
       }
 
 IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
@@ -43,5 +43,5 @@ IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
       tableSpace(reloid ? YezzeyGetRelationOriginTablespace(reloid) : "none"),
       walg_bin_path(walg_bin_path), walg_config_path(walg_config_path),
       use_gpg_crypto(use_gpg_crypto), yproxy_socket(yproxy_socket) {
-        do_multipart = true;
+        multipart_upload = true;
       }

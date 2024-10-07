@@ -31,7 +31,7 @@ struct IOadv {
   // s3 storage class
   const std::string storage_class;
   const int multipart_chunksize;
-  bool do_multipart;
+  bool multipart_upload;
 
   // base/5/12345.1
 

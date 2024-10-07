@@ -115,7 +115,7 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
 
 #endif
 
-  ioadv->do_multipart = fLen > multipart_threshold;
+  ioadv->multipart_upload = fLen > multipart_threshold;
 
   while (progress < logicalEof) {
     CHECK_FOR_INTERRUPTS();
