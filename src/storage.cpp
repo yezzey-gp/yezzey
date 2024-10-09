@@ -115,6 +115,8 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
 
 #endif
 
+  ioadv->multipart_upload = fLen > multipart_threshold;
+
   while (progress < logicalEof) {
     CHECK_FOR_INTERRUPTS();
     curr_read_chunk = chunkSize;
@@ -195,7 +197,7 @@ int loadSegmentFromExternalStorage(Relation rel, const std::string &nspname,
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, storage_class /* storage_class */,
-      multipart_chunksize, multipart_threshold,
+      multipart_chunksize,
       coords /* filename */, rel->rd_id /* reloid */, walg_bin_path,
       walg_config_path, use_gpg_crypto, yproxy_socket);
 
@@ -349,7 +351,7 @@ int offloadRelationSegment(Relation aorel, int segno, int64 modcount,
       gpg_engine_path, gpg_key_id, storage_config, nspname, relname,
       storage_host /* host */, storage_bucket /*bucket*/,
       storage_prefix /*prefix*/, storage_class /* storage_class */, 
-      multipart_chunksize, multipart_threshold, coords,
+      multipart_chunksize, coords,
       aorel->rd_id /* reloid */, walg_bin_path, walg_config_path,
       use_gpg_crypto, yproxy_socket);
 
@@ -453,7 +455,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
       std::string(storage_class /*storage_class*/), 
-      multipart_chunksize, multipart_threshold, coords /* coords */,
+      multipart_chunksize, coords /* coords */,
       aorel->rd_id /* reloid */, std::string(walg_bin_path),
       std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/
@@ -519,7 +521,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
       std::string(storage_bucket /*bucket*/),
       std::string(storage_prefix /*prefix*/),
       std::string(storage_class /*storage_class*/), 
-      multipart_chunksize, multipart_threshold, coords /* coords */,
+      multipart_chunksize, coords /* coords */,
       aorel->rd_id /* reloid */, std::string(walg_bin_path),
       std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
   /* we dont need to interact with s3 while in recovery*/

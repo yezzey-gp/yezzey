@@ -401,7 +401,7 @@ std::vector<char> YProxyWriter::ConstructPutRequest(std::string fileName) {
   std::vector<std::pair<std::string, std::string>> settings = {
       {"StorageClass", adv_->storage_class},
       {"MultipartChunksize", std::to_string(adv_->multipart_chunksize)},
-      {"MultipartThreshold", std::to_string(adv_->multipart_threshold)},
+      {"MultipartUpload", adv_->multipart_upload ? "1" : "0"},
       {"TableSpace", adv_->tableSpace},
   };
 

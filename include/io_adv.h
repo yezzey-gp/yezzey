@@ -30,8 +30,8 @@ struct IOadv {
 
   // s3 storage class
   const std::string storage_class;
-  const int multipart_threshold;
   const int multipart_chunksize;
+  bool multipart_upload;
 
   // base/5/12345.1
 
@@ -57,7 +57,6 @@ struct IOadv {
         const std::string &bucket, const std::string &external_storage_prefix,
         const std::string &storage_class,
         const int &multipart_chunksize,
-        const int &multipart_threshold,
         /*unparse coords*/ Oid spcNode, const std::string &fileName,
         const Oid reloid, const std::string &walg_bin_path,
         const std::string &walg_config_path, bool use_gpg_crypto,
@@ -68,7 +67,7 @@ struct IOadv {
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
         const std::string &storage_class, const int &multipart_chunksize,
-        const int &multipart_threshold, const relnodeCoord &coords,
+        const relnodeCoord &coords,
         const Oid reloid, const std::string &walg_bin_path,
         const std::string &walg_config_path, bool use_gpg_crypto,
         const std::string &yproxy_socket);
