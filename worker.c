@@ -176,6 +176,7 @@ static void yezzey_sighup(SIGNAL_ARGS) {
 const int processTableLimit = 10;
 
 void yezzey_process_database(Datum main_arg) {
+#if 0 /* unsupported */
   Oid dboid;
   char dbname[NAMEDATALEN];
 
@@ -198,6 +199,7 @@ void yezzey_process_database(Datum main_arg) {
     (void)processOffloadedRelations();
     (void)processPartitionOffload();
   }
+#endif
 }
 
 /*
@@ -472,12 +474,14 @@ yezzey_ProcessUtility_hook(Node *parsetree,
 		case T_VacuumStmt:
 			{
 				VacuumStmt *stmt = (VacuumStmt *) parsetree;
+#ifdef VACOPT_YEZZEY
         if (stmt->options & VACOPT_YEZZEY) {
           if (Gp_role == GP_ROLE_EXECUTE) {
             Assert(GpIdentity.segindex != -1);
             yezzey_vacuum_garbage_internal(GpIdentity.segindex, true, false);
           }
         }
+#endif
 			}
 			break;
     default:
