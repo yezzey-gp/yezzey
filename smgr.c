@@ -89,15 +89,6 @@ void yezzey_init(void) {
 void yezzey_open(SMgrRelation reln) {
   mdopen(reln);
 }
-#else
-void yezzey_open(SMgrRelation reln) {
-  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
-    /*do nothing */
-    return;
-  }
-
-  mdopen(reln);
-}
 #endif
 
 #if IsModernYezzey

@@ -18,6 +18,7 @@
 
 #include "gucs.h"
 #include "ystat.h"
+#include "ygpver.h"
 
 void yezzey_prepare(void);
 void yezzey_finish(void);
@@ -79,8 +80,10 @@ void yezzey_truncate(SMgrRelation reln, ForkNumber forkNum,
                      BlockNumber nBlocks);
 void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
 
+#if 0 /* not implemented */
 void addToMoveTable(char *tableName);
 void processTables(void);
+#endif
 
 #if IsGreenplum6
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
