@@ -89,15 +89,6 @@ void yezzey_init(void) {
 void yezzey_open(SMgrRelation reln) {
   mdopen(reln);
 }
-#else
-void yezzey_open(SMgrRelation reln) {
-  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
-    /*do nothing */
-    return;
-  }
-
-  mdopen(reln);
-}
 #endif
 
 #if IsModernYezzey
@@ -285,7 +276,7 @@ yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
 static const struct f_smgr yezzey_smgr = {
     .smgr_init = yezzey_init,
     .smgr_shutdown = NULL,
-#if IsGreenplum6 || IsModernYezzey
+#if IsModernYezzey
     .smgr_open = yezzey_open,
 #endif
     .smgr_close = yezzey_close,
@@ -299,7 +290,7 @@ static const struct f_smgr yezzey_smgr = {
     .smgr_prefetch = yezzey_prefetch,
     .smgr_read = yezzey_read,
     .smgr_write = yezzey_write,
-#if IsGreenplum6 || IsModernYezzey
+#if IsModernYezzey
     .smgr_writeback = yezzey_writeback,
 #endif
     .smgr_nblocks = yezzey_nblocks,

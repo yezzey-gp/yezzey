@@ -18,6 +18,7 @@
 
 #include "gucs.h"
 #include "ystat.h"
+#include "ygpver.h"
 
 void yezzey_prepare(void);
 void yezzey_finish(void);
@@ -45,14 +46,14 @@ void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
 #endif
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #else
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
                    char relstorage);
 #endif
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
 void yezzey_unlink_ao(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #endif
 
@@ -79,8 +80,10 @@ void yezzey_truncate(SMgrRelation reln, ForkNumber forkNum,
                      BlockNumber nBlocks);
 void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
 
+#if 0 /* not implemented */
 void addToMoveTable(char *tableName);
 void processTables(void);
+#endif
 
 #if IsGreenplum6
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
