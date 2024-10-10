@@ -34,12 +34,12 @@ void yezzey_init(void);
 /*
  * SMGR - related functions
  */
-#ifndef GPBUILD
+#if IsGreenplum6 || IsModernYezzey
 void yezzey_open(SMgrRelation reln);
 #endif
 void yezzey_close(SMgrRelation reln, ForkNumber forkNum);
 void yezzey_create(SMgrRelation reln, ForkNumber forkNum, bool isRedo);
-#ifdef GPBUILD
+#if IsGreenplum6 || IsModernYezzey
 void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
                       bool isRedo);
 #endif
@@ -70,7 +70,7 @@ void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                  char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                   char *buffer, bool skipFsync);
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks);
 #endif
@@ -82,13 +82,13 @@ void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
 void addToMoveTable(char *tableName);
 void processTables(void);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode);
 #else
 const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which);
 #endif
 
-#ifdef GPBUILD
+#if IsGreenplum6 || IsModernYezzey
 const f_smgr_ao *smgrao_yezzey();
 #endif
 void smgr_init_yezzey(void);

@@ -8,6 +8,8 @@ extern "C" {
 #include "c.h"
 #include "postgres.h"
 
+#include "ygpver.h"
+
 #if PG_VERSION_NUM >= 130000
 #include "postmaster/interrupt.h"
 #endif
@@ -23,7 +25,7 @@ extern "C" {
 
 #include "utils/builtins.h"
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
 #include "access/relation.h"
 #endif
 
@@ -55,7 +57,7 @@ extern "C" {
 #include "storage/bufmgr.h"
 #include "storage/lmgr.h"
 
-#if PG_VERSION_NUM < 10000
+#if PG_VERSION_NUM < 100000
 #include "utils/tqual.h"
 #endif
 
@@ -88,7 +90,7 @@ extern "C" {
 #include "utils/elog.h"
 
 // For GpIdentity
-#ifdef GPBUILD
+#if IsGreenplum6 || IsModernYezzey
 #include "catalog/pg_tablespace.h"
 #include "cdb/cdbappendonlyxlog.h"
 #include "cdb/cdbvars.h"

@@ -8,7 +8,7 @@ COMMON_LINK_OPTIONS = -lstdc++ -lz -lstdc++fs -lcrypto
 
 COMMON_CPP_FLAGS = -std=c++11 -fPIC -I/usr/include/libxml2 -I/usr/local/opt/openssl/include -DENABLE_NLS 
 
-override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/local/opt/openssl/include -Iinclude -Ilib  -g -I. -I. -I../../src/include -D_GNU_SOURCE -DGPBUILD
+override CPPFLAGS = -fPIC -lstdc++fs -lstdc++ -lz -g3 -ggdb -Wall -Wpointer-arith -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fno-aggressive-loop-optimizations -Wno-unused-but-set-variable -Wno-address -Werror=format-security -Wno-format-truncation -Wno-stringop-truncation -g -ggdb -std=c++11 -fPIC -I/usr/local/opt/openssl/include -Iinclude -Ilib  -g -I. -I. -I../../src/include -D_GNU_SOURCE
 
 SHLIB_LINK += $(COMMON_LINK_OPTIONS)
 PG_CPPFLAGS += $(COMMON_CPP_FLAGS) -I./include -Iinclude -Ilib -I$(libpq_srcdir) -I$(libpq_srcdir)/postgresql/server/utils

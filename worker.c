@@ -46,7 +46,7 @@
 
 #include "utils/elog.h"
 
-#ifdef GPBUILD
+#if IsGreenplum6 || IsModernYezzey
 #include "cdb/cdbvars.h"
 #endif
 
@@ -336,7 +336,7 @@ yezzey_main(Datum main_arg) {
   yezzey_state->bgworker_pid = MyProcPid;
   LWLockRelease(&yezzey_state->lock);
 
-#ifdef GPBUILD
+#if IsGreenplum6 || IsModernYezzey
   if (IS_QUERY_DISPATCHER()) {
     return;
   }
@@ -347,7 +347,7 @@ yezzey_main(Datum main_arg) {
    * to modify tables on segments (sql without QD)
    */
   Gp_role = GP_ROLE_UTILITY;
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   Gp_session_role = GP_ROLE_UTILITY;
 #endif
 
@@ -584,7 +584,7 @@ void _PG_init(void) {
   elog(yezzey_log_level, "[YEZZEY_SMGR] set hook");
 
   smgr_hook = smgr_yezzey;
-#if GPBUILD
+#if IsGreenplum
   smgrao_hook = smgrao_yezzey;
 #endif
   smgr_init_hook = smgr_init_yezzey;
