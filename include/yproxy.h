@@ -3,10 +3,10 @@
 
 #include "chunkinfo.h"
 #include "io_adv.h"
+#include "ydeleter.h"
 #include "ylister.h"
 #include "yreader.h"
 #include "ywriter.h"
-#include "ydeleter.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -80,19 +80,18 @@ public:
   XLogRecPtr getInsertionStorageLsn() { return insertion_rec_ptr_; }
 };
 
-
-
 /* Delete specified file from external storage, bypassing all sanity checks */
 class YProxyDeleter : public YDeleter {
 public:
   /*
-  * Direct delete dispatch, appliable from MASTER
-  */
+   * Direct delete dispatch, appliable from MASTER
+   */
   explicit YProxyDeleter(std::shared_ptr<IOadv> adv);
   /*
-   * For segments execution, claanup garbage workhorse 
-  */
-  explicit YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx, bool confirm_);
+   * For segments execution, claanup garbage workhorse
+   */
+  explicit YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx,
+                         bool confirm_);
 
   virtual ~YProxyDeleter();
 
@@ -107,14 +106,13 @@ protected:
 
 private:
   std::shared_ptr<IOadv> adv_;
-  ssize_t segindx_ {-1};
+  ssize_t segindx_{-1};
 
   bool garbage_cleanup_{false};
   bool confirm_{false};
 
   int client_fd_{-1};
 };
-
 
 // list external storage using yproxy
 class YProxyLister : public YLister {

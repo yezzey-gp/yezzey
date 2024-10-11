@@ -9,5 +9,4 @@
 
 #define IsModernYezzey (IsCloudBerry || IsGreenplum7)
 
-
 #endif /* YEZZEY_GPVER_H */

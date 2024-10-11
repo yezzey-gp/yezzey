@@ -55,8 +55,7 @@ struct IOadv {
         const std::string &config_path, const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
-        const std::string &storage_class,
-        const int &multipart_chunksize,
+        const std::string &storage_class, const int &multipart_chunksize,
         /*unparse coords*/ Oid spcNode, const std::string &fileName,
         const Oid reloid, const std::string &walg_bin_path,
         const std::string &walg_config_path, bool use_gpg_crypto,
@@ -67,10 +66,9 @@ struct IOadv {
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
         const std::string &storage_class, const int &multipart_chunksize,
-        const relnodeCoord &coords,
-        const Oid reloid, const std::string &walg_bin_path,
-        const std::string &walg_config_path, bool use_gpg_crypto,
-        const std::string &yproxy_socket);
+        const relnodeCoord &coords, const Oid reloid,
+        const std::string &walg_bin_path, const std::string &walg_config_path,
+        bool use_gpg_crypto, const std::string &yproxy_socket);
 };
 
 #endif /*YEZZEY_IO_ADV_H*/

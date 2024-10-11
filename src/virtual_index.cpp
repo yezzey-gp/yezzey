@@ -253,7 +253,6 @@ void YezzeyVirtualIndexInsert(Oid yandexoid /*yezzey auxiliary index oid*/,
 
 #if IsModernYezzey
 
-
 #if 0 /* Yezzey 3 */
   auto mt_bind = create_memtuple_binding(
       RelationGetDescr(yandxrel), RelationGetNumberOfAttributes(yandxrel));

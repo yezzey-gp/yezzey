@@ -67,8 +67,8 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
 
   ScanKeyData offskey[1];
 
-  ScanKeyInit(&offskey[0], Anum_offload_tablespace_map_reloid, BTEqualStrategyNumber,
-              F_OIDEQ, ObjectIdGetDatum(i_reloid));
+  ScanKeyInit(&offskey[0], Anum_offload_tablespace_map_reloid,
+              BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(i_reloid));
 
   auto scanoff = yezzey_beginscan(offload_tablespace_map_rel, snap, 1, offskey);
   auto offtuple = heap_getnext(scanoff, ForwardScanDirection);
@@ -83,7 +83,7 @@ std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
     if (Gp_role == GP_ROLE_UTILITY || Gp_role == GP_ROLE_DISPATCH) {
       return "pg_default";
     }
-    
+
     elog(ERROR, "failed to map relation %d to its origin tablespace", i_reloid);
   }
 
@@ -146,7 +146,6 @@ void YezzeyRegisterRelationOriginTablespaceName(Oid i_reloid, Name i_spcname) {
   }
   yezzey_endscan(scanoff);
 
-
   values[Anum_offload_tablespace_map_reloid - 1] = ObjectIdGetDatum(i_reloid);
   values[Anum_offload_tablespace_map_origin_tablespace_name - 1] =
       NameGetDatum(i_spcname);
@@ -158,7 +157,6 @@ void YezzeyRegisterRelationOriginTablespaceName(Oid i_reloid, Name i_spcname) {
   heap_close(offload_tablespace_map_rel, RowExclusiveLock);
 
   heap_freetuple(nofftuple);
-
 
   UnregisterSnapshot(snap);
 }

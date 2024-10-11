@@ -1,12 +1,11 @@
 /*
-* xvacuum - external storage (Garbage, stale files) VACUUM
-*/
-
+ * xvacuum - external storage (Garbage, stale files) VACUUM
+ */
 
 #include "xvacuum.h"
-#include "yproxy.h"
 #include "gucs.h"
 #include "pg.h"
+#include "yproxy.h"
 #include <string>
 #include <url.h>
 #include <util.h>
@@ -24,15 +23,14 @@ int yezzey_delete_chunk_internal(const char *external_chunk_path) {
         std::string(storage_config), "", "", std::string(storage_host /*host*/),
         std::string(storage_bucket /*bucket*/),
         std::string(storage_prefix /*prefix*/),
-        std::string(storage_class /*storage_class*/), 
-        multipart_chunksize, DEFAULTTABLESPACE_OID,
-        "" /* coords */, InvalidOid /* reloid */, std::string(walg_bin_path),
-        std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+        std::string(storage_class /*storage_class*/), multipart_chunksize,
+        DEFAULTTABLESPACE_OID, "" /* coords */, InvalidOid /* reloid */,
+        std::string(walg_bin_path), std::string(walg_config_path),
+        use_gpg_crypto, yproxy_socket);
 
     std::string storage_path(external_chunk_path);
 
-    auto deleter =
-      std::make_shared<YProxyDeleter>(ioadv);
+    auto deleter = std::make_shared<YProxyDeleter>(ioadv);
 
     if (deleter->deleteChunk(storage_path)) {
       return 0;
@@ -60,14 +58,15 @@ int yezzey_vacuum_garbage_internal(int segindx, bool confirm, bool crazyDrop) {
         std::string(storage_config), "", "", std::string(storage_host /*host*/),
         std::string(storage_bucket /*bucket*/),
         std::string(storage_prefix /*prefix*/),
-        std::string(storage_class /*storage_class*/), multipart_chunksize, DEFAULTTABLESPACE_OID,
-        "" /* coords */, InvalidOid /* reloid */, std::string(walg_bin_path),
-        std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+        std::string(storage_class /*storage_class*/), multipart_chunksize,
+        DEFAULTTABLESPACE_OID, "" /* coords */, InvalidOid /* reloid */,
+        std::string(walg_bin_path), std::string(walg_config_path),
+        use_gpg_crypto, yproxy_socket);
 
     std::string storage_path(yezzey_block_namespace_path(segindx));
 
     auto deleter =
-      std::make_shared<YProxyDeleter>(ioadv, ssize_t(segindx), confirm);
+        std::make_shared<YProxyDeleter>(ioadv, ssize_t(segindx), confirm);
 
     if (deleter->deleteChunk(storage_path)) {
       return 0;

@@ -20,7 +20,6 @@ public:
   virtual std::vector<std::string> list_chunk_names();
 
 public:
-
 protected:
   bool read_initialized_{false};
 

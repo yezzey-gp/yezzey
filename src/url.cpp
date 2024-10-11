@@ -64,7 +64,6 @@ std::string craftStorageUnPrefixedPath(const std::shared_ptr<IOadv> &adv,
   return make_yezzey_url(prefix, modcount, current_recptr);
 }
 
-
 /* creates yezzey xternal storage prefix path */
 std::string
 getYezzeyRelationUrl_internal(const std::string &nspname,

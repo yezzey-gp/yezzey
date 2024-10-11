@@ -12,6 +12,7 @@
 #endif
 
 EXTERNC int yezzey_delete_chunk_internal(const char *external_chunk_path);
-EXTERNC int yezzey_vacuum_garbage_internal(int segindx, bool confirm, bool crazyDrop);
+EXTERNC int yezzey_vacuum_garbage_internal(int segindx, bool confirm,
+                                           bool crazyDrop);
 
 #endif /* YEZZEY_XVACUUM_H */

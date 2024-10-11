@@ -234,10 +234,10 @@ EXTERNC SMGRFile yezzey_AORelOpenSegFile(Oid reloid, char *nspname,
               std::string(storage_bucket /*bucket*/),
               std::string(storage_prefix /*prefix*/),
               std::string(storage_class /* storage_class */),
-              multipart_chunksize,
-              DEFAULTTABLESPACE_OID, yfd.filepath /* coords */,
-              reloid /* reloid */, std::string(walg_bin_path),
-              std::string(walg_config_path), use_gpg_crypto, yproxy_socket);
+              multipart_chunksize, DEFAULTTABLESPACE_OID,
+              yfd.filepath /* coords */, reloid /* reloid */,
+              std::string(walg_bin_path), std::string(walg_config_path),
+              use_gpg_crypto, yproxy_socket);
 
           yfd.coord = ioadv->coords_;
 

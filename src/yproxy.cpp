@@ -78,7 +78,6 @@ static int commonWriteFull(int client_fd_, const std::vector<char> &msg) {
   return 0;
 }
 
-
 static int commonReadRFQResponce(int client_fd_) {
   int len = MSG_HEADER_SIZE;
   char buffer[len];
@@ -119,7 +118,6 @@ static int commonReadRFQResponce(int client_fd_) {
   }
   return 0;
 }
-
 
 std::vector<char> YProxyReader::ConstructCatRequest(const ChunkInfo &ci,
                                                     size_t start_off) {
@@ -481,20 +479,18 @@ std::vector<char> YProxyWriter::ConstructCopyDataRequest(const char *buffer,
   return buff;
 }
 /*
-*
-* Yproxy Deleter
-*/
+ *
+ * Yproxy Deleter
+ */
 
-YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx, bool confirm)
+YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv, ssize_t segindx,
+                             bool confirm)
     : adv_(adv), segindx_(segindx), garbage_cleanup_(true), confirm_(confirm) {}
-
 
 YProxyDeleter::YProxyDeleter(std::shared_ptr<IOadv> adv)
     : adv_(adv), segindx_(-1), garbage_cleanup_(false), confirm_(true) {}
 
-
 YProxyDeleter::~YProxyDeleter() { close(); }
-
 
 bool YProxyDeleter::deleteChunk(const std::string &chunkName) {
   if (client_fd_ == -1) {
@@ -514,7 +510,6 @@ bool YProxyDeleter::deleteChunk(const std::string &chunkName) {
   }
   // *amount does not need to change in case of successfull write
 
-
   msg = CommonCostructCommandCompleteRequest();
   // signal that current chunk is full
   if (commonWriteFull(client_fd_, msg) == -1) {
@@ -530,25 +525,23 @@ bool YProxyDeleter::deleteChunk(const std::string &chunkName) {
   return true;
 }
 
-
 /*
-	Name    string
-	Port    uint64
-	Segnum  uint64
-	Confirm bool
-	Garbage bool
+        Name    string
+        Port    uint64
+        Segnum  uint64
+        Confirm bool
+        Garbage bool
 */
 
 std::vector<char> YProxyDeleter::ConstructDeleteRequest(std::string fileName) {
-  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE +
-                             fileName.size() + 1 + OFFSET_SZ + OFFSET_SZ,
+  std::vector<char> buff(MSG_HEADER_SIZE + PROTO_HEADER_SIZE + fileName.size() +
+                             1 + OFFSET_SZ + OFFSET_SZ,
                          0);
   buff[8] = MessageTypeDelete;
   /* confirm */
   buff[9] = confirm_;
   /* garbage */
   buff[10] = garbage_cleanup_;
-
 
   uint64_t len = buff.size();
 
@@ -622,11 +615,10 @@ bool YProxyDeleter::close() {
   return true;
 }
 
-
 /*
-*
-*  Yproxy Lister
-*/
+ *
+ *  Yproxy Lister
+ */
 
 YProxyLister::YProxyLister(std::shared_ptr<IOadv> adv, ssize_t segindx)
     : adv_(adv), segindx_(segindx) {}
