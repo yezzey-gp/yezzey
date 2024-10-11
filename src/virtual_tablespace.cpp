@@ -68,7 +68,7 @@ void YezzeyATExecSetTableSpace(Relation aorel, Oid reloid,
    */
 
   /* drop old relation, and close new one */
-  RelationDropStoragePure(aorel);
+  RelationDropStorage(aorel);
 
   /* update the pg_class row */
   if (desttablespace_oid != YEZZEYTABLESPACE_OID) {

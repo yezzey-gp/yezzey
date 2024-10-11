@@ -590,13 +590,13 @@ void _PG_init(void) {
   elog(yezzey_log_level, "[YEZZEY_SMGR] set hook");
 
   smgr_hook = smgr_yezzey;
-#if IsGreenplum
+#if IsGreenplum6
   smgrao_hook = smgrao_yezzey;
 #endif
   smgr_init_hook = smgr_init_yezzey;
 
   /* set drop hook  */
-  TrackDropObject_hook = YezzeyRecordRelationExpireLsn;
+  RelationDropStorage_hook = YezzeyRecordRelationExpireLsn;
 
   ProcessUtility_hook = yezzey_ProcessUtility_hook;
 }
