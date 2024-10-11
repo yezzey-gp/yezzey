@@ -179,7 +179,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   /* yezzey aux index oid */
   Oid yandexoid;
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
   Oid segrelid;
 #endif
 
@@ -214,7 +214,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
   /* Get information about all the file segments we need to scan */
   if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -239,7 +239,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
     }
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
 #else 
@@ -502,7 +502,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
   MemoryContext oldcontext;
   AttInMetadata *attinmeta;
   int32 call_cntr;
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
   Oid segrelid;
 #endif
 
@@ -535,7 +535,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
 
     if (RelationIsAoRows(aorel)) {
       /* ao rows relation */
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -543,7 +543,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles);
 #endif
     } else if (RelationIsAoCols(aorel)) {
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
 #else 
@@ -560,7 +560,7 @@ Datum yezzey_offload_relation_status_per_filesegment(PG_FUNCTION_ARGS) {
      * view yezzey_offload_relation_status_internal
      */
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     funcctx->tuple_desc =
         CreateTemplateTupleDesc(NUM_USED_OFFLOAD_PER_SEGMENT_STATUS, false);
 #else
@@ -756,7 +756,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
   AttInMetadata *attinmeta;
   int32 call_cntr;
   yezzeyChunkMetaInfo *chunkInfo;
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
   Oid segrelid;
 #endif
 
@@ -798,7 +798,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
 
     if (RelationIsAoRows(aorel)) {
       /* ao rows relation */
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -857,7 +857,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
 
     } else if (RelationIsAoCols(aorel)) {
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
 #else 
@@ -918,7 +918,7 @@ Datum yezzey_relation_describe_external_storage_structure_internal(
       elog(ERROR, "yezzey: wrong relation storage type: not AO/AOCS relation");
     }
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     funcctx->tuple_desc = CreateTemplateTupleDesc(
         NUM_USED_OFFLOAD_PER_SEGMENT_STATUS_STRUCT, false);
 #else
@@ -1029,7 +1029,7 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   int nvp;
   int pseudosegno;
   int total_segfiles;
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
   Oid segrelid;
 #endif
   int64 modcount;
@@ -1063,7 +1063,7 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
   if (RelationIsAoRows(aorel)) {
     /* ao rows relation */
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
     segfile_array =
         GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot, &total_segfiles, &segrelid);
 #else
@@ -1096,7 +1096,7 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
     }
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
       segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
 #else 
@@ -1145,7 +1145,7 @@ Datum yezzey_offload_relation_status_internal(PG_FUNCTION_ARGS) {
    * The number and type of attributes have to match the definition of the
    * view yezzey_offload_relation_status_internal
    */
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS, false);
 #else
   tupdesc = CreateTemplateTupleDesc(NUM_YEZZEY_OFFLOAD_STATE_COLS);
