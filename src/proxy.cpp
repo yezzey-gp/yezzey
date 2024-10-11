@@ -480,3 +480,6 @@ EXTERNC int yezzey_FileTruncate(SMGRFile yezzey_fd, int64 offset)
 #if IsModernYezzey
 EXTERNC int yezzey_FileDiskSize(SMGRFile file) { return FileDiskSize(file); }
 #endif
+#if IsModernYezzey
+EXTERNC int yezzey_FileSize(SMGRFile file) { return FileSize(file); }
+#endif

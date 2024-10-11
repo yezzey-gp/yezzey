@@ -334,10 +334,6 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
-
-  #if IsGreenplum6
-    .smgr_create_ao = yezzey_create_ao,
-  #endif
 		.smgr_exists = yezzey_exists,
 		.smgr_unlink = yezzey_unlink_ao,
 		.smgr_extend = yezzey_extend,
@@ -379,6 +375,7 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileSeek = yezzey_FileSeek,
 #else
     .smgr_FileDiskSize = yezzey_FileDiskSize,
+    .smgr_FileSize = yezzey_FileSize,
 #endif
 };
 
