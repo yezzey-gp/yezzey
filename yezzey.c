@@ -194,7 +194,7 @@ int yezzey_load_relation_internal(Oid reloid, const char *dest_path) {
    * Relation segments named base/DBOID/aorel->rd_node.*
    */
 
-  elog(yezzey_log_level, "loading relnode %d", aorel->rd_node.relNode);
+  elog(yezzey_log_level, "loading relnode %ld", aorel->rd_node.relNode);
 
   /* for now, we locked relation */
 
