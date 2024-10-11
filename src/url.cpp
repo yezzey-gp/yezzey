@@ -1,7 +1,11 @@
 
 #include "url.h"
 
+#if PG_VERSION_NUM >= 100000
+#include "common/md5.h"
+#else
 #include "libpq/md5.h"
+#endif
 
 /*
  * Create an md5 hash of a text string and return it as hex

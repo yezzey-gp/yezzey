@@ -21,7 +21,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
 
   auto nvp = aorel->rd_att->natts;
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
   Oid segrelid;
 #endif
 
@@ -41,7 +41,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
 
   if (RelationIsAoRows(aorel)) {
     /* Get information about all the file segments we need to scan */
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
     segfile_array = GetAllFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                       &total_segfiles, &segrelid);
 #else
@@ -75,7 +75,7 @@ int yezzey_offload_relation_internal_rel(Relation aorel, bool remove_locally,
     }
   } else if (RelationIsAoCols(aorel)) {
     /* ao columns, relstorage == 'c' */
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     segfile_array_cs = GetAllAOCSFileSegInfo(aorel, appendOnlyMetaDataSnapshot,
                                              &total_segfiles);
 #else

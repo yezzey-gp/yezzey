@@ -28,6 +28,8 @@
 
 #include "cdb/cdbappendonlyxlog.h"
 
+#include "ygpver.h"
+
 #define USE_YPX_LISTER = 1
 
 int yezzey_log_level = INFO;
@@ -60,7 +62,7 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
   int64 virtual_size;
 
   std::vector<char> buffer(chunkSize);
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   vfd = PathNameOpenFile((FileName)localPath.c_str(), O_RDONLY, 0600);
 #else
   vfd = PathNameOpenFile(localPath.c_str(), O_RDONLY);
@@ -125,7 +127,7 @@ int offloadRelationSegmentPath(Relation aorel, std::shared_ptr<IOadv> ioadv,
       curr_read_chunk = logicalEof - progress;
     }
     /* code */
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     rc = FileRead(vfd, buffer.data(), curr_read_chunk);
 #else
     rc = FileRead(vfd, buffer.data(), curr_read_chunk, progress,

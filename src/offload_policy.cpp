@@ -63,7 +63,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata, false);
 #else
   tupdesc = CreateTemplateTupleDesc(Natts_offload_metadata);
@@ -79,7 +79,7 @@ void YezzeyCreateOffloadPolicyRelation() {
                      (AttrNumber)Anum_offload_metadata_rellast_archived,
                      "rellast_archived", TIMESTAMPOID, -1, 0);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   (void)heap_create_with_catalog(
       offload_metadata_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -119,7 +119,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   int16 coloptions[1];
 
   indexInfo->ii_NumIndexAttrs = 1;
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   indexInfo->ii_KeyAttrNumbers[0] = Anum_offload_metadata_reloid;
 #else
   indexInfo->ii_IndexAttrNumbers[0] = Anum_offload_metadata_reloid;
@@ -128,7 +128,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   indexInfo->ii_PredicateState = NIL;
 #else
   indexInfo->ii_PredicateState = NULL;
@@ -140,7 +140,7 @@ void YezzeyCreateOffloadPolicyRelation() {
   classObjectId[0] = OID_BTREE_OPS_OID;
   coloptions[0] = 0;
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   (void)index_create(yezzey_rel, offload_metadata_relname_indx.c_str(),
                      YEZZEY_OFFLOAD_POLICY_RELATION_INDX, InvalidOid,
                      InvalidOid, InvalidOid, indexInfo, indexColNames,

@@ -77,7 +77,7 @@ void YezzeyATExecSetTableSpace(Relation aorel, Oid reloid,
   }
   rd_rel->reltablespace = desttablespace_oid;
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   simple_heap_update(pg_class, &tuple->t_self, tuple);
   CatalogUpdateIndexes(pg_class, tuple);
 #else

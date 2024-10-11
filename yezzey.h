@@ -45,14 +45,14 @@ void yezzey_create_ao(RelFileNodeBackend rnode, int32 segmentFileNum,
 #endif
 bool yezzey_exists(SMgrRelation reln, ForkNumber forkNum);
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #else
 void yezzey_unlink(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo,
                    char relstorage);
 #endif
 
-#if GP_VERSION_NUM >= 70000
+#if IsModernYezzey
 void yezzey_unlink_ao(RelFileNodeBackend rnode, ForkNumber forkNum, bool isRedo);
 #endif
 

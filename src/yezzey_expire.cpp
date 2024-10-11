@@ -10,6 +10,8 @@
 #include "util.h"
 #include "yezzey_heap_api.h"
 
+#include "ygpver.h"
+
 void YezzeyRecordRelationExpireLsn(Relation rel) {
   if (Gp_role != GP_ROLE_EXECUTE) {
     return;
@@ -91,7 +93,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(yexprel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     simple_heap_update(yexprel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(yexprel, yandxtuple);
 #else
@@ -121,7 +123,7 @@ void YezzeyCreateRelationExpireIndex(void) {
   ObjectAddress baseobject;
   ObjectAddress yezzey_ao_auxiliaryobject;
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index, false);
 #else
   tupdesc = CreateTemplateTupleDesc(Natts_yezzey_expire_index);
@@ -142,7 +144,7 @@ void YezzeyCreateRelationExpireIndex(void) {
   TupleDescInitEntry(tupdesc, (AttrNumber)Anum_yezzey_expire_index_lsn,
                      "expire_lsn", LSNOID, -1, 0);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   (void)heap_create_with_catalog(
       yezzey_expire_index_relname.c_str() /* relname */,
       YEZZEY_AUX_NAMESPACE /* namespace */, 0 /* tablespace */,
@@ -184,7 +186,7 @@ void YezzeyCreateRelationExpireIndex(void) {
   int16 coloptions[2];
 
   indexInfo->ii_NumIndexAttrs = 2;
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   indexInfo->ii_KeyAttrNumbers[0] = Anum_yezzey_expire_index_reloid;
   indexInfo->ii_KeyAttrNumbers[1] = Anum_yezzey_expire_index_relfileoid;
 #else
@@ -196,7 +198,7 @@ void YezzeyCreateRelationExpireIndex(void) {
   indexInfo->ii_Expressions = NIL;
   indexInfo->ii_ExpressionsState = NIL;
   indexInfo->ii_Predicate = NIL;
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   indexInfo->ii_PredicateState = NIL;
 #else
   indexInfo->ii_PredicateState = NULL;
@@ -217,7 +219,7 @@ void YezzeyCreateRelationExpireIndex(void) {
   classObjectId[1] = OID_BTREE_OPS_OID;
   coloptions[1] = 0;
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   (void)index_create(yezzey_rel, yezzey_expire_index_indx_relname.c_str(),
                      YEZZEY_EXPIRE_INDEX_RELATION_INDX, InvalidOid, InvalidOid,
                      InvalidOid, indexInfo, indexColNames, BTREE_AM_OID,
@@ -311,7 +313,7 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
 
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     simple_heap_update(rel, &tuple->t_self, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
 #else
@@ -323,7 +325,7 @@ void YezzeyUpsertLastUseLsn(Oid reloid, Oid relfileoid, const char *md5,
     // insert
     auto yandxtuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
 
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
     simple_heap_insert(rel, yandxtuple);
     CatalogUpdateIndexes(rel, yandxtuple);
 #else
