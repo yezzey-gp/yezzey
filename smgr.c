@@ -241,12 +241,10 @@ void
 yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks) {
 #if IsGreenplum6
-  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
-    /*do nothing */
-    return;
-  }
+  /*do nothing */  
+#else
+  mdwriteback(reln, forkNum, blockNum, nBlocks);  
 #endif
-  mdwriteback(reln, forkNum, blockNum, nBlocks);
 }
 
 BlockNumber
