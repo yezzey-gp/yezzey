@@ -199,7 +199,7 @@ int YProxyReader::prepareYproxyConnection(const ChunkInfo &ci,
   client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
   if (client_fd_ == -1) {
     // throw here?
-    elog(WARNING, "failed to create unix socket, errno: %d", errno);
+    elog(WARNING, "failed to create unix socket, errno: %m");
     return -1;
   }
 
@@ -217,8 +217,8 @@ int YProxyReader::prepareYproxyConnection(const ChunkInfo &ci,
   if (ret == -1) {
     // THROW here?
     elog(WARNING,
-         "failed to acquire connection to unix socket on %s, errno: %d",
-         adv_->yproxy_socket.c_str(), errno);
+         "failed to acquire connection to unix socket on %s, errno: %m",
+         adv_->yproxy_socket.c_str());
     return -1;
   }
 
@@ -361,7 +361,7 @@ int YProxyWriter::prepareYproxyConnection() {
 
   client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
   if (client_fd_ == -1) {
-    elog(WARNING, "failed to create unix socket, errno: %d", errno);
+    elog(WARNING, "failed to create unix socket, errno: %m");
     // throw here?
     return -1;
   }
@@ -380,8 +380,8 @@ int YProxyWriter::prepareYproxyConnection() {
 
   if (ret == -1) {
     elog(WARNING,
-         "failed to acquire connection to unix socket on %s, errno: %d",
-         adv_->yproxy_socket.c_str(), errno);
+         "failed to acquire connection to unix socket on %s, errno: %m",
+         adv_->yproxy_socket.c_str());
     return -1;
   }
 
@@ -587,7 +587,7 @@ int YProxyDeleter::prepareYproxyConnection() {
 
   client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
   if (client_fd_ == -1) {
-    elog(WARNING, "failed to create unix socket, errno: %d", errno);
+    elog(WARNING, "failed to create unix socket, errno: %m");
     // throw here?
     return -1;
   }
@@ -606,8 +606,8 @@ int YProxyDeleter::prepareYproxyConnection() {
 
   if (ret == -1) {
     elog(WARNING,
-         "failed to acquire connection to unix socket on %s, errno: %d",
-         adv_->yproxy_socket.c_str(), errno);
+         "failed to acquire connection to unix socket on %s, errno: %m",
+         adv_->yproxy_socket.c_str());
     return -1;
   }
   return 0;
@@ -647,7 +647,7 @@ int YProxyLister::prepareYproxyConnection() {
   client_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
   if (client_fd_ == -1) {
     // throw here?
-    elog(WARNING, "failed to create unix socket, errno: %d", errno);
+    elog(WARNING, "failed to create unix socket, errno: %m");
     return -1;
   }
 
@@ -665,8 +665,8 @@ int YProxyLister::prepareYproxyConnection() {
 
   if (ret == -1) {
     elog(WARNING,
-         "failed to acquire connection to unix socket on %s, errno: %d",
-         adv_->yproxy_socket.c_str(), errno);
+         "failed to acquire connection to unix socket on %s, errno: %m",
+         adv_->yproxy_socket.c_str());
     return -1;
   }
 
