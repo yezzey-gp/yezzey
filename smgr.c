@@ -237,13 +237,17 @@ yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
   mdwrite(reln, forkNum, blockNum, buffer, skipFsync);
 }
 
-#if IsModernYezzey
 void
 yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks) {
+#if IsGreenplum6
+  if ((reln->smgr_rnode).node.spcNode == YEZZEYTABLESPACE_OID) {
+    /*do nothing */
+    return;
+  }
+#endif
   mdwriteback(reln, forkNum, blockNum, nBlocks);
 }
-#endif
 
 BlockNumber
 yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum) {
@@ -283,6 +287,21 @@ yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
   mdimmedsync(reln, forkNum);
 }
 
+#if IsGreenplum6
+void yezzey_pre_ckpt(void) {
+  (void) mdpreckpt();
+}
+
+void yezzey_sync(void) {
+  (void) mdsync();
+} 
+
+void yezzey_post_ckpt(void) {
+  (void) mdpostckpt();
+}
+
+#endif
+
 
 #if IsGreenplum6
 static const struct f_smgr yezzey_smgr = {
@@ -297,9 +316,13 @@ static const struct f_smgr yezzey_smgr = {
     .smgr_prefetch = yezzey_prefetch,
     .smgr_read = yezzey_read,
     .smgr_write = yezzey_write,
+    .smgr_writeback = yezzey_writeback,
     .smgr_nblocks = yezzey_nblocks,
     .smgr_truncate = yezzey_truncate,
     .smgr_immedsync = yezzey_immedsync,
+    .smgr_pre_ckpt = yezzey_pre_ckpt,
+    .smgr_sync = yezzey_sync,
+    .smgr_post_ckpt = yezzey_post_ckpt,
 };
 #else
 
@@ -346,21 +369,6 @@ static const f_smgr yezzey_smgrsw[] = {
 	}
 };
 #endif
-
-/*
-
-typedef struct f_smgr_ao {
-	int64       (*smgr_NonVirtualCurSeek) (SMGRFile file);
-	int64 		(*smgr_FileSeek) (SMGRFile file, int64 offset, int whence);
-	void 		(*smgr_FileClose)(SMGRFile file);
-	int         (*smgr_FileTruncate) (SMGRFile file, int64 offset, uint32 wait_event_info);
-	SMGRFile    (*smgr_PathNameOpenFile) (const char * fileName, int fileFlags, int fileMode);
-	int         (*smgr_FileWrite)(SMGRFile file, char *buffer, int amount, off_t offset, uint32 wait_event_info);
-  int         (*smgr_FileRead)(SMGRFile file, char *buffer, int amount,off_t offset, uint32 wait_event_info );
-	int	        (*smgr_FileSync)(SMGRFile file);
-} f_smgr_ao;
-
-*/
 
 static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileClose = yezzey_FileClose,

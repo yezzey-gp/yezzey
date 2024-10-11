@@ -35,8 +35,6 @@
 
 #include "fmgr.h"
 
-// #include "smgr_s3_frontend.h"
-
 // For GpIdentity
 #include "c.h"
 #include "catalog/pg_namespace.h"

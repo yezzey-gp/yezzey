@@ -71,14 +71,21 @@ void yezzey_read(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                  char *buffer);
 void yezzey_write(SMgrRelation reln, ForkNumber forkNum, BlockNumber blockNum,
                   char *buffer, bool skipFsync);
-#if IsModernYezzey
+
 void yezzey_writeback(SMgrRelation reln, ForkNumber forkNum,
                       BlockNumber blockNum, BlockNumber nBlocks);
-#endif
+
 BlockNumber yezzey_nblocks(SMgrRelation reln, ForkNumber forkNum);
 void yezzey_truncate(SMgrRelation reln, ForkNumber forkNum,
                      BlockNumber nBlocks);
 void yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum);
+
+
+#if IsGreenplum6
+extern void yezzey_pre_ckpt(void);
+extern void yezzey_sync(void);
+extern void yezzey_post_ckpt(void);
+#endif
 
 #if 0 /* not implemented */
 void addToMoveTable(char *tableName);
