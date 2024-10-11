@@ -391,6 +391,8 @@ const f_smgr *smgr_yezzey(BackendId backend, RelFileNode rnode, SMgrImpl which) 
 const f_smgr_ao *smgrao_yezzey() { return &yezzey_smgr_ao; }
 
 void smgr_init_yezzey(void) {
+#if IsGreenplum6
   smgr_init_standard();
+#endif
   yezzey_init();
 }

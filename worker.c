@@ -184,13 +184,17 @@ void yezzey_process_database(Datum main_arg) {
   /* Establish signal handlers; once that's done, unblock signals. */
   // pqsignal(SIGTERM, die);
   BackgroundWorkerUnblockSignals();
-#if GP_VERSION_NUM < 70000
+#if IsGreenplum6
   Gp_session_role = GP_ROLE_UTILITY;
 #endif
   Gp_role = GP_ROLE_UTILITY;
   InitPostgres(NULL, dboid, NULL, InvalidOid, dbname, true);
   SetProcessingMode(NormalProcessing);
+#if IsGreenplum6
   set_ps_display(dbname, false);
+#else
+  set_ps_display(dbname);
+#endif
   ereport(LOG, (errmsg("yezzey bgworker: processing database \"%s\"", dbname)));
 
 
