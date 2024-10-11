@@ -297,7 +297,6 @@ static const struct f_smgr yezzey_smgr = {
     .smgr_prefetch = yezzey_prefetch,
     .smgr_read = yezzey_read,
     .smgr_write = yezzey_write,
-    .smgr_writeback = yezzey_writeback,
     .smgr_nblocks = yezzey_nblocks,
     .smgr_truncate = yezzey_truncate,
     .smgr_immedsync = yezzey_immedsync,
