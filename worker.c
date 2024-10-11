@@ -470,6 +470,7 @@ yezzey_ProcessUtility_hook(Node *parsetree,
 			 * ******************** yezzey vacuum ********************
 			 */
 		case T_VacuumStmt:
+#if IsGreenplum6
 			{
 				VacuumStmt *stmt = (VacuumStmt *) parsetree;
         if (stmt->options & VACOPT_YEZZEY) {
@@ -479,6 +480,7 @@ yezzey_ProcessUtility_hook(Node *parsetree,
           }
         }
 			}
+#endif
 			break;
     default:
       break;
