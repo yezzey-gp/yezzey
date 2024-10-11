@@ -297,9 +297,7 @@ yezzey_immedsync(SMgrRelation reln, ForkNumber forkNum) {
 static const struct f_smgr yezzey_smgr = {
     .smgr_init = yezzey_init,
     .smgr_shutdown = NULL,
-#if IsGreenplum6 || IsModernYezzey
     .smgr_open = yezzey_open,
-#endif
     .smgr_close = yezzey_close,
     .smgr_create = yezzey_create,
     .smgr_create_ao = yezzey_create_ao,
@@ -346,10 +344,6 @@ static const f_smgr yezzey_smgrsw[] = {
 		.smgr_shutdown = NULL,
 		.smgr_close = yezzey_close,
 		.smgr_create = yezzey_create,
-
-  #if IsGreenplum6
-    .smgr_create_ao = yezzey_create_ao,
-  #endif
 		.smgr_exists = yezzey_exists,
 		.smgr_unlink = yezzey_unlink_ao,
 		.smgr_extend = yezzey_extend,
@@ -391,6 +385,7 @@ static const struct f_smgr_ao yezzey_smgr_ao = {
     .smgr_FileSeek = yezzey_FileSeek,
 #else
     .smgr_FileDiskSize = yezzey_FileDiskSize,
+    .smgr_FileSize = yezzey_FileSize,
 #endif
 };
 

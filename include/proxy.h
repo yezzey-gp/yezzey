@@ -58,4 +58,8 @@ EXTERNC int yezzey_FileTruncate(SMGRFile file, int64 offset);
 EXTERNC int yezzey_FileDiskSize(SMGRFile file);
 #endif
 
+#if IsModernYezzey
+EXTERNC int yezzey_FileSize(SMGRFile file);
+#endif
+
 #endif /* YEZZEY_PROXY_H */
