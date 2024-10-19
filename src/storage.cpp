@@ -443,7 +443,7 @@ int statRelationSpaceUsage(Relation aorel, int segno, int64 modcount,
   to lookup in metadata table to resolve origin tablespace */
 
   auto spcNode = resolveTablespaceOidByName(
-      YezzeyGetRelationOriginTablespace(RelationGetRelid(aorel)));
+      YezzeyGetRelationOriginTablespace(NULL, NULL, RelationGetRelid(aorel)));
 
   auto coords = relnodeCoord(spcNode, rnode.dbNode, rnode.relNode, segno);
 
@@ -496,7 +496,7 @@ int statRelationSpaceUsagePerExternalChunk(Relation aorel, int segno,
   to lookup in metadata table to resolve origin tablespace */
 
   auto spcNode = resolveTablespaceOidByName(
-      YezzeyGetRelationOriginTablespace(RelationGetRelid(aorel)));
+      YezzeyGetRelationOriginTablespace(NULL, NULL, RelationGetRelid(aorel)));
 
   auto coords = relnodeCoord(spcNode, rnode.dbNode, rnode.relNode, segno);
 

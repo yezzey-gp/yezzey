@@ -54,11 +54,10 @@
 #include "yezzey.h"
 
 #include "yezzey_expire.h"
+#include "offload_tablespace_map.h"
 
 #include "tcop/utility.h"
-
 #include "xvacuum.h"
-
 #include "cdb/cdbvars.h"
 
 #if PG_VERSION_NUM >= 100000
@@ -473,6 +472,7 @@ yezzey_ProcessUtility_hook(Node *parsetree,
 			/*
 			 * ******************** yezzey vacuum ********************
 			 */
+      break;
 		case T_VacuumStmt:
 #if IsGreenplum6
 			{
@@ -490,8 +490,49 @@ yezzey_ProcessUtility_hook(Node *parsetree,
       break;
     }
     return standard_ProcessUtility(parsetree, queryString, context, params, dest, completionTag);  
-
 }
+
+static void yezzey_ExecuterEndHook(QueryDesc *queryDesc) {
+  (void) standard_ExecutorEnd(queryDesc);
+
+  YezzeyTruncateOTMHint();
+}
+
+
+static void yezzey_ExecuterStartHook(QueryDesc *queryDesc, int eflags) {
+    (void) standard_ExecutorStart(queryDesc, eflags);
+
+    typedef struct
+    {
+      DestReceiver pub;			/* publicly-known function pointers */
+      IntoClause *into;			/* target relation specification */
+      /* These fields are filled by intorel_startup: */
+      Relation	rel;			/* relation to write to */
+      CommandId	output_cid;		/* cmin to insert in output tuples */
+      int			hi_options;		/* heap_insert performance options */
+      BulkInsertState bistate;	/* bulk insert state */
+
+      struct AppendOnlyInsertDescData *ao_insertDesc; /* descriptor to AO tables */
+      struct AOCSInsertDescData *aocs_insertDes;      /* descriptor for aocs */
+    } DR_intorel;
+
+
+    IntoClause *iclause;
+    Oid sourceOid;
+
+    if (queryDesc->plannedstmt->intoClause != NULL) {
+      iclause = queryDesc->plannedstmt->intoClause;
+      if (strcmp(iclause->tableSpaceName, "yezzey(cloud-storage)") == 0) {
+        if (queryDesc->plannedstmt->relationOids->length != 1) {
+          elog(ERROR, "unexpected plan relation size for yezzey alter: %d", queryDesc->plannedstmt->relationOids->length);
+        }
+        sourceOid = lfirst(queryDesc->plannedstmt->relationOids->head);
+        /* so, target relation is yezzey. This should be expand or alter table reorg; */
+        YezzeyCopyOTM(iclause->rel, sourceOid);
+      }
+    }
+}
+
 
 /* GUC variables. */
 static bool yezzey_autooffload = true; /* start yezzey worker? */
@@ -599,4 +640,7 @@ void _PG_init(void) {
   RelationDropStorage_hook = YezzeyRecordRelationExpireLsn;
 
   ProcessUtility_hook = yezzey_ProcessUtility_hook;
+
+  ExecutorStart_hook = yezzey_ExecuterStartHook;
+  ExecutorEnd_hook = yezzey_ExecuterEndHook;
 }

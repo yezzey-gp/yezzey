@@ -8,6 +8,8 @@
 #include "yezzey_heap_api.h"
 #include <unistd.h>
 
+#include <map>
+
 #include "cdb/cdbvars.h"
 
 #include "offload_tablespace_map.h"
@@ -51,7 +53,27 @@ static Oid YezzeyResolveTablespaceMapOid() {
   return yezzey_tablespace_map_oid;
 }
 
-std::string YezzeyGetRelationOriginTablespace(Oid i_reloid) {
+static std::map<std::string, std::string> yezzey_otm_hint;
+
+static std::string y_stringify_rv(const char *nspname, const char *relname) {
+  std::string ret;
+
+  ret += nspname;
+  ret += '.';
+  ret += relname;
+
+  return ret;
+}
+
+std::string YezzeyGetRelationOriginTablespace(const char *nspname, const char *relname, Oid i_reloid) {
+
+  if (nspname != NULL && relname != NULL) {
+    auto key = y_stringify_rv(nspname, relname);
+    if (yezzey_otm_hint.count(key)) {
+      return yezzey_otm_hint[key];
+    }
+  }
+
   auto yezzey_tablespace_map_oid = YezzeyResolveTablespaceMapOid();
 
   /* No map relation created. Assume pg_default by default */
@@ -175,4 +197,17 @@ void YezzeyRegisterRelationOriginTablespace(Oid i_reloid, Oid i_reltablespace) {
   YezzeyRegisterRelationOriginTablespaceName(i_reloid, spcname);
 
   ReleaseSysCache(spctuple);
+}
+
+
+void YezzeyCopyOTM(const RangeVar *rv, Oid sourceRelationOid) {
+  auto val = YezzeyGetRelationOriginTablespace(rv->schemaname, rv->relname, sourceRelationOid);
+
+  auto key = y_stringify_rv(rv->schemaname, rv->relname);
+
+  yezzey_otm_hint[key] = val;
+}
+
+void YezzeyTruncateOTMHint(void) {
+  yezzey_otm_hint.clear();
 }
