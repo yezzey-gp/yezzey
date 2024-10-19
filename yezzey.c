@@ -78,15 +78,7 @@ char *storage_class = NULL;
 int multipart_threshold = 0;
 int multipart_chunksize = 0;
 
-/* GPG */
-char *gpg_engine_path = NULL;
-char *gpg_key_id = NULL;
-
 bool use_gpg_crypto = false;
-
-/* WAL-G */
-char *walg_bin_path = NULL;
-char *walg_config_path = NULL;
 
 /* YPROXY */
 

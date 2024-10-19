@@ -11,12 +11,7 @@ gpconfig -c yezzey.storage_prefix -v "'wal-e/6'"
 gpconfig -c yezzey.storage_bucket -v "'gpyezzey'"
 
 gpconfig -c yezzey.yproxy_socket -v "'/tmp/yproxy.sock'"
-gpconfig -c yezzey.storage_config -v "'/home/reshke/s3test.conf'"
-gpconfig -c yezzey.storage_host -v "'https://storage.yandexcloud.net'"
 gpconfig -c yezzey.use_gpg_crypto -v "true"
-gpconfig -c yezzey.gpg_key_id -v  "'400C834648CE54F9'"
-gpconfig -c yezzey.walg_bin_path -v  "'/home/reshke/wal-g/main/gp/wal-g'"
-gpconfig -c yezzey.walg_config_path -v  "'/home/reshke/wal-g/wal-g-yezzey.yaml'"
 
 gpconfig -c max_worker_processes -v 10
 
