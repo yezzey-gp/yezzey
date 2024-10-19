@@ -4,10 +4,6 @@
 extern int yezzey_log_level;
 extern int yezzey_ao_log_level;
 
-/* ----- GPG ------ */
-extern char *gpg_key_id;
-extern char *gpg_engine_path;
-
 extern bool use_gpg_crypto;
 
 /* ----- STORAGE -----  */
@@ -19,11 +15,6 @@ extern char *storage_host;
 extern char *storage_class;
 extern int multipart_chunksize;
 extern int multipart_threshold;
-
-/* WAL-G */
-
-extern char *walg_bin_path;
-extern char *walg_config_path;
 
 /* Y-PROXY */
 extern char *yproxy_socket;

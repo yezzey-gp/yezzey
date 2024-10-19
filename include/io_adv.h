@@ -8,15 +8,6 @@
 /* storage & gpg related configration */
 struct IOadv {
   // private fields
-
-  //  GPG - related
-  /* "/usr/bin/gpg" or something */
-  const std::string engine_path;
-  const std::string gpg_key_id;
-
-  //  storage + YPROXY related
-
-  const std::string config_path;
   // schema name for relation
   const std::string nspname;
   // relation name itself
@@ -42,32 +33,24 @@ struct IOadv {
   // Origin tablespace of offloaded relation
   const std::string tableSpace;
 
-  // /usr/bin/wal-g-gp
-  const std::string walg_bin_path;
-  const std::string walg_config_path;
-
   bool use_gpg_crypto;
 
   // yproxy
   const std::string yproxy_socket;
 
-  IOadv(const std::string &engine_path, const std::string &gpg_key_id,
-        const std::string &config_path, const std::string &nspname,
+  IOadv(const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
         const std::string &storage_class, const int &multipart_chunksize,
         /*unparse coords*/ Oid spcNode, const std::string &fileName,
-        const Oid reloid, const std::string &walg_bin_path,
-        const std::string &walg_config_path, bool use_gpg_crypto,
+        const Oid reloid, bool use_gpg_crypto,
         const std::string &yproxy_socket);
 
-  IOadv(const std::string &engine_path, const std::string &gpg_key_id,
-        const std::string &config_path, const std::string &nspname,
+  IOadv(const std::string &nspname,
         const std::string &relname, const std::string &host,
         const std::string &bucket, const std::string &external_storage_prefix,
         const std::string &storage_class, const int &multipart_chunksize,
         const relnodeCoord &coords, const Oid reloid,
-        const std::string &walg_bin_path, const std::string &walg_config_path,
         bool use_gpg_crypto, const std::string &yproxy_socket);
 };
 

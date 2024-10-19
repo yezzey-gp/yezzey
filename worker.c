@@ -571,24 +571,9 @@ static void yezzey_define_gucs() {
   DefineCustomIntVariable("yezzey.multipart_threshold", "external storage default multipart threshold",
                              NULL, &multipart_threshold, 64*1024*1024, 0, INT_MAX, PGC_SUSET, 0, NULL, NULL, NULL);
 
-  DefineCustomStringVariable("yezzey.gpg_key_id", "gpg key id", NULL,
-                             &gpg_key_id, "", PGC_SUSET, 0, NULL, NULL, NULL);
-
   DefineCustomBoolVariable("yezzey.use_gpg_crypto", "use gpg crypto", NULL,
                            &use_gpg_crypto, true, PGC_SUSET, 0, NULL, NULL,
                            NULL);
-
-  DefineCustomStringVariable("yezzey.gpg_engine_path", "gpg engine path", NULL,
-                             &gpg_engine_path, "/usr/bin/gpg", PGC_SUSET, 0,
-                             NULL, NULL, NULL);
-
-  DefineCustomStringVariable("yezzey.walg_bin_path", "wal-g engine path", NULL,
-                             &walg_bin_path, "/usr/bin/wal-g-gp", PGC_SUSET, 0,
-                             NULL, NULL, NULL);
-
-  DefineCustomStringVariable("yezzey.walg_config_path", "wal-g config path",
-                             NULL, &walg_config_path, "/etc/wal-g/wal-g.yaml",
-                             PGC_SUSET, 0, NULL, NULL, NULL);
 
   DefineCustomBoolVariable(
       "yezzey.autooffload", "enable auto-offloading worker", NULL,
