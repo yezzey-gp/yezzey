@@ -17,7 +17,7 @@ IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
       bucket(bucket), external_storage_prefix(external_storage_prefix),
       storage_class(storage_class), multipart_chunksize(multipart_chunksize),
       coords_(getRelnodeCoordinate(spcNode, fileName)), reloid(reloid),
-      tableSpace(reloid ? YezzeyGetRelationOriginTablespace(reloid) : "none"),
+      tableSpace(reloid ? YezzeyGetRelationOriginTablespace(nspname.c_str(), relname.c_str(), reloid) : "none"),
       walg_bin_path(walg_bin_path), walg_config_path(walg_config_path),
       use_gpg_crypto(use_gpg_crypto), yproxy_socket(yproxy_socket) {
   multipart_upload = true;
@@ -38,7 +38,7 @@ IOadv::IOadv(const std::string &engine_path, const std::string &gpg_key_id,
       bucket(bucket), external_storage_prefix(external_storage_prefix),
       storage_class(storage_class), multipart_chunksize(multipart_chunksize),
       coords_(coords), reloid(reloid),
-      tableSpace(reloid ? YezzeyGetRelationOriginTablespace(reloid) : "none"),
+      tableSpace(reloid ? YezzeyGetRelationOriginTablespace(nspname.c_str(), relname.c_str(), reloid) : "none"),
       walg_bin_path(walg_bin_path), walg_config_path(walg_config_path),
       use_gpg_crypto(use_gpg_crypto), yproxy_socket(yproxy_socket) {
   multipart_upload = true;

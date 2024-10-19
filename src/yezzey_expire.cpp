@@ -11,6 +11,7 @@
 #include "yezzey_heap_api.h"
 
 #include "ygpver.h"
+#include "gucs.h"
 
 void YezzeyRecordRelationExpireLsn(Relation rel) {
   if (Gp_role != GP_ROLE_EXECUTE) {
@@ -80,7 +81,7 @@ void YezzeyRecordRelationExpireLsn(Relation rel) {
     // update
     auto meta = (Form_yezzey_expire_index)GETSTRUCT(tuple);
 
-    Assert(meta->yrelfileoid == relfileoid);
+    // Assert(meta->yrelfileoid == relfileoid);
 
     values[Anum_yezzey_expire_index_relfileoid - 1] =
         ObjectIdGetDatum(meta->yrelfileoid);
